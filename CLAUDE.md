@@ -19,6 +19,7 @@ Claude Code 向けのカスタムスラッシュコマンド仕様（Markdown）
 
 ## 重要な設計原則
 
+- **symlink-only 原則**: `~/.claude/` 配下には実体ファイルを置かず、全て本リポジトリへの symlink とする。このリポジトリが single source of truth。
 - ルーティング判定は単一質問: 「この変更で `docs/*` への追加・変更・削除が必要か？」
 - issue は task フローのみ必須（patch フローには不要）
 - task フローのコミット形式: `<type>(#<issue number>): <short description>` (Conventional Commits)

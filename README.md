@@ -27,6 +27,8 @@ A collection of custom slash commands for [Claude Code](https://claude.ai/code) 
 
 ## Installation
 
+> **Symlink-only principle:** All files placed under `~/.claude/` must be symlinks pointing to this repository — never actual file copies. This repo is the single source of truth; `~/.claude/` is just a reference point.
+
 ### 1. Symlink the commands (global — all repos)
 
 ```bash
