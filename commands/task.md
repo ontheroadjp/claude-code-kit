@@ -60,31 +60,15 @@ Phase 3: 最終報告
 
 #### patch フロー（docs 変更不要と判定した場合に実行）
 
-1. ブランチ作成:
-    ```bash
-    git checkout -b patch/<変更内容を表す slug>
-    ```
-2. 変更を実施する（ユーザー確認不要）。コミットは複数回でも可:
-    ```bash
-    git commit -m "<type>: <short description in English>"
-    ```
-    Use Conventional Commits types: `fix` / `refactor` / `chore` / `style` / `test` / `docs`
-3. 実行中にドキュメント変更が必要と判明した場合（エスカレーション）:
-    - 現時点の変更をコミットする
-    - ユーザーに報告: 「ドキュメント変更が必要なため task フローに切り替えます」
-    - `~/.claude/commands/templates/issue.md` をもとに issue ドラフトを作成してユーザーに確認・作成する
-        - 「patch で実施済みの変更」と「追加スコープ」を必ず記載する
-    - Phase 1 Step 0 を「エスカレーション」モードで実行する（issue 番号を引き継ぐ）
-    - ブランチはそのまま再利用し、Step 1 はスキップして Step 2（プラン策定）から継続する
-4. 変更内容サマリをユーザーに報告し、以下のマージ手順を通知する（マージはユーザーが実行）:
-    ```bash
-    git checkout main
-    git merge --ff patch/<slug>
-    git branch -d patch/<slug>
-    ```
-5. `git checkout main` で main に戻る
-6. G-2 で stash を行った場合は `git stash pop` で復元する
-    - コンフリクトが発生した場合: ユーザーに通知し、指示に従う
+`patch.md` のワークフローをそのまま実行する（G-2 は通過済みとして扱う）。
+
+エスカレーション時（実行中にドキュメント変更が必要と判明した場合）:
+- 現時点の変更をコミットする
+- ユーザーに報告: 「ドキュメント変更が必要なため task フローに切り替えます」
+- `~/.claude/commands/templates/issue.md` をもとに issue ドラフトを作成してユーザーに確認・作成する
+    - 「patch で実施済みの変更」と「追加スコープ」を必ず記載する
+- Phase 1 Step 0 を「エスカレーション」モードで実行する（issue 番号を引き継ぐ）
+- ブランチはそのまま再利用し、Step 1 はスキップして Step 2（プラン策定）から継続する
 
 **(B) 現在ブランチが main ではない場合（再開・エスカレーション）:**
 

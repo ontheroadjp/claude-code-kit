@@ -22,11 +22,12 @@
 - main にいる場合: 作業対象ブランチへ checkout することを促して終了する
 
 ### G-4: PR の存在確認
-- `gh pr view --json isDraft,number,title,url,body` で確認する
+- まず `gh pr view --json isDraft,number,url` でステータスのみ確認する（body は取得しない）
 - PR が存在しない場合: /task を先に実行することを促して終了する
 - PR が存在する場合:
     - isDraft=true（ドラフト）: 通常モードで進む
-    - isDraft=false（公開済み）: 「PR は既に公開済みのため docs 追記・再公開はスキップし、docs・README.md 更新のみ行う」モードで進む
+    - isDraft=false（公開済み）: 「PR は既に公開済みのため docs 追記・再公開はスキップし、docs・README.md 更新のみ行う」モードで進む（body 取得不要）
+- 通常モードの場合のみ、続けて `gh pr view --json body -q .body` で本文を取得する
 - PR 本文に「/docs-sync への引き継ぎ事項」セクションが存在しない場合:
     - 終了しない
     - 「補助情報なし: git diff のみで判断する」モードで Phase 1 に進む
