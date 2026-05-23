@@ -59,9 +59,9 @@
 
 | コマンド | G-1 | G-2 | G-3 |
 |----------|-----|-----|-----|
-| task.md | repo.profile.json 必須 | main かつクリーン（stash） | - |
-| patch.md | repo.profile.json 必須 | main ブランチにいること | クリーン（stash） |
-| docs-sync.md | repo.profile.json 必須 | main 以外のブランチ | WIP コミット存在 |
+| task.md | docs/.ai/repo.profile.json 必須 | main かつクリーン（stash） | - |
+| patch.md | docs/.ai/repo.profile.json 必須 | main ブランチにいること | クリーン（stash） |
+| docs-sync.md | docs/.ai/repo.profile.json 必須 | main 以外のブランチ | WIP コミット存在 |
 | init-docs.md | .git/ 必須 | - | - |
 
 根拠: `task.md:23-32`, `patch.md:11-24`, `docs-sync.md:各ゲート節`, `init-docs.md:21-26`
@@ -89,6 +89,6 @@ task フローでは WIP コミットで進捗を管理する:
 ## 実行コマンド（repo.profile.json 観点）
 
 - `repo.profile.json.commands` は空（このリポジトリ自体に run/build/test コマンドは存在しない）
-  - 根拠: `repo.profile.json`
+  - 根拠: `docs/.ai/repo.profile.json`
 - 外部 CLI として `git`, `gh` をコマンド仕様内で使用する
   - 根拠: `task.md:105-109`, `patch.md:58-62`

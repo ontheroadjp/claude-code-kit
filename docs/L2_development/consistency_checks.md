@@ -16,7 +16,7 @@
 | `patch.md` | ✅ | ルート直下に実在 |
 | `docs-sync.md` | ✅ | ルート直下に実在 |
 | `init-docs.md` | ✅ | ルート直下に実在 |
-| `repo.profile.json` | ✅ | ルート直下に実在 |
+| `docs/.ai/repo.profile.json` | ✅ | docs/.ai/ 下に実在 |
 | `templates/issue.md` | ✅ | templates/ 下に実在 |
 | `templates/pr.md` | ✅ | templates/ 下に実在 |
 | `~/.claude/commands/` | ✅ | シンボリックリンク群として実在（グローバルデプロイ先） |

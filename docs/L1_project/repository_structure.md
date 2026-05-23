@@ -8,11 +8,12 @@ agent-custom-slash-commands/
 ├── patch.md          # アクティブコマンド: 軽微修正フロー
 ├── docs-sync.md      # アクティブコマンド: ドキュメント同期フロー
 ├── init-docs.md      # アクティブコマンド: ドキュメント初期化フロー
-├── repo.profile.json # リポジトリプロファイル（AI 運用の基盤）
 ├── .gitignore
 ├── .claude/
 │   └── commands/     # コマンドファイルのコピー（同期用）
 ├── docs/
+│   ├── .ai/
+│   │   └── repo.profile.json  # リポジトリプロファイル（AI 運用の基盤）
 │   ├── L1_project/
 │   │   ├── project_overview.md
 │   │   └── repository_structure.md
