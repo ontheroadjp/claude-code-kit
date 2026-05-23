@@ -79,7 +79,7 @@ branch 作成（patch/<slug>）→ 変更・コミット → ユーザーが ff-
 ## 3. `docs-sync.md` — ドキュメント同期フロー
 
 ### 概要
-git diff を事実として docs を最小更新し、ドラフト PR を公開する。全体再構築は禁止。
+git diff を事実として docs および README.md を最小更新し、ドラフト PR を公開する。全体再構築は禁止。
 - 根拠: `docs-sync.md:1-10`
 
 ### ワークフロー
