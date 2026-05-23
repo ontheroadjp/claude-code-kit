@@ -2,6 +2,7 @@
   "repo_id": "claude-code-kit",
   "package_manager": "unknown",
   "doc_roots": [
+    "docs/L0_concept",
     "docs/L1_project",
     "docs/L2_development",
     "docs/L3_implementation"

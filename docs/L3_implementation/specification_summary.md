@@ -111,7 +111,7 @@ git diff を事実として docs および README.md を最小更新し、ドラ
 ### ワークフロー（5 フェーズ）
 1. プロジェクト分析（ディレクトリ・技術スタック・エントリポイント・機能・依存）
 2. `docs/.ai/repo.profile.json` 生成（事実のみ、補完禁止）
-3. docs 生成（L1/L2/L3 + 追加 docs）
+3. docs 生成（L0/L1/L2/L3）
 4. 整合性検証（docs↔実体、docs↔repo.profile.json、CI 整合）
 5. AGENTS.md 更新
 - 根拠: `commands/init-docs.md:39-222`
