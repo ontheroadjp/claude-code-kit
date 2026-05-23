@@ -30,6 +30,11 @@ Claude Code 向けのカスタムスラッシュコマンド仕様（Markdown）
 - `templates/issue.md` → `~/.claude/commands/templates/issue.md` としても参照可能
 - `templates/pr.md` → `~/.claude/commands/templates/pr.md` としても参照可能
 
+## ファイル編集のルール（必須）
+
+**このリポジトリのファイルを編集する際は、必ず `/task` を実行すること。**
+直接編集は禁止。`/task` 経由でルーティング判定・ブランチ作成・コミットを行う。
+
 ## このリポジトリへの変更作業
 
 このリポジトリ自体を変更する場合も `/task` を呼ぶ。ただし:
