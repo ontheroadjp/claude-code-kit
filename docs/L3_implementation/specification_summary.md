@@ -29,7 +29,7 @@ branch 作成（patch/<slug>）→ 変更・コミット → ユーザーが ff-
 - Step 0: issue 確認または自動生成（`templates/issue.md` 使用）
 - Step 1: 現状調査（スキップ不可）
 - Step 2: プラン策定（ユーザー許可必須）
-- Step 3: 実装・WIP コミット（`[/task:wip] #<issue> <summary>`）
+- Step 3: 実装・コミット（`<type>(#<issue>): <short description>`）
 - 根拠: `task.md:115-183`
 
 ### task フロー（Phase 2）

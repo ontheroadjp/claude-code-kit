@@ -92,9 +92,9 @@ Phase 3: 最終報告
 
 1. `git status --porcelain` が空でない（未コミット変更がある）場合:
     - Phase 1 から継続する
-2. コミット履歴に `[/task:wip]` で始まるコミットが存在し、ワークスペースがクリーンな場合:
+2. `git log main..HEAD --oneline` の出力が 1 件以上あり、ワークスペースがクリーンな場合:
     - Phase 2 から開始する
-    - issue 番号を WIP コミットメッセージ（`[/task:wip] #<番号> ...`）から取得する
+    - issue 番号は `gh pr view --json body` のドラフト PR 本文、またはコミットメッセージの `(#N)` パターンから取得する
 3. それ以外:
     - Phase 1 から開始する
 
@@ -178,8 +178,8 @@ Phase 3: 最終報告
         - Step 2（必要に応じて Step 1）へ戻る
         - ゲートは通過済みの前提で作業を続ける
     - ユーザーから OK が出た場合:
-        - WIP commit: `git commit -m "[/task:wip] <type>(#<issue number>): <short description in English>"`
-            - Example: `[/task:wip] feat(#23): implement user auth endpoint`
+        - Commit: `git commit -m "<type>(#<issue number>): <short description in English>"`
+            - Example: `feat(#23): implement user auth endpoint`
             - Conventional Commits types: `feat` / `fix` / `refactor` / `chore` / `style` / `test` / `docs`
         - 作業内容を対象 issue のコメントとして投稿する
         - Phase 2 へ進む
@@ -190,7 +190,7 @@ Phase 3: 最終報告
 
 ガード:
 - main ブランチ以外にいること
-- コミット履歴に `[/task:wip]` で始まるコミットが存在すること
+- `git log main..HEAD --oneline` の出力が 1 件以上あること（実装コミットが存在すること）
 - ワークスペースがクリーンであること
     - クリーンでない場合: `git stash push -m "task-phase2: auto stash"` で退避してから進む
 

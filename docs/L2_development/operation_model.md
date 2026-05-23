@@ -78,13 +78,14 @@ ln -s <repo_root>/templates ~/.claude/commands/templates
 
 根拠: `~/.claude/commands/` 内の各ファイルがリポジトリルート直下へのシンボリックリンクとして実在することを確認済み
 
-## WIP コミットマーカー（task フロー）
+## コミット形式（task フロー）
 
-task フローでは WIP コミットで進捗を管理する:
-- `[/task:wip] #<issue番号> <実装内容の要約>`
-  - 根拠: `task.md:180`
-- Phase 2（ドラフト PR 作成）のガードは `[/task:wip]` プレフィックスの存在確認で行う
-  - 根拠: `task.md:189-192`
+task フローのコミットは Conventional Commits 形式を使用する:
+- `<type>(#<issue番号>): <short description in English>`
+  - 例: `feat(#23): implement user auth endpoint`
+  - 根拠: `task.md:181`
+- Phase 2（ドラフト PR 作成）のガードは `git log main..HEAD --oneline` の出力が 1 件以上あることで行う
+  - 根拠: `task.md:191-193`
 
 ## 実行コマンド（repo.profile.json 観点）
 

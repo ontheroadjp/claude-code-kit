@@ -21,8 +21,8 @@ Claude Code 向けのカスタムスラッシュコマンド仕様（Markdown）
 
 - ルーティング判定は単一質問: 「この変更で `docs/*` への追加・変更・削除が必要か？」
 - issue は task フローのみ必須（patch フローには不要）
-- WIP commit marker: `[/task:wip] <type>(#<issue number>): <short description>` (Conventional Commits)
-  - Example: `[/task:wip] feat(#23): implement user auth endpoint`
+- task フローのコミット形式: `<type>(#<issue number>): <short description>` (Conventional Commits)
+  - Example: `feat(#23): implement user auth endpoint`
 - ワークスペースのクリーン化は stash で行う（破壊的操作禁止）
 - git diff が事実。AI の要約・解釈は補助情報にとどめる
 
