@@ -3,7 +3,14 @@
     "allow": [
       "Bash(git stash *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(gh issue *)",
+      "Bash(git checkout *)",
+      "Bash(git mv *)",
+      "Bash(cp /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/task.md /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/.claude/commands/task.md)",
+      "Bash(cp /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/patch.md /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/.claude/commands/patch.md)",
+      "Bash(cp /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/docs-sync.md /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/.claude/commands/docs-sync.md)",
+      "Bash(cp /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/init-docs.md /Users/hideaki/dev/src/github.com/ontheroadjp/agent-custom-slash-commands/.claude/commands/init-docs.md)"
     ]
   }
 }

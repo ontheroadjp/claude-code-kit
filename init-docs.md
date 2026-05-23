@@ -11,7 +11,7 @@
 以下のいずれかに該当する場合、このコマンドで **再観測・再構築** を行う:
 
 - /docs-sync が HARD STOP を検知した
-- repo.profile.json に載っていないコマンドや doc_root が運用上必要になった
+- docs/.ai/repo.profile.json に載っていないコマンドや doc_root が運用上必要になった
 - docs（L1/L2/L3）が現状の構造や責務を説明できなくなった
 - 起動方法・主要エントリポイントが変わった疑いがある
 - 新しいレイヤ（apps / packages / infra 等）が導入された
@@ -71,7 +71,7 @@
 
 ---
 
-### Phase 2: Repo Profile 生成（repo.profile.json）
+### Phase 2: Repo Profile 生成（docs/.ai/repo.profile.json）
 
 - 想像・補完は禁止
 - 確定できない項目は出力しない
@@ -143,23 +143,23 @@
 
 検証ルール:
 - パス: 実在すること（大文字小文字含む）
-- コマンド: repo.profile.json の commands に存在する、または CI 定義に存在する
+- コマンド: docs/.ai/repo.profile.json の commands に存在する、または CI 定義に存在する
 - エントリポイント: 実ファイルが存在し、docs の説明と矛盾しない
 
 不一致があった場合:
 - 修正できる → docs を修正する
 - 即断できない → 未確認事項へ移動する
 
-#### 4-2. repo.profile.json ↔ docs の突合（必須）
+#### 4-2. docs/.ai/repo.profile.json ↔ docs の突合（必須）
 
 双方向に確認する:
 
-repo.profile.json → docs:
+docs/.ai/repo.profile.json → docs:
 - commands に定義されたものが docs のどこかで説明されているか
 - doc_roots が docs 構造と一致しているか
 
-docs → repo.profile.json:
-- docs に登場する主要コマンドが repo.profile.json に存在するか
+docs → docs/.ai/repo.profile.json:
+- docs に登場する主要コマンドが docs/.ai/repo.profile.json に存在するか
 - 存在しない場合: CI / scripts に実体があるか。それも無ければ未確認事項へ
 
 #### 4-3. CI 定義との整合性確認（必須）
@@ -184,7 +184,7 @@ docs 内で事実を断定する箇所には可能な限り以下の形式で根
 以下をすべて満たしたときのみ /init-docs は完了とする:
 
 - docs に記載された事実が実体と矛盾していない
-- repo.profile.json と docs が相互に説明可能
+- docs/.ai/repo.profile.json と docs が相互に説明可能
 - CI 定義と docs の手順が一致している
 - 未確認事項が明示的に分離されている
 

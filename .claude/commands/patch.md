@@ -10,7 +10,7 @@
 
 ## 実行前提ゲート（必須）
 
-### G-1: repo.profile.json の存在確認
+### G-1: docs/.ai/repo.profile.json の存在確認
 - 存在しない場合: /init-docs の実行を促して終了する
 
 ### G-2: main ブランチにいること
@@ -102,7 +102,7 @@ Phase 2 の実行中に以下のいずれかになった場合、/task に引き
 **引き継ぎ手順:**
 1. 現時点の変更をコミットする（未コミットの場合）
 2. ユーザーに報告: 「ドキュメント変更が必要なため /task に切り替えます」
-3. `templates/issue.md` をもとに issue のドラフトを作成する
+3. `~/.claude/commands/templates/issue.md` をもとに issue のドラフトを作成する
     - 「/patch で実施済みの変更」と「追加スコープ（エスカレーション理由）」を必ず記載する
     - ユーザーに確認を取り、`gh issue create` で作成する
 4. /task の Phase 1 Step 2（プラン策定）から継続する

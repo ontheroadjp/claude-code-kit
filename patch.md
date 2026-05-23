@@ -10,7 +10,7 @@
 
 ## 実行前提ゲート（必須）
 
-### G-1: repo.profile.json の存在確認
+### G-1: docs/.ai/repo.profile.json の存在確認
 - 存在しない場合: /init-docs の実行を促して終了する
 
 ### G-2: main ブランチにいること

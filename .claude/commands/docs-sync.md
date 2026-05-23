@@ -12,7 +12,7 @@
 
 ## 実行前提ゲート（必須）
 
-### G-1: repo.profile.json の存在確認
+### G-1: docs/.ai/repo.profile.json の存在確認
 - 存在しない場合: /init-docs の実行を促して終了する
 
 ### G-2: docs/ の存在確認
@@ -82,7 +82,7 @@
     - 事実更新（パス/設定値/コマンド/型/エンドポイント）
     - 手順更新（setup/run/test）
     - 仕様サマリ更新（specification_summary は該当箇所のみ）
-- repo.profile.json 更新要否を判定する
+- docs/.ai/repo.profile.json 更新要否を判定する
     - 原則更新しない
     - .github/workflows / 実行定義 / lockfile 変更がある場合のみ差分更新を検討する
 - タスクリストを作成する
