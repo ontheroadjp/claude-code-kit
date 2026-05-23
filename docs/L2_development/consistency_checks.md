@@ -24,6 +24,7 @@
 | `~/.claude/commands/` | ✅ | シンボリックリンク群として実在（グローバルデプロイ先） |
 | `~/.claude/hooks/` | ✅ | log-token-usage.sh symlink として実在 |
 | `~/.claude/CLAUDE.md` | ✅ | CLAUDE.md への symlink として実在 |
+| `skills/*/` | ✅ | Codex 向けスキル。`~/.claude/skills/` への symlink は張らない |
 | `docs/L1_project/` | ✅ | 実在 |
 | `docs/L2_development/` | ✅ | 実在 |
 | `docs/L3_implementation/` | ✅ | 実在 |
