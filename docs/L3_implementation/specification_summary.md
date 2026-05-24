@@ -6,17 +6,17 @@
 
 ---
 
-## 1. `commands/task.md` — 実装フロー（主コマンド）
+## 1. `commands/work.md` — 実装フロー（主コマンド）
 
 ### 概要
-全ファイル変更のエントリポイント。内部でルーティング判定を行い、patch フローまたは task フローを実行する。ユーザーは常に `/task` を呼ぶ。
-- 根拠: `commands/task.md:1-9`
+全ファイル変更のエントリポイント。ゲート確認・現状調査・ルーティング判定を行い、patch フローまたは task フローを実行する。ユーザーは常に `/work` を呼ぶ。
+- 根拠: `commands/work.md:1-4`
 
 ### ルーティング判定（main ブランチの場合）
 単一質問: 「この変更で `docs/*` への追加・変更・削除が必要か？」
 - 不要 → patch フロー（`commands/patch.md` のワークフローを実行）
 - 必要 → task フロー（issue → 実装 → ドラフト PR → /docs-sync 自動実行）
-- 根拠: `commands/task.md`（ルーティング判定節）
+- 根拠: `commands/work.md`（ルーティング判定節）
 
 ### patch フロー
 ```
@@ -27,7 +27,7 @@ patch.md のワークフローを実行（G-2 通過済みとして扱う）
 
 ### task フロー（Phase 1）
 - Step 0: issue 確認または自動生成（`commands/templates/issue.md` 使用）
-- Step 1: 現状調査（スキップ不可）
+- Step 1: 現状調査の引き継ぎと補完（work.md の調査を引き継ぎ、不足があれば補完）
 - Step 2: プラン策定（ユーザー許可必須）
 - Step 3: 実装・コミット（コミット前チェック実施 → `<type>(#<issue>): <short description>`）
 - 根拠: `commands/task.md`（Phase 1 節）

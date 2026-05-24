@@ -12,7 +12,9 @@
 
 ## Custom Command の使い分け（AI 向けルール）
 
-- **work.md**: ユーザーは常にこれを呼ぶ。ゲート確認・ワークスペース管理・ルーティング判定を行い、task.md または patch.md へ委譲する。
+**重要: ユーザーから作業指示を受けたら、独自調査を行わずに直ちに `/work` を呼ぶこと。調査は `/work` 内で行う。**
+
+- **work.md**: ユーザーは常にこれを呼ぶ。ゲート確認・ワークスペース管理・現状調査・ルーティング判定を行い、task.md または patch.md へ委譲する。
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）
   - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → ドラフト PR 作成 → /docs-sync へ引き継ぎ）
 - **task.md**: docs 変更を伴う実装専用。work.md から Read 経由で呼ばれる。直接呼ばれることは想定しない。

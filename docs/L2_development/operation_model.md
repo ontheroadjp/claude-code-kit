@@ -2,7 +2,7 @@
 
 ## コマンド使い分けの判定ロジック
 
-ユーザーは常に `/task` を呼ぶ。`task.md` 内部でルーティング判定を行い、patch フローまたは task フローを実行する。
+ユーザーは常に `/work` を呼ぶ。`work.md` 内部でゲート確認・現状調査・ルーティング判定を行い、patch フローまたは task フローを実行する。
 
 **判定基準（単一質問）:**
 「この変更の結果として、`docs/*` に対して追加・変更・削除のいずれかが必要になるか？」
@@ -10,33 +10,35 @@
 - → 変わらない場合: patch フロー（branch + commit、issue/PR なし）
 - → 変わる場合: task フロー（issue → 実装 → ドラフト PR → /docs-sync）
 
-根拠: `commands/task.md`（ルーティング判定・patch フロー節）
+根拠: `commands/work.md`（ルーティング判定節）
 
 ## ワークフロー概要
 
 ### 軽微な修正（patch フロー）
 ```
-/task 呼び出し
+/work 呼び出し
+→ 現状調査
 → ルーティング判定（docs 変更不要）
 → patch.md のワークフローを実行
 → branch 作成（patch/<slug>）
 → 変更・コミット
 → ユーザーが main へ ff-merge
 ```
-根拠: `commands/task.md`（patch フロー節）, `commands/patch.md`
+根拠: `commands/work.md`（ルーティング判定節）, `commands/patch.md`
 
 ### ドキュメントを伴う実装（task フロー）
 ```
-/task 呼び出し
+/work 呼び出し
+→ 現状調査
 → ルーティング判定（docs 変更あり）
 → issue 確認/自動生成
-→ Step1: 現状調査
+→ Step1: 現状調査の引き継ぎと補完
 → Step2: プラン策定（ユーザー許可必須）
 → Step3: 実装・コミット（Conventional Commits）
 → Phase 2: ドラフト PR 作成（commands/templates/pr.md 使用）
 → /docs-sync 自動実行（docs・README.md 更新 → PR 公開）
 ```
-根拠: `commands/task.md`（Phase 1–3）
+根拠: `commands/work.md`（現状調査節）, `commands/task.md`（Phase 1–3）
 
 ### ドキュメント同期（/docs-sync）
 ```
@@ -60,12 +62,12 @@
 
 | コマンド | G-1 | G-2 | G-3 | G-4 |
 |----------|-----|-----|-----|-----|
-| task.md | repo.profile.json 必須 | main かつクリーン（stash） | - | - |
+| work.md | repo.profile.json 必須 | main かつクリーン（stash） | - | - |
 | patch.md | repo.profile.json 必須 | main ブランチにいること | クリーン（stash） | - |
 | docs-sync.md | repo.profile.json 必須 | docs/ 必須 | main 以外のブランチ | PR 存在確認 |
 | init-docs.md | .git/ 必須 | - | - | - |
 
-根拠: `commands/task.md`（G-1/G-2節）, `commands/patch.md`（G-1–G-3節）, `commands/docs-sync.md`（G-1–G-4節）, `commands/init-docs.md:21-26`
+根拠: `commands/work.md`（G-1/G-2節）, `commands/patch.md`（G-1–G-3節）, `commands/docs-sync.md`（G-1–G-4節）, `commands/init-docs.md:21-26`
 
 ## デプロイ方法
 
