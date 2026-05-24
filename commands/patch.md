@@ -62,17 +62,9 @@ git checkout -b patch/<変更内容を表す slug>
 
 #### Step 2. 変更を実施してコミット
 - 変更を実施する（ユーザー確認不要）
-- コミットは複数回でも可。コミット前に必ず以下を確認する:
-    - **コミット前チェック（必須）**: `git diff --staged` の内容に以下が含まれていないことを確認する:
-        - 個人情報（メールアドレス・氏名・電話番号等）
-        - IP アドレス（例: `192.168.x.x`）
-        - ドメイン名（例: `example.com`）
-        - 絶対ファイルパス（例: `/Users/username/...`）
-        - 含まれている場合はコミットを中止し、ユーザーに報告する
-    ```bash
-    git commit -m "<type>: <short description in English>"
-    ```
-    Use Conventional Commits types: `fix` / `refactor` / `chore` / `style` / `test` / `docs`
+- コミットは複数回でも可。各コミットで `partials/git-commit.md` を Read し、その手順に従ってコミットする
+    - パラメータ: `issue_number=none`, `allowed_types=[fix, refactor, chore, style, test, docs]`
+    - 注: patch フローは新機能追加を行わないため `feat` は許可しない
 
 ---
 

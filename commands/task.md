@@ -182,15 +182,8 @@ Phase 3: 最終報告
         - Step 2（必要に応じて Step 1）へ戻る
         - ゲートは通過済みの前提で作業を続ける
     - ユーザーから OK が出た場合:
-        - **コミット前チェック（必須）**: `git diff --staged` の内容に以下が含まれていないことを確認する:
-            - 個人情報（メールアドレス・氏名・電話番号等）
-            - IP アドレス（例: `192.168.x.x`）
-            - ドメイン名（例: `example.com`）
-            - 絶対ファイルパス（例: `/Users/username/...`）
-            - 含まれている場合はコミットを中止し、ユーザーに報告する
-        - Commit: `git commit -m "<type>(#<issue number>): <short description in English>"`
-            - Example: `feat(#23): implement user auth endpoint`
-            - Conventional Commits types: `feat` / `fix` / `refactor` / `chore` / `style` / `test` / `docs`
+        - `partials/git-commit.md` を Read し、その手順に従ってコミットする
+            - パラメータ: `issue_number=<Step 0 で確定した issue 番号>`, `allowed_types=[feat, fix, refactor, chore, style, test, docs]`
         - 作業内容を対象 issue のコメントとして投稿する
         - ユーザー確認なしに即座に Phase 2 へ進む
 

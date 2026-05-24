@@ -109,13 +109,8 @@
 - 作業プランに従って docs/* および README.md の最小更新を行う
 - 作業プラン外の変更は絶対に行わない
 - 完了後、更新内容をユーザーに報告する
-- **コミット前チェック（必須）**: `git diff --staged` の内容に以下が含まれていないことを確認する:
-    - 個人情報（メールアドレス・氏名・電話番号等）
-    - IP アドレス（例: `192.168.x.x`）
-    - ドメイン名（例: `example.com`）
-    - 絶対ファイルパス（例: `/Users/username/...`）
-    - 含まれている場合はコミットを中止し、ユーザーに報告する
-- コミット: `git commit -m "docs: sync documentation"`
+- `partials/git-commit.md` を Read し、その手順に従ってコミットする
+    - パラメータ: `fixed_message="docs: sync documentation"`
 
 ---
 
