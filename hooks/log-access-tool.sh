@@ -38,7 +38,8 @@ if [ ! -f "$STATE_FILE" ]; then
     --arg t "$timestamp" \
     --arg p "$prompt" \
     '{start_time:$t, user_instruction:$p, current_phase:"work",
-      work_files:[], task_files:[], patch_files:[], modified_files:[]}' \
+      work_files:[], task_files:[], patch_files:[],
+      docs_sync_files:[], init_docs_files:[], modified_files:[]}' \
     > "$STATE_FILE"
 fi
 
@@ -46,9 +47,11 @@ state=$(cat "$STATE_FILE")
 
 # Phase switching on command file reads
 case "$basename_file" in
-  work.md)  state=$(echo "$state" | jq '.current_phase="work"') ;;
-  task.md)  state=$(echo "$state" | jq '.current_phase="task"') ;;
-  patch.md) state=$(echo "$state" | jq '.current_phase="patch"') ;;
+  work.md)       state=$(echo "$state" | jq '.current_phase="work"') ;;
+  task.md)       state=$(echo "$state" | jq '.current_phase="task"') ;;
+  patch.md)      state=$(echo "$state" | jq '.current_phase="patch"') ;;
+  docs-sync.md)  state=$(echo "$state" | jq '.current_phase="docs_sync"') ;;
+  init-docs.md)  state=$(echo "$state" | jq '.current_phase="init_docs"') ;;
 esac
 
 # Append to appropriate list (deduplicated)
