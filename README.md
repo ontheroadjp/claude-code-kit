@@ -2,7 +2,7 @@
 
 A collection of custom slash commands for [Claude Code](https://claude.ai/code) that provide a structured AI-driven development workflow — from implementation through documentation sync and PR publication.
 
-## Commands
+## Features
 
 | Command | Purpose |
 |---|---|
@@ -10,20 +10,6 @@ A collection of custom slash commands for [Claude Code](https://claude.ai/code) 
 | `/patch` | Lightweight fixes without documentation changes. Branch + commit → user ff-merges. |
 | `/docs-sync` | Syncs `docs/*` to match implementation changes using `git diff` as truth, then publishes the draft PR. |
 | `/init-docs` | Full re-observation and reconstruction of project design docs. Run when `/docs-sync` hits a HARD STOP. |
-
-### Workflow Overview
-
-```
-/task
-  ├── docs not required → patch flow: branch → commit → user merges
-  └── docs required     → task flow:  issue → implement → draft PR → /docs-sync → PR published
-```
-
-## Requirements
-
-- [Claude Code](https://claude.ai/code) CLI
-- `git`
-- `gh` (GitHub CLI, authenticated)
 
 ## Installation
 
@@ -100,6 +86,24 @@ ln -s /path/to/claude-code-kit/commands/init-docs.md  ~/.codex/prompts/init-docs
 ln -s /path/to/claude-code-kit/AGENTS.md              ~/.codex/AGENTS.md
 ```
 
+## Usage
+
+```
+/task
+  ├── docs not required → patch flow: branch → commit → user merges
+  └── docs required     → task flow:  issue → implement → draft PR → /docs-sync → PR published
+```
+
+Start every session with `/task` — it asks what you want to do and routes to the appropriate flow automatically.
+
+## Design Principles
+
+- **`git diff` is truth** — AI summaries are supplementary only
+- **Docs changes are isolated** — `/task` never touches `docs/*`; only `/docs-sync` does
+- **Minimal updates** — `/docs-sync` updates only what changed, never rewrites wholesale
+- **HARD STOP escalation** — when `/docs-sync` cannot reason about a change, it stops and requires `/init-docs`
+- **Symlink-only** — `~/.claude/` holds no real files; everything symlinks back here
+
 ## Repository Structure
 
 ```
@@ -113,6 +117,7 @@ commands/
   templates/
     issue.md       # GitHub issue template
     pr.md          # Pull request template
+    readme.md      # README.md scaffold template
 docs/
   .ai/
     repo.profile.json       # Machine-readable repo profile
@@ -122,9 +127,6 @@ docs/
 CLAUDE.md                   # AI operating instructions (auto-loaded by Claude Code)
 ```
 
-## Design Principles
+## License
 
-- **`git diff` is truth** — AI summaries are supplementary only
-- **Docs changes are isolated** — `/task` never touches `docs/*`; only `/docs-sync` does
-- **Minimal updates** — `/docs-sync` updates only what changed, never rewrites wholesale
-- **HARD STOP escalation** — when `/docs-sync` cannot reason about a change, it stops and requires `/init-docs`
+MIT

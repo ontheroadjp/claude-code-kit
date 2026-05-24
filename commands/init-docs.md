@@ -205,7 +205,28 @@ docs 内で事実を断定する箇所には可能な限り以下の形式で根
 
 ---
 
-### Phase 5: CLAUDE.md 更新
+### Phase 5: README.md の検証・scaffold
+
+`commands/templates/readme.md` を基準として、現在のリポジトリの `README.md` を確認する。
+
+#### 必須セクションの存在確認
+以下のセクションが存在しない場合は scaffold（追加）する:
+- `## Features` または `## Commands` — アクティブな機能・コマンド一覧
+- `## Installation` — セットアップ手順
+- `## Usage` — 実行方法・開発コマンド
+- `## Design Principles` — 設計制約（Claude がコンテキスト取得に使う）
+
+#### オプションセクション（存在する場合のみ追加）
+- `## Architecture` — 構造が複雑なリポジトリのみ
+- `## Configuration` — ユーザー向け設定オプションがある場合
+- `## Contributing` — コントリビューションフローがある場合
+- `## License` — ライセンスが存在する場合
+
+scaffold 後、README.md の内容が実体と矛盾していないことを Phase 4 の観点で検証する。
+
+---
+
+### Phase 6: CLAUDE.md 更新
 
 CLAUDE.md を AI 運用の起点として更新する。
 以下のセクションを必ず含め、内容は現時点の各コマンドの実態に合わせて更新する:
@@ -219,7 +240,7 @@ CLAUDE.md を AI 運用の起点として更新する。
 - init-docs.md: repo の実態把握と設計ドキュメント再構築。重い初期化。docs-sync が説明不能になった時点でここに戻る。
 ```
 
-Phase 5 完了後、以下の形式で最終報告を行う。
+Phase 6 完了後、以下の形式で最終報告を行う。
 
 ---
 
