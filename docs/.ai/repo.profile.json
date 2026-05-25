@@ -28,6 +28,10 @@
     "skills/docs-sync/SKILL.md",
     "skills/init-docs/SKILL.md"
   ],
+  "primary_docs": {
+    "investigation": "docs/L3_implementation/specification_summary.md",
+    "structure": "docs/L1_project/repository_structure.md"
+  },
   "deploy": {
     "commands": {
       "method": "symlink",

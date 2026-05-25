@@ -55,7 +55,8 @@ main のみになった状態で次のゲートへ進む。
 
 以下を調査・整理する（ルーティング判定の前に必ず行う）:
 
-- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `active_commands`・`doc_roots`・`deploy` 等を起点に対象ファイルを絞り込む（Glob/Grep の前に必ず参照すること）
+- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して各ファイルの責務を把握する。`primary_docs` だけで対象ファイルが特定できた場合は Glob/Grep しない
+- `primary_docs` が存在しない場合は `active_commands`・`doc_roots`・`deploy` を起点に対象ファイルを絞り込む
 - 変更対象となるファイル・関数・設定を特定する
 - 現在の振る舞いを把握する
 - 影響範囲（ファイル・テスト・設定）を列挙する
@@ -106,7 +107,8 @@ main のみになった状態で次のゲートへ進む。
 
 以下を調査・整理する（開始フェーズ報告の前に必ず行う）:
 
-- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `active_commands`・`doc_roots`・`deploy` 等を起点に対象ファイルを絞り込む（Glob/Grep の前に必ず参照すること）
+- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して各ファイルの責務を把握する。`primary_docs` だけで対象ファイルが特定できた場合は Glob/Grep しない
+- `primary_docs` が存在しない場合は `active_commands`・`doc_roots`・`deploy` を起点に対象ファイルを絞り込む
 - 変更対象となるファイル・関数・設定を特定する
 - 現在の振る舞いを把握する
 - 影響範囲（ファイル・テスト・設定）を列挙する

@@ -85,9 +85,18 @@
   "repo_id": "string",
   "package_manager": "pnpm|npm|yarn|bun|unknown",
   "doc_roots": [],
-  "commands": {}
+  "commands": {},
+  "primary_docs": {
+    "investigation": "docs/L3_implementation/specification_summary.md",
+    "structure": "docs/L1_project/repository_structure.md"
+  }
 }
 ```
+
+`primary_docs` の生成ルール:
+- `investigation`: `doc_roots` 内で各コマンド・ファイルの責務サマリを持つドキュメント（通常 L3 の specification_summary.md）のパスを設定する。存在しない場合は省略する
+- `structure`: リポジトリのディレクトリ構造と各ディレクトリの責務を記述したドキュメント（通常 L1 の repository_structure.md）のパスを設定する。存在しない場合は省略する
+- `work.md` の調査フェーズはこの値を直接参照するため、パスは実体と一致していること（Phase 4 で検証する）
 
 ---
 
