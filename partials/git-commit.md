@@ -60,6 +60,11 @@ git commit -m "<fixed_message>"
 git commit -m "<生成したメッセージ>"
 ```
 
+pre-commit フックが失敗した場合、コミットを中止し、ユーザーに以下の選択肢を提示して待機する:
+
+1. `--no-verify` でコミット（フックをスキップ）
+2. その他（フックの警告内容を確認・修正してから再試行、など）
+
 ## Conventional Commits types（参考）
 
 呼び出し側で `allowed_types` を絞り込むためのリファレンス:
