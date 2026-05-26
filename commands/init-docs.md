@@ -251,7 +251,7 @@ CLAUDE.md を AI 運用の起点として更新する。
 - init-docs.md: repo の実態把握と設計ドキュメント再構築。重い初期化。docs-sync が説明不能になった時点でここに戻る。
 ```
 
-Phase 6 完了後、以下の形式で最終報告を行う。
+Phase 6 完了後、以下の形式で最終報告を行い、Phase 7 へ進む。
 
 ---
 
@@ -262,6 +262,71 @@ Phase 6 完了後、以下の形式で最終報告を行う。
 - 重要な決定事項（根拠付き）
 - 未確認事項と次に見るべきファイル
 - 完了 / 部分完了 の判定と理由
+
+---
+
+### Phase 7: ユーザー確認 → commit & PR 作成
+
+最終報告を出力した後、**必ずユーザーの明示的な確認を取ってから**以下を実行する。
+確認なしに commit・push・PR 作成を行ってはならない。
+
+#### 7-1. ユーザー確認（必須・STOP）
+
+以下の文言でユーザーに確認する:
+
+```
+上記の変更内容で commit & PR を作成してよいですか？
+（作成されるブランチ名: docs/init-docs-<YYYYMMDD>）
+```
+
+ユーザーが否定・修正を求めた場合はその指示に従い、再確認する。
+
+#### 7-2. ブランチ作成
+
+```bash
+git checkout -b docs/init-docs-<YYYYMMDD>
+```
+
+`<YYYYMMDD>` は実行日の日付（例: `docs/init-docs-20260526`）。
+
+#### 7-3. commit
+
+変更ファイルを個別に `git add` し（`git add -A` や `git add .` は使わない）、以下の形式で commit する:
+
+```
+docs: initialize project documentation (init-docs)
+
+- Add docs/L0_concept/{concept,policy}.md
+- Add/update docs/L1_project/{project_overview,repository_structure}.md
+- Add docs/L2_development/{operation_model,consistency_checks,test}.md
+- Add docs/L3_implementation/{api,database,specification_summary}.md
+- Add docs/.ai/repo.profile.json
+- Update repo.profile.json (add L0 doc_root, primary_docs)
+- Update README.md (add Installation, Design Principles sections)
+- Add CLAUDE.md (project-level AI guidance)
+```
+
+実際の変更内容に合わせて箇条書きを調整する。
+
+#### 7-4. PR 作成
+
+```bash
+gh pr create \
+  --title "docs: initialize project documentation (init-docs)" \
+  --body "..." \
+  --draft
+```
+
+PR body には以下を含める:
+- 変更の目的（init-docs 実行によるドキュメント基盤の構築）
+- 作成 / 更新ファイル一覧（Phase 6 報告と同じ内容）
+- 未確認事項一覧
+
+PR は必ず **draft** で作成する。
+
+#### 7-5. 完了通知
+
+PR URL をユーザーに提示して終了する。
 
 ---
 
