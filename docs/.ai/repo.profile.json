@@ -51,7 +51,7 @@
     "skills": {
       "method": "symlink",
       "source": "skills/",
-      "target": "~/.claude/skills/"
+      "target": "~/.codex/skills/"
     }
   }
 }
