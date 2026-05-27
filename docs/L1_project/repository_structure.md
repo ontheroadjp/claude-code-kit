@@ -12,6 +12,7 @@ claude-code-kit/
 │   ├── patch.md                     # 軽微修正フロー（docs 変更不要な場合）
 │   ├── docs-sync.md                 # ドキュメント同期 + ドラフト PR 公開
 │   ├── init-docs.md                 # ドキュメント全体再構築
+│   ├── review-resolve.md            # PR レビューコメント対話的解決
 │   └── templates/
 │       ├── issue.md                 # GitHub issue 本文テンプレート
 │       └── pr.md                    # GitHub PR 本文テンプレート
@@ -64,6 +65,7 @@ Claude Code のカスタムスラッシュコマンド仕様（Markdown）。`~/
 | `patch.md` | `/patch` | docs 変更不要な軽微修正。branch + commit → ユーザーが ff-merge |
 | `docs-sync.md` | `/docs-sync` | git diff を事実として docs・README.md を最小更新。ドラフト PR を公開 |
 | `init-docs.md` | `/init-docs` | リポジトリ実態の全体観測とドキュメント再構築 |
+| `review-resolve.md` | `/review-resolve` | PR レビューコメントを取得し、対応・返信をユーザーが対話的に選択 |
 
 ### `commands/templates/`
 issue・PR 本文のテンプレート。コマンドから `~/.config/claude-code-kit/templates/` として参照される（Claude / Codex 共通パス）。

@@ -10,6 +10,7 @@ A collection of custom slash commands for [Claude Code](https://claude.ai/code) 
 | `/patch` | Lightweight fixes without documentation changes. Branch + commit → user ff-merges. |
 | `/docs-sync` | Syncs `docs/*` to match implementation changes using `git diff` as truth, then publishes the draft PR. |
 | `/init-docs` | Full re-observation and reconstruction of project design docs. Run when `/docs-sync` hits a HARD STOP. |
+| `/review-resolve` | Fetches PR review comments and guides the user through addressing or declining each one interactively. |
 
 ## Installation
 
@@ -27,13 +28,14 @@ Templates are stored in `~/.config/claude-code-kit/templates/` so both Claude Co
 ### 1. Symlink the commands (global — all repos)
 
 ```bash
-ln -s /path/to/claude-code-kit/commands/task.md       ~/.claude/commands/task.md
-ln -s /path/to/claude-code-kit/commands/patch.md      ~/.claude/commands/patch.md
-ln -s /path/to/claude-code-kit/commands/docs-sync.md  ~/.claude/commands/docs-sync.md
-ln -s /path/to/claude-code-kit/commands/init-docs.md  ~/.claude/commands/init-docs.md
+ln -s /path/to/claude-code-kit/commands/task.md            ~/.claude/commands/task.md
+ln -s /path/to/claude-code-kit/commands/patch.md           ~/.claude/commands/patch.md
+ln -s /path/to/claude-code-kit/commands/docs-sync.md       ~/.claude/commands/docs-sync.md
+ln -s /path/to/claude-code-kit/commands/init-docs.md       ~/.claude/commands/init-docs.md
+ln -s /path/to/claude-code-kit/commands/review-resolve.md  ~/.claude/commands/review-resolve.md
 ```
 
-The commands are now available as `/task`, `/patch`, `/docs-sync`, and `/init-docs` in any Claude Code session.
+The commands are now available as `/task`, `/patch`, `/docs-sync`, `/init-docs`, and `/review-resolve` in any Claude Code session.
 
 ### 2. Symlink CLAUDE.md (global — all repos)
 
@@ -149,10 +151,11 @@ hooks/
 logs/
   .gitkeep              # directory tracked; log files are gitignored
 commands/
-  task.md          # Main entry point — routes to patch or task flow
-  patch.md         # Lightweight fix flow
-  docs-sync.md     # Documentation sync and PR publication
-  init-docs.md     # Full docs reconstruction
+  task.md            # Main entry point — routes to patch or task flow
+  patch.md           # Lightweight fix flow
+  docs-sync.md       # Documentation sync and PR publication
+  init-docs.md       # Full docs reconstruction
+  review-resolve.md  # Interactive PR review comment resolution
   templates/
     issue.md       # GitHub issue template
     pr.md          # Pull request template
