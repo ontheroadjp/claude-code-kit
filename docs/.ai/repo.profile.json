@@ -12,7 +12,8 @@
     "commands/task.md",
     "commands/patch.md",
     "commands/docs-sync.md",
-    "commands/init-docs.md"
+    "commands/init-docs.md",
+    "commands/review-resolve.md"
   ],
   "templates": [
     "commands/templates/issue.md",
