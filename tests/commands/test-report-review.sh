@@ -6,6 +6,8 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 WORK="$REPO_DIR/commands/work.md"
 REPORT_REVIEW="$REPO_DIR/commands/report-review.md"
 SKILL="$REPO_DIR/skills/report-review/SKILL.md"
+COMMANDS_README="$REPO_DIR/commands/README.md"
+SKILLS_README="$REPO_DIR/skills/README.md"
 
 failures=0
 
@@ -58,6 +60,9 @@ assert_absent "$REPORT_REVIEW" 'git push ' 'report-review contains no push comma
 
 assert_contains "$SKILL" 'commands/report-review.md' 'the skill points to the command source of truth'
 assert_contains "$SKILL" 'Do not create, edit, or delete files.' 'the skill preserves the read-only boundary'
+assert_contains "$COMMANDS_README" '| `report-review.md` | `/report-review` |' 'the command catalog lists report-review'
+assert_contains "$SKILLS_README" '| `report-review/` | `commands/report-review.md` |' 'the skill catalog lists report-review'
+assert_contains "$SKILLS_README" '`install.sh` は `skills/*/` を検出して自動的に symlink する' 'the skill catalog documents automatic installation'
 
 if ((failures > 0)); then
   printf '\n%d contract test(s) failed.\n' "$failures"

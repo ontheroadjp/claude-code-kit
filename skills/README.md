@@ -29,6 +29,7 @@ skills/
 | skill ディレクトリ | 対応コマンド | 役割 |
 |---|---|---|
 | `work/` | `commands/work.md` | 全作業の通常入口 |
+| `report-review/` | `commands/report-review.md` | report issue の read-only 評価 |
 | `task/` | `commands/task.md` | docs 変更を伴う実装フロー |
 | `patch/` | `commands/patch.md` | docs 変更不要の軽微修正 |
 | `docs-sync/` | `commands/docs-sync.md` | docs 最小更新 |
@@ -56,4 +57,4 @@ skills/
 /review-resolve #174
 ```
 
-新しいコマンドを追加した場合は、対応する `skills/<name>/SKILL.md` も作成して `install.sh` に追記すること。
+新しいコマンドを追加した場合は、対応する `skills/<name>/SKILL.md` も作成すること。`install.sh` は `skills/*/` を検出して自動的に symlink する。

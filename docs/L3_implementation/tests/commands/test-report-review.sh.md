@@ -16,8 +16,9 @@
 - file / GitHub changes を禁止している
 - issue / PR write、commit、push の実行 command を含まない
 - Codex skill が command source of truth と read-only boundary を保持する
+- commands / skills の module README が report-review を一覧に含み、skill の自動 symlink を正しく説明する
 
-根拠: `tests/commands/test-report-review.sh:12-60`
+根拠: `tests/commands/test-report-review.sh:14-65`
 
 ## 重要な設計判断
 
@@ -25,11 +26,11 @@ Markdown workflow は直接実行可能なプログラムではないため、�
 
 ## 統合ポイント
 
-- 対象: `commands/work.md`、`commands/report-review.md`、`skills/report-review/SKILL.md`
+- 対象: `commands/work.md`、`commands/report-review.md`、`commands/README.md`、`skills/report-review/SKILL.md`、`skills/README.md`
 - 実行: `bash tests/commands/test-report-review.sh`
 
 ## 注意事項・既知の制限
 
 静的検査であり、GitHub API を使った end-to-end routing は実行しない。workflow 文面変更時は同じ意味を保持したまま assertion も更新する必要がある。
 
-根拠: `tests/commands/test-report-review.sh:38-67`
+根拠: `tests/commands/test-report-review.sh:40-72`
