@@ -6,7 +6,7 @@
 
 責務は review 済み PR の作成までであり、merge、branch 削除、main checkout、main pull は人間の管理下に残す。
 
-根拠: `commands/pr-review.md:1-15`, `commands/pr-review.md:182-190`
+根拠: `commands/pr-review.md:1-15`, `commands/pr-review.md:189-197`
 
 ## 動作の概要
 
@@ -14,6 +14,7 @@
 引数・実装 agent 判定
   → PR/workspace gate
   → 別 GitHub reviewer identity の確認
+  → 各ラウンドで最新 base を取得
   → 最新 HEAD SHA を固定
   → opposite agent の read-only review
   → GitHub に APPROVED / CHANGES_REQUESTED を投稿
@@ -22,7 +23,7 @@
   → APPROVED / CHANGES_REQUESTED / FAILED で終了
 ```
 
-根拠: `commands/pr-review.md:17-79`, `commands/pr-review.md:81-190`
+根拠: `commands/pr-review.md:17-79`, `commands/pr-review.md:81-197`
 
 ## 主要な判定ロジック
 
@@ -40,19 +41,25 @@ GitHub review 投稿には `AI_REVIEW_TOKEN` を優先し、既存 `CODEX_REVIEW
 
 ### review と HEAD SHA の結合
 
-各ラウンド開始時に GitHub の `headRefOid` と local HEAD を一致させ、その SHA を reviewer 出力の `REVIEWED_HEAD_SHA` に要求する。review 投稿直前と投稿後にも SHA を照合し、approval の `commit_id` と現在の PR HEAD が一致する場合だけ `APPROVED` とする。
+各ラウンド開始時に `origin/<baseRefName>` を fetch してから GitHub の `headRefOid` と local HEAD を一致させ、その SHA を reviewer 出力の `REVIEWED_HEAD_SHA` に要求する。base fetch に失敗した場合は stale な diff を生成・投稿せず `FAILED` で終了する。review 投稿直前と投稿後にも SHA を照合し、approval の `commit_id` と現在の PR HEAD が一致する場合だけ `APPROVED` とする。
 
-この多段照合により、review 中や投稿直前に追加 push があった場合に古い結果を最新 HEAD の approval として扱わない。
+この base refresh と多段照合により、複数ラウンド中の base 更新を diff に反映し、review 中や投稿直前に追加 push があった場合も古い結果を最新 HEAD の approval として扱わない。
 
-根拠: `commands/pr-review.md:81-105`, `commands/pr-review.md:133-162`
+根拠: `commands/pr-review.md:81-111`, `commands/pr-review.md:140-169`
 
 ### bounded remediation
 
 review は `MAX_REVIEW_ROUNDS=3` に制限する。元 agent は finding の妥当性をコードと docs から再検証し、session-approved 内だけを修正する。最終ラウンドの変更要求、スコープ拡大、破壊的操作、秘密情報、権限追加が必要な finding は自動修正せず `CHANGES_REQUESTED` で人間へ返す。
 
-根拠: `commands/pr-review.md:11-15`, `commands/pr-review.md:164-180`
+根拠: `commands/pr-review.md:11-15`, `commands/pr-review.md:171-187`
 
 ## 重要な設計判断
+
+### base branch を各ラウンドで更新する理由
+
+base branch は初回 gate 後にも進む可能性がある。各ラウンドの diff 生成直前に base を fetch することで、そのラウンドの reviewer に最新の比較対象を渡す。fetch 失敗時は以前の remote-tracking ref を使わず fail closed とし、stale な context に基づく review 投稿を防ぐ。
+
+根拠: `commands/pr-review.md:81-94`
 
 ### reviewer subprocess を read-only にする理由
 
@@ -60,13 +67,13 @@ review は `MAX_REVIEW_ROUNDS=3` に制限する。元 agent は finding の妥�
 
 Codex の専用 review subcommand は固定の finding 形式を出力するため使用しない。汎用 exec に機械可読契約を明示し、`--output-last-message` で最終回答だけを保存することで、進行イベントを混ぜずに `VERDICT`、`REVIEWED_HEAD_SHA`、`FINDINGS` を検証できる。
 
-根拠: `commands/pr-review.md:107-132`
+根拠: `commands/pr-review.md:113-138`
 
 ### merge を行わない理由
 
 AI に review と修正の反復を任せつつ、main への統合は人間の明示操作として残すためである。review が失敗または収束しない場合も PR を保持し、現在状態から人間が判断できる。
 
-根拠: `commands/pr-review.md:3-7`, `commands/pr-review.md:182-190`
+根拠: `commands/pr-review.md:3-7`, `commands/pr-review.md:189-197`
 
 ## 統合ポイント
 
@@ -82,11 +89,13 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 - reviewer 投稿には PR author と異なる GitHub account の token が必要
 - 自動修正は現在の session-approved に登録済みのファイルとツールに限定される
 - Codex reviewer の機械判定には `--output-last-message` が保存した最終回答だけを使用する
+- 各ラウンドの base fetch が失敗した場合は review context を生成・投稿せず `FAILED` で終了する
 - review 出力が所定形式でない場合は GitHub review を投稿せず `FAILED` で終了する
 - PR merge、close、branch 削除、main 同期は行わない
 - 3ラウンドで収束しない finding は人間判断へ返す
 
 ## 変更履歴（git log より自動生成）
 
+- cbe90ba fix(#187): refresh pr base before each review round
 - b74d919 fix(#189): use codex exec for structured pr reviews
 - d94812c feat(#185): add autonomous cross-agent PR review workflow

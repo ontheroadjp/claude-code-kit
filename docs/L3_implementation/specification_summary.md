@@ -78,9 +78,9 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ### `/pr-review` (`commands/pr-review.md`)
 
-PR 番号を受け取り、実装元が Claude なら `codex exec --sandbox read-only --ephemeral`、Codex なら Read-only の Claude を reviewer として起動する。Codex は `--output-last-message` で保存した最終回答だけを機械判定対象とする。各ラウンドで最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
+PR 番号を受け取り、実装元が Claude なら `codex exec --sandbox read-only --ephemeral`、Codex なら Read-only の Claude を reviewer として起動する。Codex は `--output-last-message` で保存した最終回答だけを機械判定対象とする。各ラウンドで base branch を fetch してから最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。base fetch に失敗した場合は stale な review context を生成・投稿せず FAILED で終了する。blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
 
-根拠: `commands/pr-review.md:1-190`
+根拠: `commands/pr-review.md:1-197`
 
 ### `/coding-*` (`commands/coding-*.md`)
 
@@ -170,9 +170,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/hooks/test-approval-hooks.sh:1-407`
 
-`tests/commands/test-pr-review.sh` は `/pr-review` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、最大3ラウンド、HEAD SHA 結合、別 reviewer identity、session-approved 制限、GitHub review 投稿、および merge・main 同期・branch 削除の禁止を確認する。
+`tests/commands/test-pr-review.sh` は `/pr-review` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、最大3ラウンド、各ラウンドの base refresh と失敗時の停止、HEAD SHA 結合、別 reviewer identity、session-approved 制限、GitHub review 投稿、および merge・main 同期・branch 削除の禁止を確認する。
 
-根拠: `tests/commands/test-pr-review.sh:1-60`
+根拠: `tests/commands/test-pr-review.sh:1-67`
 
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 
