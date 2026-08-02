@@ -72,18 +72,21 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 | 分類 | 許可内容 | 主な除外 |
 |---|---|---|
-| Git | `status`, `log`, `diff`, `show`, `describe`, `rev-parse`, `ls-*`, `cat-file`, `blame`, `shortlog`, `stash list`, `worktree list` | `--output` |
+| Git | `status`, `log`, `diff`, `show`, `describe`, `rev-parse`, `ls-*`, `cat-file`, `blame`, `shortlog`, `merge-base`, `stash list`, `worktree list` | `--output` |
 | Git branch | 一覧・照会 mode | create/delete/move/copy/upstream変更 |
 | Git remote | 一覧、`-v`, `show`, `get-url` | add/remove/rename/set-url/update |
 | Git tag | 一覧・照会・verify mode | create/delete/sign/force |
 | Git reflog | 一覧、`show`, `exists` | delete/expire |
 | Git config | `--list`, `--get*`, `-l` | 値の設定・削除 |
-| GitHub CLI | issue/PR/repository/release/run/workflow の list/view/status、`gh pr checks`、`gh auth status` | write action |
+| GitHub CLI | issue/PR/repository/release/run/workflow の list/view/status、`gh pr checks`、`gh auth status`、`gh api`（デフォルト GET） | write action、`gh api` の `-X/--method`, `-f/-F/--field`, `--raw-field`, `--input` |
 | Shell navigation / test | `cd`, `test`, `[ ... ]`, read-only `if` | command/process substitution、operatorを含む test |
-| Unix read tools | `ls`, `cat`, `head`, `tail`, grep 系、`rg`, `fd`, `wc`, `cut`, `tr`, `sed`, `awk`, `sort`, `jq`, `yq`, `nl` など | 下記のwrite/execute mode |
-| Runtime | version 表示 | script / program 実行 |
+| Unix read tools | `ls`, `cat`, `head`, `tail`, grep 系、`rg`, `fd`, `wc`, `cut`, `tr`, `sed`, `awk`, `sort`, `jq`, `yq`, `nl`, `pgrep` など | 下記のwrite/execute mode |
+| Runtime | version 表示、`bash -n <file>`・`node --check`/`-c <file>`（他のフラグを含まない単一引数形のみ） | script / program 実行、`bash -n`・`node --check` へのフラグ追加や複数引数（denylist ではなく「厳密な単一引数形」の allowlist。node は long option のハイフン/アンダースコア表記が等価かつ `--experimental-config-file` 経由で preload 可能なため、危険フラグの列挙では網羅できない） |
 | curl | default GET / HEAD 相当 | custom method、data/form、upload、config、file output |
 | npm | metadata照会、config取得、引数なしの `npm run` | script実行、publish、install、audit fix等 |
+| journalctl | ログ照会全般 | `--vacuum-size/--vacuum-time/--vacuum-files`, `--rotate`, `--flush`, `--sync`, `--relinquish-var`, `--smart-relinquish-var`, `--setup-keys`, `--update-catalog`, `--force` |
+| gsettings | `get`, `list-schemas`, `list-relocatable-schemas`, `list-keys`, `list-children`, `list-recursively`, `range`, `describe`, `writable` | `set`, `reset`, `reset-recursively`, `monitor` |
+| gnome-extensions | `info`, `list` | `enable`, `disable`, `install`, `uninstall` 等 |
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
 
@@ -101,7 +104,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 `curl` の短縮 option は単独形だけでなく結合形も検査する。`-so`、`-sO` のように file output や request body / upload / config を有効化する文字を含む option cluster は通常許可フローへ戻す。`-sSI` のような読み取り専用 cluster は引き続き承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:700-749`
+根拠: `hooks/auto-approve-readonly.sh:673-793`
 
 ### session-approved tool category
 
@@ -161,7 +164,9 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 [timestamp] agent=claude|codex session=<id|n/a> result=<result> tool=<tool> <detail>
 ```
 
-根拠: `hooks/auto-approve-readonly.sh:64-75`, `hooks/auto-approve-readonly.sh:231-247`
+`detail` は `cut -c1-120` で切り詰めてからログへ書き込む。`cut -c` は non-UTF-8-aware なロケール（`LC_ALL=C` 等）ではバイト単位に振る舞うため、日本語などマルチバイト文字を含む command を境界で切ると不正な UTF-8 バイト列を生成し、`grep` 等ロケール依存ツールがログをバイナリ扱いして検索に失敗する原因になっていた。`truncate_utf8_safe()` は `cut` の直後に `iconv -f UTF-8 -t UTF-8 -c` を通し、切り詰め境界に残った不完全なマルチバイトシーケンスを除去する（`iconv` 不在時は切り詰め結果をそのまま返すフォールバック）。
+
+根拠: `hooks/auto-approve-readonly.sh:64-75`, `hooks/auto-approve-readonly.sh:231-247`, `hooks/auto-approve-readonly.sh:361-380`
 
 ## 動的防御（Working Repo Dynamic Defense）
 
@@ -243,14 +248,18 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 ## テストと既知の制限
 
-`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants を negative case として固定する。
+`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作、`git merge-base`、`pgrep`、`gh api`（GET-only）、`gsettings get`系、`journalctl`、`gnome-extensions info/list`、`bash -n`、`node --check`/`-c` を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants、`git merge-base --output`、`gsettings set/reset`、`journalctl --vacuum-*/--rotate/--flush/--update-catalog/--smart-relinquish-var`、`gh api -X/-XPOST/-f/-fkey=value/--input`（区切り文字なしの結合形も含む）、`gnome-extensions enable/disable`、`bash -n` へのフラグ追加・複数引数、`node --check` へのフラグ追加・複数引数（アンダースコア表記や `--experimental-config-file` 経由の preload を含む）を negative case として固定する。
+
+`log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-407`
+根拠: `tests/hooks/test-approval-hooks.sh:1-508`
 
 ## 変更履歴（git log より自動生成）
 
+- 3655fd5 feat(#194): extend read-only allowlist and fix multibyte log truncation
+- 9d1d78f fix(#156): harden auto-approval boundary checks
 - 975df69 feat(#183): allow $() subshells when content is read-only
 - b2320ec chore: auto-approve update_plan and log webrun payload
 - fc34db6 feat(#148): working repo dynamic defense — WIP commit before write ops (#149)
@@ -259,5 +268,3 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 - e138c53 feat(#146): refine auto-approval safety rules
 - e02bd22 fix(#142): resolve conflicts with main
 - 39a5522 feat(#144): identify auto-approval log sessions
-- 4e96f9c feat(#142): add session-scoped temp hook access
-- c59275f fix: return allow for codex hook approvals
