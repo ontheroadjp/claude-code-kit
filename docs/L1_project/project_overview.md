@@ -12,10 +12,10 @@
 |---|---|---|---|
 | 作業入口 | `commands/work.md` | main への checkout、workspace gate、report-review/task/patch ルーティング | `commands/work.md:7-143` |
 | report 評価 | `commands/report-review.md` | `report` label の issue を read-only で評価し、意見と提案を標準出力へ提示 | `commands/report-review.md:1-91` |
-| docs あり実装 | `commands/task.md` | issue 確認/生成、プラン承認、実装、L3 per-file doc、`/docs-sync`・`/git-pr` 引き継ぎ | `commands/task.md:30-179` |
-| 軽微修正 | `commands/patch.md` | docs 変更不要な修正を branch + commit で完了し、必要時 task へエスカレーション | `commands/patch.md:1-95` |
+| docs あり実装 | `commands/task.md` | issue 確認/生成、プラン承認、実装、L3 per-file doc、`/docs-sync`・`/git-pr` 引き継ぎ | `commands/task.md:30-184` |
+| 軽微修正 | `commands/patch.md` | docs 変更不要な修正を branch + commit で完了し、必要時 task へエスカレーション | `commands/patch.md:1-111` |
 | docs 同期 | `commands/docs-sync.md` | `git diff main...HEAD` を事実として docs/README を最小更新・commit し、結果を session temp へ記録 | `commands/docs-sync.md:1-173` |
-| docs 初期化 | `commands/init-docs.md` | repo 再観測、repo profile 生成、L0-L3 docs 生成、整合性検証、ユーザー確認後の draft PR | `commands/init-docs.md:1-397` |
+| docs 初期化 | `commands/init-docs.md` | repo 再観測、repo profile 生成、L0-L3 docs 生成、整合性検証、ユーザー確認後の draft PR | `commands/init-docs.md:1-420` |
 | review 対応 | `commands/review-resolve.md` | PR review コメント取得、対応方針選択、実装/返信/push | `commands/review-resolve.md:1-175` |
 | 自律 PR review | `commands/pr-review.md` | 別 agent・別 GitHub account で最新 HEAD を最大3ラウンド review し、人間に merge 判断を残す | `commands/pr-review.md:1-190` |
 | issue トリアージ | `commands/triage-issues.md` | open issue を stale/inconsistent/duplicated/unclear/ready に分類し、ユーザー承認後に各アクションを実行するスタンドアロン入口 | `commands/triage-issues.md:1-187` |
@@ -23,7 +23,7 @@
 | coding 原則 | `commands/coding-*.md` | general / py / js / ts の実装規約 | `commands/coding-general.md:1-3`, `commands/coding-ts.md:1-12` |
 | Codex skills | `skills/*/SKILL.md` | 17個の wrapper が対応する command markdown を Source of Truth として実行する | `skills/*/SKILL.md` 実体一覧 |
 | hooks | `hooks/*.sh` | 自動承認、破壊的操作 guard、ログ、セッション cleanup | `hooks/auto-approve-readonly.sh`, `hooks/guard-destructive-cmd.sh`, `hooks/cleanup-session.sh` |
-| tests | `tests/hooks/*.sh`, `tests/commands/*.sh` | hook safety と declarative workflow contract を shell で検証 | `tests/` 実体一覧 |
+| tests | `tests/hooks/*.sh`, `tests/commands/*.sh`, `tests/install/*.sh` | hook safety、declarative workflow、installer symlink contract を shell で検証 | `tests/` 実体一覧 |
 | site | `site/` | VitePress による公開ドキュメントサイト | `site/package.json:1-14`, `site/.vitepress/config.mts:1-183` |
 
 ## 技術スタック

@@ -16,20 +16,23 @@ cd core-toolkit-for-claude
 - `commands/*.md` → `~/.claude/commands/` および `~/.codex/commands/`
 - `hooks/*.sh` → `~/.claude/hooks/` および `~/.codex/hooks/`
 - `skills/*/` → `~/.codex/skills/`
+- `templates/*.md` → `~/.claude/templates/` および `~/.codex/templates/`
 
 対象ディレクトリは自動で作成されます。`jq` が利用可能な場合、`~/.claude/settings.json` と `~/.codex/hooks.json` も更新されます。Codex ユーザーは `/hooks` で登録済み hooks を確認し、trust してから利用してください。
 
 ## 手動セットアップ
 
-### Step 0: 共有テンプレートのシンボリックリンク作成（必須）
+### Step 0: テンプレートのシンボリックリンク作成（必須）
 
 ```bash
-mkdir -p ~/.config/claude-code-kit
-ln -s /path/to/core-toolkit-for-claude/templates \
-      ~/.config/claude-code-kit/templates
+mkdir -p ~/.claude/templates ~/.codex/templates
+for template in /path/to/core-toolkit-for-claude/templates/*.md; do
+  ln -s "$template" ~/.claude/templates/
+  ln -s "$template" ~/.codex/templates/
+done
 ```
 
-テンプレートは `~/.config/claude-code-kit/templates/` に置くことで、Claude Code と Codex CLI の両方から単一の場所で参照できます。
+テンプレートの実体はこのリポジトリに保持します。Claude Code は `~/.claude/templates/`、Codex CLI は `~/.codex/templates/` 配下のシンボリックリンクから参照します。
 
 ### Step 1: コマンドのシンボリックリンク作成（グローバル — 全リポジトリ）
 

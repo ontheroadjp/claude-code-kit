@@ -78,7 +78,7 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 | コマンド | 用途 | 根拠 |
 |---|---|---|
-| `./install.sh` | commands/hooks/skills symlink と Claude/Codex hook settings 登録 | `install.sh:15-146` |
+| `./install.sh` | commands/hooks/skills/templates symlink と Claude/Codex hook settings 登録 | `install.sh:13-194` |
 | `./setup_statusline.sh` | statusline symlink と settings 登録 | `setup_statusline.sh:6-55` |
 | `cd site && npm ci` | CI と同じ lockfile-based install | `.github/workflows/deploy.yml:31-33` |
 | `cd site && npm run docs:dev` | VitePress dev server | `site/package.json:4-8` |
@@ -87,6 +87,7 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
 | `bash tests/commands/test-pr-review.sh` | pr-review workflow contract | `tests/commands/test-pr-review.sh` |
 | `bash tests/commands/test-report-review.sh` | report-review workflow contract | `tests/commands/test-report-review.sh` |
+| `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract | `tests/install/test-install.sh` |
 
 ## CI/CD
 

@@ -22,7 +22,7 @@ Claude Code または Codex CLI を使い、実装・ドキュメント同期・
 
 ## 設計上の制約
 
-- `~/.claude/` 配下は symlink-only とし、このリポジトリを single source of truth とする。根拠: `README.md:21-38`, `CLAUDE.md:27-35`
+- `~/.claude/` と `~/.codex/` 配下は symlink-only とし、このリポジトリを single source of truth とする。template の実体は `templates/` に保持し、各 agent の `templates/` 配下から symlink で参照する。根拠: `README.md:26-45`, `CLAUDE.md:34-47`, `install.sh:10-19`, `install.sh:56-63`
 - 通常作業は `/work` から始め、report issue も `/work #N` 経由で read-only workflow へ送る。PR review 対応は `/review-resolve` と `/pr-review` に分離する。根拠: `CLAUDE.md`, `commands/work.md:49-68`
 - report issue 以外は docs 変更要否を単一質問として扱う。根拠: `commands/work.md:84-115`, `CLAUDE.md`
 - docs 同期は `git diff` を事実として扱う。根拠: `commands/docs-sync.md:1-10`, `CLAUDE.md:35`

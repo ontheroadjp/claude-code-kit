@@ -25,7 +25,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 
 ## Installation
 
-> Symlink-only principle: files placed under `~/.claude/` should be symlinks pointing to this repository. This repository is the single source of truth.
+> Symlink-only principle: files placed under `~/.claude/` and `~/.codex/` should be symlinks pointing to this repository. This repository is the single source of truth.
 
 ### Quick Install
 
@@ -40,7 +40,8 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 - `hooks/*.sh` -> `~/.claude/hooks/`
 - `hooks/*.sh` -> `~/.codex/hooks/`
 - `skills/*/` -> `~/.codex/skills/`
-- `templates/*.md` -> `~/.config/claude-code-kit/templates/`
+- `templates/*.md` -> `~/.claude/templates/`
+- `templates/*.md` -> `~/.codex/templates/`
 
 It also updates `~/.claude/settings.json` and `~/.codex/hooks.json` when `jq` is available. Codex users should review and trust registered hooks with `/hooks` before relying on them.
 
@@ -89,7 +90,7 @@ CI runs `npm ci` and `npm run docs:build` in `site/` on push to `main` and on ma
 - `git diff` is truth for docs sync; PR text is supplemental.
 - `/task` creates and updates L3 per-file docs (`docs/L3_implementation/<source-path>.md`) as part of implementation; `/docs-sync` handles all other docs updates and auto-inserts `git log --oneline -10` output into the `## 変更履歴（git log より自動生成）` section of existing L3 per-file docs.
 - `/docs-sync` makes minimal updates and escalates to `/init-docs` when the structure can no longer be explained locally.
-- `~/.claude/` is symlink-only; this repository remains the source of truth.
+- `~/.claude/` and `~/.codex/` are symlink-only; this repository remains the source of truth.
 - Workspace cleanup uses stash; destructive git operations require explicit human control.
 
 ## Repository Structure
@@ -103,7 +104,7 @@ templates/                    Issue, PR, and README templates
 docs/                         /init-docs generated L0-L3 design docs
 site/                         VitePress documentation site
 scripts/                      status line and token usage utilities
-tests/                        verification scripts for hooks and workflows
+tests/                        verification scripts for hooks, workflows, and installer contracts
 install.sh                    symlink installer for commands/hooks/skills/templates
 setup_statusline.sh           status line installer
 CLAUDE.md                     AI operating guidance source of truth
