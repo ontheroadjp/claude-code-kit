@@ -212,6 +212,7 @@ for command in \
     'journalctl --rotate' \
     'journalctl --flush' \
     'journalctl --update-catalog' \
+    'journalctl --smart-relinquish-var' \
     'gh api repos/octocat/hello-world -X POST' \
     'gh api repos/octocat/hello-world -XPOST' \
     'gh api repos/octocat/hello-world -f key=value' \
@@ -226,6 +227,11 @@ for command in \
     'node --check -r ./side-effect.js target.js' \
     'node --check --require ./side-effect.js target.js' \
     'node --check --import ./side-effect.js target.js' \
+    'node --check --experimental_loader=./side-effect.js target.js' \
+    'node --check --experimental-config-file=./config.json target.js' \
+    'node --check ./a.js ./b.js' \
+    'bash -n -x script.sh' \
+    'bash -n script.sh extra-arg' \
     'node script.js'; do
     output=$(run_auto "$command")
     assert_no_output "$output"

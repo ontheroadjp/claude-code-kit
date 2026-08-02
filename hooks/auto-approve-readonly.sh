@@ -761,7 +761,7 @@ is_safe_segment() {
 
     # journalctl — read-only log query; exclude maintenance/mutating operations
     if printf '%s' "$seg" | grep -qE '^journalctl(\s|$)'; then
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--setup-keys|--update-catalog|--force)([=[:space:]]|$)' && return 1
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--smart-relinquish-var|--setup-keys|--update-catalog|--force)([=[:space:]]|$)' && return 1
         return 0
     fi
 
@@ -776,16 +776,14 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^go[[:space:]]+version[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(bash|zsh)[[:space:]]+--version[[:space:]]*$' && return 0
-    if printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n(\s|$)'; then
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])-c([[:space:]]|$)' && return 1
-        return 0
-    fi
-    if printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)(\s|$)'; then
-        # --require/-r and --import/--loader preload modules and execute their
-        # top-level code even when --check skips executing the main script.
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-e|--eval|-p|--print|-r|--require|--import|--loader|--experimental-loader)([=[:space:]]|$)' && return 1
-        return 0
-    fi
+    # bash -n / node --check: an allowlist of exactly "<cmd> <flag> <file>" with
+    # no other tokens, rather than a denylist of dangerous flags. node in
+    # particular treats -/_ as interchangeable in long option names and can
+    # preload modules via --experimental-config-file, so any denylist of
+    # specific flag spellings is provably incomplete; only the single-argument
+    # shape is safe to auto-approve.
+    printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+    printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
 
     # curl — allow default GET/HEAD requests only; reject writes and custom methods
     if printf '%s' "$seg" | grep -qE '^curl(\s|$)'; then
