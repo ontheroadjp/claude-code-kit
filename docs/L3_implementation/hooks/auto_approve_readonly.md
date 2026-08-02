@@ -258,6 +258,8 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 ## 変更履歴（git log より自動生成）
 
+- 3655fd5 feat(#194): extend read-only allowlist and fix multibyte log truncation
+- 9d1d78f fix(#156): harden auto-approval boundary checks
 - 975df69 feat(#183): allow $() subshells when content is read-only
 - b2320ec chore: auto-approve update_plan and log webrun payload
 - fc34db6 feat(#148): working repo dynamic defense — WIP commit before write ops (#149)
@@ -266,5 +268,3 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 - e138c53 feat(#146): refine auto-approval safety rules
 - e02bd22 fix(#142): resolve conflicts with main
 - 39a5522 feat(#144): identify auto-approval log sessions
-- 4e96f9c feat(#142): add session-scoped temp hook access
-- c59275f fix: return allow for codex hook approvals
