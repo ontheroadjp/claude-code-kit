@@ -64,7 +64,7 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 ## pr-review flow
 
-`pr-review.md` は ready PR を実装元とは別の AI agent と GitHub account で review する。各 round の HEAD SHA を固定し、blocking finding は承認済み scope 内だけで元 agent が修正する。最大3 round で終了し、merge、branch 削除、main checkout/pull は人間に残す。
+`pr-review.md` は ready PR を実装元とは別の AI agent と GitHub account で review する。Claude 実装の reviewer には、専用 review subcommand ではなく `codex exec --sandbox read-only --ephemeral` を使い、`--output-last-message` で保存した最終回答を機械判定する。`codex-review.md` の standalone flow は引き続き専用 review subcommand を使用する。各 round の HEAD SHA を固定し、blocking finding は承認済み scope 内だけで元 agent が修正する。最大3 round で終了し、merge、branch 削除、main checkout/pull は人間に残す。
 
 根拠: `commands/pr-review.md:1-15`, `commands/pr-review.md:77-190`
 

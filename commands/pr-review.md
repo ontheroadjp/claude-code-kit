@@ -90,7 +90,7 @@ gh pr view <PR番号> --json title,body,comments,reviews > "$SESSION_TMP_DIR/rou
 reviewer には以下を必ず要求する:
 
 - repo の `AGENTS.md` / `CLAUDE.md` と diff を根拠にレビューする
-- ファイルを編集せず、コマンドも実行しない
+- ファイルを編集せず、read-only sandbox 内の読み取り操作だけを使用する
 - 日本語で回答する
 - blocking finding のみ `REQUEST_CHANGES` とする
 - 末尾に次の機械判定可能な形式を必ず出力する
@@ -109,11 +109,12 @@ finding がない場合は `FINDINGS: none` とする。
 実装元が Claude の場合は Codex を実行する:
 
 ```bash
-codex review \
-  --base "origin/<baseRefName>" \
-  --title "<PR title>" \
-  "<review instructions including the fixed HEAD SHA and output contract>" \
-  > "$SESSION_TMP_DIR/round-${ROUND}-review.txt"
+codex exec \
+  --sandbox read-only \
+  --ephemeral \
+  --cd "$(git rev-parse --show-toplevel)" \
+  --output-last-message "$SESSION_TMP_DIR/round-${ROUND}-review.txt" \
+  "<review instructions including paths to the diff/context files, fixed HEAD SHA, and output contract>"
 ```
 
 実装元が Codex の場合は Claude を Read-only で実行する:
@@ -128,7 +129,7 @@ claude -p \
   > "$SESSION_TMP_DIR/round-${ROUND}-review.txt"
 ```
 
-reviewer subprocess に Bash、Edit、Write、GitHub 書き込み権限を与えない。`--add-dir` は review context がある session temp の Read 許可にだけ使用する。CLI 失敗、空出力、形式不正、`REVIEWED_HEAD_SHA` 不一致の場合は GitHub review を投稿せず FAILED で終了する。
+reviewer subprocess に Edit、Write、GitHub 書き込み権限を与えない。Codex は `--sandbox read-only` で repo と session temp を読み取り、`--output-last-message` で機械判定対象の最終回答だけを保存する。Claude の `--add-dir` は review context がある session temp の Read 許可にだけ使用する。CLI 失敗、空出力、形式不正、`REVIEWED_HEAD_SHA` 不一致の場合は GitHub review を投稿せず FAILED で終了する。
 
 ### 4.3 GitHub review の投稿
 
