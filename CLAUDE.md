@@ -31,7 +31,7 @@
 
 ## 重要な設計原則
 
-- **symlink-only 原則**: `~/.claude/` 配下には実体ファイルを置かず、全て本リポジトリへの symlink とする。このリポジトリが single source of truth。
+- **symlink-only 原則**: `~/.claude/`・`~/.codex/` 配下には実体ファイルを置かず、全て本リポジトリへの symlink とする。このリポジトリが single source of truth。
 - ルーティング判定は単一質問: 「この変更で `docs/*` への追加・変更・削除が必要か？」
 - 実装 issue は task フローで扱い、report issue は report-review フローで read-only 評価する（patch フローには issue 不要）
 - task フローのコミット形式: `<type>(#<issue number>): <short description>` (Conventional Commits)
@@ -40,8 +40,10 @@
 
 ## テンプレートの場所
 
-- `templates/issue.md` → `~/.config/claude-code-kit/templates/issue.md` として参照する
-- `templates/pr.md` → `~/.config/claude-code-kit/templates/pr.md` として参照する
+- template の実体は本リポジトリの `templates/` に保持する
+- Claude Code は `~/.claude/templates/*.md`、Codex CLI は `~/.codex/templates/*.md` の symlink 経由で参照する
+- `templates/issue.md` → issue draft
+- `templates/pr.md` → PR body
 - `templates/readme.md` → 新規リポジトリの README.md 雛形
 
 ## リポジトリへの操作ルール（必須）

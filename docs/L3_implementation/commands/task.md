@@ -83,7 +83,7 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 ガード: main 以外のブランチ、コミットが 1 件以上存在、ワークスペースがクリーンであること。
 
-`~/.config/claude-code-kit/templates/pr.md` を使って英語で PR 本文・タイトルを作成し、セッション temp ディレクトリ（`/tmp/claude-code-kit/${SESSION_ID}/`）に `pr-title.txt` と `pr-body.md` を書き出す。この時点では push も PR 作成も行わない。
+実行 agent に応じた `${TEMPLATES_DIR}/pr.md`（Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`）を使って英語で PR 本文・タイトルを作成し、session temp directory に `pr-title.txt` と `pr-body.md` を書き出す。この時点では push も PR 作成も行わない。
 
 ユーザーに「追加の変更はありますか？」と確認し、なければ `/docs-sync` を自動実行する。`/docs-sync` 完了後、ユーザー確認なしに即座に `/git-pr` を実行する（push → PR 作成まで完結）。
 
@@ -113,8 +113,9 @@ session-approved への追記を hook が block するため、全スコープ�
 
 - 呼び出し元: `commands/work.md`（ルーティング判定後）、`commands/patch.md`（エスカレーション時）
 - 呼び出すもの: `commands/new-issue.md`（Step 4-5 のみ）、`/git-commit`、`commands/docs-sync.md`、`commands/git-pr.md`
-- PR テンプレート: `~/.config/claude-code-kit/templates/pr.md`（Phase 2 で temp ファイルに書き出す）
-- issue テンプレート: `~/.config/claude-code-kit/templates/issue.md`
+- PR テンプレート: `${TEMPLATES_DIR}/pr.md`（Phase 2 で temp ファイルに書き出す）
+- issue テンプレート: `${TEMPLATES_DIR}/issue.md`
+- template root: Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`
 
 ## 注意事項
 

@@ -4,9 +4,13 @@
 
 - `/work` と独立した任意の pre-step です。`/work` 単独利用は従来通りサポートされます
 - 起点情報は全てユーザーから引き出します。AI による補完・推測は禁止
-- 作成する issue は `~/.config/claude-code-kit/templates/issue.md` の構成に従います
+- 作成する issue は `${TEMPLATES_DIR}/issue.md` の構成に従います
 - **issue のタイトル・本文は英語で記述する**
 - スコープが 1 件の coherent unit を超えると判断した場合、明示的な分割理由付きで複数 issue に分けて作成します
+
+template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
+- Claude Code: `~/.claude/templates`
+- Codex CLI: `~/.codex/templates`
 
 ---
 
@@ -59,7 +63,7 @@ Step 1 で得た情報をもとに、以下のうち未確定の項目を 1 件�
 
 ### Step 4: ドラフト作成
 
-作成対象の各 issue について、`~/.config/claude-code-kit/templates/issue.md` の構成に従ってドラフトを作成する:
+作成対象の各 issue について、`${TEMPLATES_DIR}/issue.md` の構成に従ってドラフトを作成する:
 
 - タイトル: 英語、簡潔に what + 主目的を表現する
 - 本文の各セクション（Overview / Background / Scope (initial estimate) / Done Criteria）を埋める

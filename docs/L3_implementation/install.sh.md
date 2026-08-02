@@ -11,22 +11,28 @@
 ## 動作概要
 
 1. repository root を解決する。
-2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.codex/skills`, `~/.config/claude-code-kit/templates` などの target directory を作成する。
-3. repository 内の commands / hooks / skills / templates を target directory へ symlink する。
+2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
+3. repository 内の commands / hooks / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。
 4. `jq` がない場合は settings 更新をスキップして終了する。
 5. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
 6. migration helper でバージョン間の hook 変更を適用する。
 7. idempotent な helper で hook entries を追加する。
 
-根拠: `install.sh:3-72`, `install.sh:74-160`
+根拠: `install.sh:3-85`, `install.sh:87-194`
 
 ## 主要な判定ロジック
 
 ### symlink-only installer
 
-installer は `ln -sfn` で repository 内ファイルへの symlink を作成する。hook や command の実体は repository 側に残るため、変更は symlink 経由で反映される。
+installer は `ln -sf` で repository 内ファイルへの symlink を作成する。hook、command、template の実体は repository 側に残るため、変更は symlink 経由で反映される。template は同じ source file を `~/.claude/templates` と `~/.codex/templates` の両方へ link する。
 
-根拠: `install.sh:11-49`
+根拠: `install.sh:5-63`
+
+### template の agent 別 installed path
+
+Claude Code と Codex CLI がそれぞれ自身の設定 root 配下から template を解決できるよう、template target を分離する。旧 `~/.config/claude-code-kit/templates` は新規作成も削除もせず、既存ユーザー状態を破壊しない。
+
+根拠: `install.sh:10-19`, `install.sh:56-63`
 
 ### jq がない場合の設定更新スキップ
 

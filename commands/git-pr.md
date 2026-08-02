@@ -4,6 +4,10 @@ PR 作成を担うスラッシュコマンド。`commands/*.md` から `/git-pr`
 
 セッション temp ディレクトリに `/task` と `/docs-sync` が書き出したファイルを参照し、`git push` → `gh pr create` を実行します。
 
+template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
+- Claude Code: `~/.claude/templates`
+- Codex CLI: `~/.codex/templates`
+
 ## 前提ゲート
 
 - main ブランチ以外にいること
@@ -30,7 +34,7 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 
 - `${SESSION_TMP_DIR}/pr-body.md` が存在する場合: その内容を PR 本文として使用する
 - 存在しない場合:
-    - `~/.config/claude-code-kit/templates/pr.md` が存在する場合: `git diff main...HEAD` の内容をもとにテンプレートを埋めて PR 本文を生成する
+    - `${TEMPLATES_DIR}/pr.md` が存在する場合: `git diff main...HEAD` の内容をもとにテンプレートを埋めて PR 本文を生成する
     - テンプレートが存在しない場合: `git diff main...HEAD` から最小限の本文を生成する
 
 ### Step 4: docs sync 結果の追記

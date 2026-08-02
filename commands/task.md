@@ -8,6 +8,10 @@
 - 全ての作業は issue と紐づく（issue がない場合は自動生成する）
 - ワークフローは 3 フェーズで構成される
 
+template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
+- Claude Code: `~/.claude/templates`
+- Codex CLI: `~/.codex/templates`
+
 ```
 Phase 1: 実装（コード変更を完結させる）
 Phase 2: PR 本文の準備 → /docs-sync 自動実行 → /git-pr 自動実行
@@ -99,7 +103,7 @@ Phase 3: 最終報告
     - **issue が未作成の場合**（Step 0 で issue 番号がなかった場合）:
         - `commands/new-issue.md` を Read し、**Step 4〜Step 5 のみ**実行して issue を作成する
             - Step 1〜3（アイデア捕捉・明確化・スコープ判定）はスキップする（確定済みプランの内容で代替）
-            - Step 4 のドラフトは作業プランの内容（完了条件・背景・変更対象・検証方法）を `~/.config/claude-code-kit/templates/issue.md` の各セクションに英語で埋めて作成する
+            - Step 4 のドラフトは作業プランの内容（完了条件・背景・変更対象・検証方法）を `${TEMPLATES_DIR}/issue.md` の各セクションに英語で埋めて作成する
             - Step 6（引き継ぎ案内）はスキップする
             - **issue 内容のユーザー確認は行わない**（プラン承認で確定済みのため）
         - 作成した issue 番号を以降の起点とする
@@ -154,7 +158,7 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 mkdir -p "$SESSION_TMP_DIR"
 ```
 
-- `~/.config/claude-code-kit/templates/pr.md` をもとに PR 本文を作成する
+- `${TEMPLATES_DIR}/pr.md` をもとに PR 本文を作成する
 - **PR のタイトル・本文は英語で記述する**
 - 以下のファイルを SESSION_TMP_DIR に書き出す:
     - `${SESSION_TMP_DIR}/pr-title.txt`: PR タイトル（形式: `#<issue番号> <英語タイトル>`）
