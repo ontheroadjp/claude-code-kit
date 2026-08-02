@@ -24,11 +24,13 @@ Git force operation は用途別の predicate に分離する。
 
 - `approval_safety_is_force_push`: `--force` 系、`-f` を含む short option、leading `+refspec`
 - `approval_safety_is_force_checkout`: checkout / switch の `-f` または `--force`
-- `approval_safety_is_force_branch_delete`: `-D`、または delete option と force option の組み合わせ（long option と combined short option を含む）
+- `approval_safety_is_force_branch_delete`: `git branch` を含む shell segment ごとに、`-D`、または delete option と force option の組み合わせ（long option と combined short option を含む）を検査する
 
 これらの predicate は destructive guard だけでなく、`tool:git_write` の session-approved fast path でも再利用する。fast path と後段 guard の判定差を作らないことが、session approval が destructive operation を迂回しないための重要な設計条件である。
 
-根拠: `hooks/lib/approval-safety.sh:4-24`, `hooks/lib/approval-safety.sh:65-100`, `hooks/auto-approve-readonly.sh:395-423`
+branch force 判定は command 全体にある delete / force option を独立に検索しない。`git branch` から次の shell separator までを抽出して同一 segment 内の option だけを組み合わせる。これにより、`test -d ... && git branch --show-current && test -f ...` のような読み取り専用 compound command を forced deletion と誤認しない。
+
+根拠: `hooks/lib/approval-safety.sh:4-31`, `hooks/lib/approval-safety.sh:72-107`, `hooks/auto-approve-readonly.sh:395-423`
 
 ## 統合ポイント
 
@@ -36,11 +38,13 @@ Git force operation は用途別の predicate に分離する。
 - `hooks/guard-destructive-cmd.sh` は互換 wrapper として同じ reason function と JSON emitter を利用する。
 - `tests/hooks/test-approval-hooks.sh` は auto-approve hook と guard wrapper の双方から Git force variants が block されることを検証する。
 
-根拠: `hooks/auto-approve-readonly.sh:20-21`, `hooks/auto-approve-readonly.sh:395-423`, `hooks/auto-approve-readonly.sh:637-641`, `hooks/guard-destructive-cmd.sh:14-24`, `tests/hooks/test-approval-hooks.sh:261-307`
+根拠: `hooks/auto-approve-readonly.sh:20-21`, `hooks/auto-approve-readonly.sh:395-423`, `hooks/auto-approve-readonly.sh:637-641`, `hooks/guard-destructive-cmd.sh:14-24`, `tests/hooks/test-approval-hooks.sh:261-313`
 
 ## 設計判断
 
 Git force 判定を session-approved 側へ複製せず shared predicate とした。fast path は destructive guard より前に評価されるため、別々の regular expression を維持すると一方だけの更新によって bypass が生じる。共有 predicate により、新しい force variant は一箇所の変更で両経路から除外される。
+
+複数 option の組み合わせを判定する predicate は同一 shell segment に scope を限定する。command 全体から各 option を別々に探すと、前後の無関係な `test -d` / `test -f` まで組み合わせて destructive と判断するためである。
 
 ## 注意事項・既知の制限
 

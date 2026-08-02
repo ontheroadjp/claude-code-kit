@@ -14,13 +14,19 @@ approval_safety_is_force_checkout() {
 }
 
 approval_safety_is_force_branch_delete() {
-    local command="$1"
+    local command="$1" branch_segment
 
-    printf '%s' "$command" | grep -qE '\bgit\b[^#]*\bbranch\b' || return 1
-    printf '%s' "$command" | grep -qE '[[:space:]]-[^-[:space:]]*D[^[:space:]]*([[:space:]]|$)' && return 0
+    while IFS= read -r branch_segment; do
+        printf '%s' "$branch_segment" | grep -qE '[[:space:]]-[^-[:space:]]*D[^[:space:]]*([[:space:]]|$)' && return 0
+        printf '%s' "$branch_segment" | grep -qE '[[:space:]]-[^-[:space:]]*(d[^[:space:]]*f|f[^[:space:]]*d)[^[:space:]]*([[:space:]]|$)' && return 0
 
-    printf '%s' "$command" | grep -qE '([[:space:]]--delete([=[:space:]]|$)|[[:space:]]-[^-[:space:]]*d[^[:space:]]*([[:space:]]|$))' || return 1
-    printf '%s' "$command" | grep -qE '([[:space:]]--force([=[:space:]]|$)|[[:space:]]-[^-[:space:]]*f[^[:space:]]*([[:space:]]|$))'
+        if printf '%s' "$branch_segment" | grep -qE '([[:space:]]--delete([=[:space:]]|$)|[[:space:]]-d([[:space:]]|$))' \
+            && printf '%s' "$branch_segment" | grep -qE '([[:space:]]--force([=[:space:]]|$)|[[:space:]]-f([[:space:]]|$))'; then
+            return 0
+        fi
+    done < <(printf '%s' "$command" | grep -oE '\bgit\b[^;&|#]*\bbranch\b[^;&|#]*' || true)
+
+    return 1
 }
 
 approval_safety_destructive_reason() {

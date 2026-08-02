@@ -247,6 +247,9 @@ done
 output=$(run_auto $'git status --porcelain\ngit checkout main\ngit pull --ff-only origin main\ngit status --short\ngit log -1 --oneline')
 assert_json_decision "$output" "approve"
 
+output=$(run_auto 'test -d . && git branch --show-current && test -f README.md')
+assert_json_decision "$output" "approve"
+
 output=$(run_auto $'if [ -f ~/.config/claude-code-kit/partials/git-commit.md ]; then\n  sed -n '\''1,280p'\'' ~/.config/claude-code-kit/partials/git-commit.md\nelse\n  sed -n '\''1,280p'\'' partials/git-commit.md\nfi\ngit add docs/L3_implementation/specification_summary.md\ngit diff --staged\ngit commit -m "docs: sync documentation"\ngit push origin feature\ngit status --porcelain')
 assert_json_decision "$output" "approve"
 
@@ -307,6 +310,9 @@ for command in \
 done
 
 output=$(run_guard 'git status --porcelain')
+assert_no_output "$output"
+
+output=$(run_guard 'test -d . && git branch --show-current && test -f README.md')
 assert_no_output "$output"
 
 run_cleanup "$SESSION_ID"
