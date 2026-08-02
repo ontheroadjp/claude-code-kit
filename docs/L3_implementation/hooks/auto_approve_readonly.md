@@ -90,16 +90,18 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 次の mode はコマンド名が読み取り系でも常時許可しない。
 
 - `find -delete/-exec/-execdir/-ok/-fprint*`
-- `sed -i/--in-place`
+- `sed -i/--in-place` および script 内の `e` / `w` command
 - `sort -o/--output`
 - `yq -i/--inplace`
-- `awk` の `system()`
+- `awk` の `system()` および外部 command を pipe する `getline`
 - command を伴う `env`
 - `date --set/-s`
 - 値を指定する `hostname`
 - `pytest`, `python -m pytest`
 
-根拠: `hooks/auto-approve-readonly.sh:117-229`, `hooks/auto-approve-readonly.sh:411-495`
+`curl` の短縮 option は単独形だけでなく結合形も検査する。`-so`、`-sO` のように file output や request body / upload / config を有効化する文字を含む option cluster は通常許可フローへ戻す。`-sSI` のような読み取り専用 cluster は引き続き承認する。
+
+根拠: `hooks/auto-approve-readonly.sh:700-749`
 
 ### session-approved tool category
 
@@ -107,7 +109,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 | category | 許可内容 | 除外 |
 |---|---|---|
-| `tool:git_write` | add, commit, merge, fetch, `pull --ff-only`, stash push/pop/apply, non-force push, branch checkout/switch, non-force branch operation | force push, pull without `--ff-only`, pull rebase/no-ff/force, checkoutによるpath復元, branch `-D` |
+| `tool:git_write` | add, commit, merge, fetch, `pull --ff-only`, stash push/pop/apply, non-force push, branch checkout/switch, non-force branch operation | force option / `+refspec` push, pull without `--ff-only`, pull rebase/no-ff/force, checkoutによるpath復元, checkout/switch force, forced branch deletion |
 | `tool:gh_issue_write` | issue create/edit/close/delete/comment/reopen | その他 |
 | `tool:gh_pr_write` | PR create/edit/close/comment/reopen/ready/review/checkout/merge | その他 |
 
@@ -225,9 +227,10 @@ After:
 Bash ハンドラーの先頭で「全 segment が session-approved category に一致する場合は即時承認」する fast path を設けている（判定順序 7）。`approval_safety.sh` より前に評価されるため、一見すると危険に思えるが、これが安全な理由は **session category の定義自体が dangerous ops を除外しているから**である。
 
 具体的には:
-- `git push --force` / `--force-with-lease` は `tool:git_write` の `push` 判定から除外
+- `git push --force` / `--force-with-lease` / `+refspec` は `tool:git_write` の `push` 判定から除外
 - `git pull --rebase` / `--no-ff` は `tool:git_write` の `pull` 判定から除外
-- `git branch -D` は `tool:git_write` から除外
+- `git checkout` / `git switch` の `-f` / `--force` は `tool:git_write` から除外
+- `git branch -D`、`--delete --force`、`-df` は `tool:git_write` から除外
 - `git reset --hard` / `git clean` / `git stash drop` 等は session category に一切含まれない
 
 これらは必ず fast path を**通過できず**、approval_safety.sh での評価に落ちてブロックされる。fast path は「session-approved の操作を繰り返す際の遅延を減らす最適化」であり、安全境界を変えるものではない。
@@ -240,7 +243,7 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 ## テストと既知の制限
 
-`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。
+`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants を negative case として固定する。
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 

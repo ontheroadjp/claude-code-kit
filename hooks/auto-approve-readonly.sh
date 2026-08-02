@@ -410,15 +410,16 @@ check_session_approved() {
                 fi
                 printf '%s' "$seg" | grep -qE '^git[[:space:]]+stash([[:space:]]+(push|pop|apply)(\s|$)|[[:space:]]*$)' && return 0
                 if printf '%s' "$seg" | grep -qE '^git[[:space:]]+push(\s|$)'; then
-                    printf '%s' "$seg" | grep -qE '(--force|-f[[:space:]]|-f$|--force-with-lease)' || return 0
+                    approval_safety_is_force_push "$seg" || return 0
                 fi
                 if printf '%s' "$seg" | grep -qE '^git[[:space:]]+(checkout|switch)(\s|$)'; then
-                    if ! printf '%s' "$seg" | grep -qE '([[:space:]]--([[:space:]]|$)|^git[[:space:]]+(checkout|switch)[[:space:]]+\.)'; then
+                    if ! printf '%s' "$seg" | grep -qE '([[:space:]]--([[:space:]]|$)|^git[[:space:]]+(checkout|switch)[[:space:]]+\.)' \
+                        && ! approval_safety_is_force_checkout "$seg"; then
                         return 0
                     fi
                 fi
                 if printf '%s' "$seg" | grep -qE '^git[[:space:]]+branch(\s|$)'; then
-                    printf '%s' "$seg" | grep -qE '[[:space:]]-D([[:space:]]|$)' || return 0
+                    approval_safety_is_force_branch_delete "$seg" || return 0
                 fi
                 ;;
             tool:gh_issue_write)
@@ -705,6 +706,7 @@ is_safe_segment() {
     fi
     if printf '%s' "$seg" | grep -qE '^sed(\s|$)'; then
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--in-place)([^[:space:]]*|$)' && return 1
+        printf '%s' "$seg" | grep -qE "(^|[^[:alnum:]_-])([0-9,$]+)?[ew]([[:space:]]|['\"]|$)" && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^sort(\s|$)'; then
@@ -717,6 +719,7 @@ is_safe_segment() {
     fi
     if printf '%s' "$seg" | grep -qE '^awk(\s|$)'; then
         printf '%s' "$seg" | grep -qE 'system[[:space:]]*\(' && return 1
+        printf '%s' "$seg" | grep -qE '\|[[:space:]]*getline([[:space:](;}]|$)' && return 1
         return 0
     fi
     printf '%s' "$seg" | grep -qE '^env[[:space:]]*$' && return 0
@@ -734,7 +737,7 @@ is_safe_segment() {
 
     # curl — allow default GET/HEAD requests only; reject writes and custom methods
     if printf '%s' "$seg" | grep -qE '^curl(\s|$)'; then
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-o[^[:space:]]*|-O|-X[^[:space:]]*|-d[^[:space:]]*|-F[^[:space:]]*|-T[^[:space:]]*|-K[^[:space:]]*|--output|--remote-name|--remote-name-all|--request|--data[^[:space:]]*|--form[^[:space:]]*|--upload-file|--json|--config)([=[:space:]]|$)' && return 1
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-[^-[:space:]]*[oOXdFTK][^[:space:]]*|--output|--remote-name|--remote-name-all|--request|--data[^[:space:]]*|--form[^[:space:]]*|--upload-file|--json|--config)([=[:space:]]|$)' && return 1
         return 0
     fi
 
