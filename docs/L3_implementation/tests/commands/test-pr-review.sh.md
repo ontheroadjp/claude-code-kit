@@ -16,6 +16,8 @@
 
 - 最大3ラウンド
 - Claude/Codex の相互 routing
+- Codex reviewer が汎用 `codex exec` を read-only・ephemeral で実行し、最終回答だけを保存すること
+- 固定形式の `codex review` subcommand を使用しないこと
 - review と HEAD SHA の結合
 - GitHub APPROVED / CHANGES_REQUESTED 投稿
 - reviewer identity と Claude read-only tools
@@ -24,7 +26,7 @@
 - `/git-pr` から `/pr-review` への handoff
 - skill の source-of-truth path
 
-根拠: `tests/commands/test-pr-review.sh:38-53`
+根拠: `tests/commands/test-pr-review.sh:38-57`
 
 ## 重要な設計判断
 

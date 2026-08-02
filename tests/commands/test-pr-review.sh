@@ -36,7 +36,11 @@ assert_absent() {
 }
 
 assert_contains "$PR_REVIEW" 'MAX_REVIEW_ROUNDS=3' 'review loop is bounded'
-assert_contains "$PR_REVIEW" 'codex review' 'Claude implementation routes review to Codex'
+assert_contains "$PR_REVIEW" 'codex exec' 'Claude implementation routes review to generic Codex exec'
+assert_contains "$PR_REVIEW" '--sandbox read-only' 'the Codex reviewer runs in a read-only sandbox'
+assert_contains "$PR_REVIEW" '--ephemeral' 'the Codex reviewer does not persist a session'
+assert_contains "$PR_REVIEW" '--output-last-message' 'only the final Codex response is saved for parsing'
+assert_absent "$PR_REVIEW" 'codex review' 'the workflow does not use the fixed-format Codex review subcommand'
 assert_contains "$PR_REVIEW" 'claude -p' 'Codex implementation routes review to Claude'
 assert_contains "$PR_REVIEW" 'REVIEWED_HEAD_SHA' 'review result is bound to a head SHA'
 assert_contains "$PR_REVIEW" '--approve' 'approved reviews are posted to GitHub'

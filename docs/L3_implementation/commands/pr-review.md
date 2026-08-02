@@ -56,9 +56,11 @@ review は `MAX_REVIEW_ROUNDS=3` に制限する。元 agent は finding の妥�
 
 ### reviewer subprocess を read-only にする理由
 
-別 agent は独立した批評者であり、実装者ではない。Codex は review mode、Claude は `Read` tool のみに制限し、修正・GitHub 投稿は元 agent が担当する。これにより reviewer が承認済みスコープや session approval を迂回して変更する経路を作らない。
+別 agent は独立した批評者であり、実装者ではない。Codex は汎用の `codex exec` を `--sandbox read-only --ephemeral` で実行し、Claude は `Read` tool のみに制限する。修正・GitHub 投稿は元 agent が担当するため、reviewer が承認済みスコープや session approval を迂回して変更する経路を作らない。
 
-根拠: `commands/pr-review.md:107-131`
+Codex の専用 review subcommand は固定の finding 形式を出力するため使用しない。汎用 exec に機械可読契約を明示し、`--output-last-message` で最終回答だけを保存することで、進行イベントを混ぜずに `VERDICT`、`REVIEWED_HEAD_SHA`、`FINDINGS` を検証できる。
+
+根拠: `commands/pr-review.md:107-132`
 
 ### merge を行わない理由
 
@@ -70,7 +72,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 - 自動呼び出し元: `commands/git-pr.md` Step 8
 - 手動呼び出し: `/pr-review #<PR番号>`
-- reviewer CLI: `codex review` または `claude -p`
+- reviewer CLI: `codex exec --sandbox read-only --ephemeral` または `claude -p`
 - commit/docs: `/git-commit`、必要な場合は `/docs-sync`
 - GitHub: `gh pr view`、`gh pr review`、`gh api user`
 - 一時ファイル: `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/`
@@ -79,6 +81,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 - reviewer 投稿には PR author と異なる GitHub account の token が必要
 - 自動修正は現在の session-approved に登録済みのファイルとツールに限定される
+- Codex reviewer の機械判定には `--output-last-message` が保存した最終回答だけを使用する
 - review 出力が所定形式でない場合は GitHub review を投稿せず `FAILED` で終了する
 - PR merge、close、branch 削除、main 同期は行わない
 - 3ラウンドで収束しない finding は人間判断へ返す
