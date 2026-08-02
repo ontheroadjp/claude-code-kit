@@ -106,15 +106,23 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 根拠: `hooks/auto-approve-readonly.sh:673-793`
 
-### unquoted variable expansion の除外
+### variable expansion の除外
 
-`git`（`--output`・`branch`・`tag` の除外判定）、`find`、`sed`、`sort`、`yq`、`awk`、`date`、`journalctl`、`curl`、`gh api` の除外ベース判定、および `bash -n` / `node --check`・`-c` の単一引数形状判定は、segment のリテラルテキストのみを走査する。シングル/ダブルクォート外に裸の `$` 変数参照（`$VAR`/`${VAR}`）が残っている場合、`_has_unquoted_variable_expansion` がこれを検出し該当 segment を unsafe と判定する。
+`git`（`--output`・`branch`・`tag` の除外判定）、`find`、`sed`、`sort`、`yq`、`awk`、`date`、`journalctl`、`curl`、`gh api` の除外ベース判定、および `bash -n` / `node --check`・`-c` の単一引数形状判定は、segment のリテラルテキストのみを走査する。シングルクォート外に `$` 変数参照（`$VAR`/`${VAR}`）が残っている場合、`_has_variable_expansion` がこれを検出し該当 segment を unsafe と判定する。
 
-**理由:** これらの判定は「危険フラグがリテラルテキストに存在しないこと」または「引数が1トークンであること」を前提にしている。しかし bash は unquoted な変数参照を実行時に word-split（および glob 展開）するため、`ARGS='--require=./x.js target.js'; node --check $ARGS` のように前段の pure assignment segment（`_is_pure_assignment` により代入自体は安全 — 代入 RHS は word-split されないため）で危険な値を変数へ格納し、後段で unquoted 参照すると、リテラルテキスト上は「1トークン・フラグなし」に見えても実行時には複数引数・隠れフラグに展開されてしまう。この判定は `_has_unquoted_variable_expansion` を各該当ブランチの先頭で個別に呼び出す形で追加しており、`is_safe_segment` 全体を対象にした一律ブロックではない。`cat`、`ls`、`grep`/`rg`/`fd`、`head`、`tail`、`wc`、`jq` のようにフラグの有無に関わらず read-only が保証されるコマンドは対象外のままとし、変数を含んでいても引き続き auto-approve される。
+**理由（2つの異なるハザード）:**
+1. **unquoted**: bash は unquoted な変数参照を実行時に word-split（および glob 展開）するため、`ARGS='--require=./x.js target.js'; node --check $ARGS` のように前段の pure assignment segment（`_is_pure_assignment` により代入自体は安全 — 代入 RHS は word-split されないため）で危険な値を変数へ格納し、後段で unquoted 参照すると、リテラルテキスト上は「1トークン・フラグなし」に見えても実行時には複数引数・隠れフラグに展開されてしまう。
+2. **double-quoted**: word-split は起きないが、展開結果はこのリテラルテキスト走査にとって不透明であり、値そのものが単一の危険フラグになり得る（例: `OUT='--output=/tmp/x'; git diff "$OUT"`）。このため double-quoted `"$VAR"` も unsafe 判定の対象とする — シングルクォートだけが例外である。
 
-`$(...)` subshell は既存処理で先に検証・`__SUBSHELL_SAFE__` プレースホルダーへ置換されるため、このチェックの対象外（プレースホルダーに `$` を含まない）。`awk`/`sed` script 内の `$1` 等のフィールド参照はシングルクォートで囲まれている限りクォート追跡により対象外のまま。
+この判定は `_has_variable_expansion` を各該当ブランチの先頭で個別に呼び出す形で追加しており、`is_safe_segment` 全体を対象にした一律ブロックではない。`cat`、`ls`、`grep`/`rg`/`fd`、`head`、`tail`、`wc`、`jq` のようにフラグの有無に関わらず read-only が保証されるコマンドは対象外のままとし、変数を含んでいても引き続き auto-approve される。
 
-根拠: `hooks/auto-approve-readonly.sh:133-172`, `hooks/auto-approve-readonly.sh:308-313`, `hooks/auto-approve-readonly.sh:769-864`
+`is_safe_git_read_command` では `normalize_git_directory_prefix`（`git -C <dir>` の `<dir>` operand を出力から破棄して `git <残り>` に正規化する）を適用する**前**の生の segment に対して `_has_variable_expansion` を呼ぶ。正規化後の文字列に対して呼ぶと `-C` operand に隠された変数参照（例: `DIR='repo branch -D victim'; git -C $DIR diff` — 実行時には `git -C repo branch -D victim diff` となり `git branch -D victim` が注入される）が正規化で消え、検出できなくなるため。
+
+`$(...)` subshell は既存処理で先に検証・`__SUBSHELL_SAFE__` プレースホルダーへ置換されるため、このチェックの対象外（プレースホルダーに `$` を含まない）。`awk`/`sed` script 内の `$1` 等のフィールド参照はシングルクォートで囲まれている限り、bash が一切展開しないため対象外のまま。
+
+**クォート追跡の詳細:** シングルクォート中は POSIX 上エスケープ機構自体が存在しない（`\` はリテラル文字）。このためシングルクォート判定はエスケープ処理より先に評価する — 逆順だと `'foo\'` のような閉じクォート直前の `\` が閉じクォートを誤って「エスケープ」したと解釈し、クォート状態がそれ以降の text（例えば後続の unquoted `$OPTS`）まで誤って持ち越されてしまう。
+
+根拠: `hooks/auto-approve-readonly.sh:133-183`, `hooks/auto-approve-readonly.sh:317-330`, `hooks/auto-approve-readonly.sh:744-895`
 
 ### session-approved tool category
 

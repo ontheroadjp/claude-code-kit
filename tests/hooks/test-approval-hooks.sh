@@ -289,6 +289,24 @@ done
 output=$(run_auto 'awk '\''{ print $1 }'\'' README.md')
 assert_json_decision "$output" "approve"
 
+# Round-2 review findings: (1) normalize_git_directory_prefix discards the
+# "-C <dir>" operand before the variable guard ran, hiding a variable placed
+# there; (2) a double-quoted "$VAR" is not word-split but its resolved value
+# can still itself be a single dangerous flag, invisible to exclusion scans;
+# (3) escape handling ran before the single-quote check, so a literal
+# backslash immediately before a closing single quote (e.g. 'foo\') was
+# misread as escaping it, desyncing quote-tracking for the rest of the
+# segment. All must prompt fallback.
+for command in \
+    "DIR='repo branch -D victim'; git -C \$DIR diff" \
+    'OUT="--output=/tmp/evil"; git diff "$OUT"' \
+    "OPTS='-o /tmp/evil'; curl --user-agent 'foo\\' \$OPTS https://example.com" \
+    "YQOPT='-i'; yq \$YQOPT .key=value config.yml" \
+    "SCRIPT='{system(\"touch unsafe\")}'; awk \$SCRIPT README.md"; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
 mkdir -p "$(dirname "$SESSION_FILE")"
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
 output=$(run_auto 'git reset --hard')
