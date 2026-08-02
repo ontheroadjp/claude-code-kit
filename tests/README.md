@@ -6,8 +6,10 @@ hook および各種スクリプトの動作検証スクリプトを置くディ
 
 ```
 tests/
-└── hooks/
-    └── test-approval-hooks.sh   ← PreToolUse hook の自動テストスクリプト
+├── hooks/
+│   └── test-approval-hooks.sh   ← PreToolUse hook の自動テストスクリプト
+└── install/
+    └── test-install.sh          ← installer symlink contract の自動テストスクリプト
 ```
 
 ## test-approval-hooks.sh
@@ -38,6 +40,14 @@ bash tests/hooks/test-approval-hooks.sh
 ```
 
 全テスト PASS で終了コード 0 を返す。FAIL があると終了コード 1 で終了し、失敗したテストケース名を表示する。
+
+## test-install.sh
+
+fixture repository と一時 HOME を作成して `install.sh` を2回実行し、Claude Code / Codex CLI の template symlink、legacy target 非作成、再実行の idempotence を検証する。
+
+```bash
+bash tests/install/test-install.sh
+```
 
 ### 前提条件
 

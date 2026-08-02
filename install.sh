@@ -7,14 +7,16 @@ CODEX_COMMANDS_TARGET="${HOME}/.codex/commands"
 HOOKS_TARGET="${HOME}/.claude/hooks"
 CODEX_HOOKS_TARGET="${HOME}/.codex/hooks"
 SKILLS_TARGET="${HOME}/.codex/skills"
-TEMPLATES_TARGET="${HOME}/.config/claude-code-kit/templates"
+CLAUDE_TEMPLATES_TARGET="${HOME}/.claude/templates"
+CODEX_TEMPLATES_TARGET="${HOME}/.codex/templates"
 
 mkdir -p "$COMMANDS_TARGET"
 mkdir -p "$CODEX_COMMANDS_TARGET"
 mkdir -p "$HOOKS_TARGET"
 mkdir -p "$CODEX_HOOKS_TARGET"
 mkdir -p "$SKILLS_TARGET"
-mkdir -p "$TEMPLATES_TARGET"
+mkdir -p "$CLAUDE_TEMPLATES_TARGET"
+mkdir -p "$CODEX_TEMPLATES_TARGET"
 
 echo "Linking commands -> ${COMMANDS_TARGET}"
 for src in "$REPO_DIR"/commands/*.md; do
@@ -51,11 +53,13 @@ for src in "$REPO_DIR"/skills/*/; do
   echo "  ${SKILLS_TARGET}/${name} -> ${src}"
 done
 
-echo "Linking templates -> ${TEMPLATES_TARGET}"
-for src in "$REPO_DIR"/templates/*.md; do
-  name="$(basename "$src")"
-  ln -sf "$src" "${TEMPLATES_TARGET}/${name}"
-  echo "  ${TEMPLATES_TARGET}/${name} -> ${src}"
+for target in "$CLAUDE_TEMPLATES_TARGET" "$CODEX_TEMPLATES_TARGET"; do
+  echo "Linking templates -> ${target}"
+  for src in "$REPO_DIR"/templates/*.md; do
+    name="$(basename "$src")"
+    ln -sf "$src" "${target}/${name}"
+    echo "  ${target}/${name} -> ${src}"
+  done
 done
 
 echo "Creating self-referential skill symlinks..."

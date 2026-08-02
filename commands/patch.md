@@ -6,6 +6,10 @@
 - branch + commit → ユーザーが main へマージ
 - ドキュメント変更が必要になった場合は task フローへエスカレーションする
 
+template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
+- Claude Code: `~/.claude/templates`
+- Codex CLI: `~/.codex/templates`
+
 ---
 
 ## ワークフロー
@@ -97,7 +101,7 @@ Phase 2 の実行中に **この前提が崩れた** と判断した場合、tas
 1. 未コミット変更がある場合: `/git-commit` を実行する
     - パラメータ: `issue_number=none`, `allowed_types=[fix, refactor, chore, style, test, docs]`
 2. ユーザーに報告: 「patch フローの前提（軽微・局所・追跡不要）が崩れたため task フローに切り替えます。理由: <実際のエスカレーション理由>」
-3. `~/.config/claude-code-kit/templates/issue.md` をもとに issue のドラフトを作成する
+3. `${TEMPLATES_DIR}/issue.md` をもとに issue のドラフトを作成する
     - 「/patch で実施済みの変更」と「追加スコープ（エスカレーション理由）」を必ず記載する
     - **issue のタイトル・本文は英語で記述する**
     - ユーザーに確認を取り、`gh issue create` で作成する

@@ -16,20 +16,23 @@ cd core-toolkit-for-claude
 - `commands/*.md` → `~/.claude/commands/` 和 `~/.codex/commands/`
 - `hooks/*.sh` → `~/.claude/hooks/` 和 `~/.codex/hooks/`
 - `skills/*/` → `~/.codex/skills/`
+- `templates/*.md` → `~/.claude/templates/` 和 `~/.codex/templates/`
 
 目标目录会自动创建。如果 `jq` 可用，安装器还会更新 `~/.claude/settings.json` 和 `~/.codex/hooks.json`。Codex 用户应先用 `/hooks` 检查并信任已注册的 hooks，再依赖它们。
 
 ## 手动设置
 
-### Step 0：创建共享模板的符号链接（必须）
+### Step 0：创建模板的符号链接（必须）
 
 ```bash
-mkdir -p ~/.config/claude-code-kit
-ln -s /path/to/core-toolkit-for-claude/templates \
-      ~/.config/claude-code-kit/templates
+mkdir -p ~/.claude/templates ~/.codex/templates
+for template in /path/to/core-toolkit-for-claude/templates/*.md; do
+  ln -s "$template" ~/.claude/templates/
+  ln -s "$template" ~/.codex/templates/
+done
 ```
 
-模板存储在 `~/.config/claude-code-kit/templates/`，使 Claude Code 和 Codex CLI 都能从单一位置引用它们。
+模板源文件保留在本仓库中。Claude Code 通过 `~/.claude/templates/` 下的符号链接引用它们，Codex CLI 则通过 `~/.codex/templates/` 下的符号链接引用。
 
 ### Step 1：创建命令的符号链接（全局——所有仓库）
 

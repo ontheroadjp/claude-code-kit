@@ -16,20 +16,23 @@ This creates symlinks for:
 - `commands/*.md` → `~/.claude/commands/` and `~/.codex/commands/`
 - `hooks/*.sh` → `~/.claude/hooks/` and `~/.codex/hooks/`
 - `skills/*/` → `~/.codex/skills/`
+- `templates/*.md` → `~/.claude/templates/` and `~/.codex/templates/`
 
 Target directories are created automatically. If `jq` is available, the installer also updates `~/.claude/settings.json` and `~/.codex/hooks.json`. Codex users should review and trust registered hooks with `/hooks` before relying on them.
 
 ## Manual Setup
 
-### Step 0: Symlink the shared templates (required)
+### Step 0: Symlink the templates (required)
 
 ```bash
-mkdir -p ~/.config/claude-code-kit
-ln -s /path/to/core-toolkit-for-claude/templates \
-      ~/.config/claude-code-kit/templates
+mkdir -p ~/.claude/templates ~/.codex/templates
+for template in /path/to/core-toolkit-for-claude/templates/*.md; do
+  ln -s "$template" ~/.claude/templates/
+  ln -s "$template" ~/.codex/templates/
+done
 ```
 
-Templates are stored in `~/.config/claude-code-kit/templates/` so both Claude Code and Codex CLI can reference them from a single location.
+Template source files remain in this repository. Claude Code resolves the symlinks under `~/.claude/templates/`, while Codex CLI resolves those under `~/.codex/templates/`.
 
 ### Step 1: Symlink the commands (global — all repos)
 

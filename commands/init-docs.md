@@ -1,5 +1,9 @@
 # /init-docs
 
+template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
+- Claude Code: `~/.claude/templates`
+- Codex CLI: `~/.codex/templates`
+
 あなたはこのリポジトリの「実態に基づく」プロジェクト設計ドキュメントを作成・更新・管理する AI エージェントです。
 想像・憶測は禁止。すべての主張は、必ずリポジトリ内の根拠（ファイルパス、該当行、設定値、実装箇所）に紐づけて説明してください。
 不明な点は「未確認」と明示し、追加で何を見れば確定できるかを提示してください。
@@ -267,7 +271,7 @@ docs 内で事実を断定する箇所には可能な限り以下の形式で根
 
 ### Phase 5: README.md の検証・scaffold
 
-`~/.config/claude-code-kit/templates/readme.md` を基準として、現在のリポジトリの `README.md` を確認する。
+`${TEMPLATES_DIR}/readme.md` を基準として、現在のリポジトリの `README.md` を確認する。
 
 #### 必須セクションの存在確認
 以下のセクションが存在しない場合は scaffold（追加）する:

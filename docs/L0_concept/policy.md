@@ -25,7 +25,7 @@
 
 | 禁止事項 | 理由 | 根拠 |
 |---|---|---|
-| `~/.claude/` へ実体ファイルを置く | symlink-only 原則と single source of truth を壊す | `README.md:21-38` |
+| `~/.claude/` または `~/.codex/` へ実体ファイルを置く | symlink-only 原則と single source of truth を壊す | `README.md:26-45`, `CLAUDE.md:34-47` |
 | `/task` で一般 docs を直接更新する | 一般 docs 同期は `/docs-sync` の責務。L3 per-file doc のみ task が管理する | `commands/task.md:5-9`, `commands/task.md:113-137` |
 | `/report-review` で実装・永続化・GitHub 投稿を行う | report issue は評価であり変更要求ではない | `commands/report-review.md:5-14` |
 | `/docs-sync` で L0 を通常更新する | L0 は意思決定記録であり git diff 追従対象ではない | `commands/docs-sync.md:86-88` |

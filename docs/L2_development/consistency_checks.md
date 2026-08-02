@@ -20,13 +20,14 @@
 
 ### Tests
 
-次の3 command は実ファイルに対応し、Bash で実行可能である。
+次の4 command は実ファイルに対応し、Bash で実行可能である。
 
 | command | target |
 |---|---|
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
 | `bash tests/commands/test-pr-review.sh` | pr-review declarative contract |
 | `bash tests/commands/test-report-review.sh` | report-review declarative contract |
+| `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract |
 
 根拠: `tests/` 実体一覧、`docs/.ai/repo.profile.json:commands`
 
@@ -50,7 +51,7 @@
 - `active_commands` は command specifications 17件と一致する。
 - `skills` は skill wrappers 17件と一致する。
 - `hooks` は installer が配置する top-level hook scripts 9件と一致する。
-- `commands` の install / site / test commands は `operation_model.md`、`test.md`、`cicd.md` で説明される。
+- `commands` の install / site / 4 test commands は `operation_model.md`、`test.md`、`cicd.md` で説明される。
 
 根拠: `docs/.ai/repo.profile.json`、`docs/L2_development/operation_model.md`、`docs/L2_development/test.md`、`docs/L2_development/cicd.md`
 
@@ -78,7 +79,7 @@ CI の事実は `.github/workflows/deploy.yml` を優先した。Node.js 24、np
 | 条件 | 判定 | 理由 |
 |---|---|---|
 | docs の事実が実体と矛盾しない | yes | path、command、workflow、dependency を再観測した |
-| repo profile と docs が相互に説明可能 | yes | command/skill/hook/test lists と説明先を突合した |
+| repo profile と docs が相互に説明可能 | yes | command/skill/hook/4 test lists と説明先を突合した |
 | CI と docs が一致する | yes | Node.js 24 と site npm build/deploy を CI から採用した |
 | 未確認事項が分離されている | yes | coverage と CI test 非登録を明記した |
 

@@ -16,7 +16,8 @@
     "site:preview": "cd site && npm run docs:preview",
     "test:approval-hooks": "bash tests/hooks/test-approval-hooks.sh",
     "test:pr-review": "bash tests/commands/test-pr-review.sh",
-    "test:report-review": "bash tests/commands/test-report-review.sh"
+    "test:report-review": "bash tests/commands/test-report-review.sh",
+    "test:install": "bash tests/install/test-install.sh"
   },
   "active_commands": [
     "commands/work.md",
@@ -137,9 +138,13 @@
       "target": "~/.codex/skills/"
     },
     "templates": {
-      "method": "manual symlink",
+      "method": "symlink",
       "source": "templates/",
-      "target": "~/.config/claude-code-kit/templates/"
+      "targets": [
+        "~/.claude/templates/",
+        "~/.codex/templates/"
+      ],
+      "installer": "./install.sh"
     },
     "statusline": {
       "method": "manual installer",

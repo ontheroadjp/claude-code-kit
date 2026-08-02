@@ -101,13 +101,16 @@ patch は新機能追加ではなく既存機能の軽微な修正・改善を�
 3. issue ドラフトを作成して `gh issue create` する（「patch で実施済みの変更」と「追加スコープ」を記載）
 4. `commands/task.md` を Read し、Phase 1 Step 2 から継続する（ブランチ再利用）
 
-根拠: `commands/patch.md:80-104`
+issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude Code では `~/.claude/templates`、Codex CLI では `~/.codex/templates` から解決する。
+
+根拠: `commands/patch.md:9-11`, `commands/patch.md:84-108`
 
 ## 統合ポイント
 
 - 呼び出し元: `commands/work.md`（ルーティング判定後）
 - 呼び出すもの: `/git-commit`
 - エスカレーション先: `commands/task.md`（Phase 1 Step 2 から）
+- issue template: `${TEMPLATES_DIR}/issue.md`
 
 ## 注意事項
 

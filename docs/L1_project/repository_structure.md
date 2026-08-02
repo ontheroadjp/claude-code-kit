@@ -7,7 +7,7 @@ core-toolkit-for-claude/
 ├── AGENTS.md                    # CLAUDE.md への symlink（Codex CLI 向け入口）
 ├── CLAUDE.md                    # AI 運用指示の source of truth
 ├── README.md                    # 人間向け概要、インストール、利用手順
-├── install.sh                   # commands/hooks/skills symlink と Claude/Codex hook settings 登録
+├── install.sh                   # commands/hooks/skills/templates symlink と Claude/Codex hook settings 登録
 ├── setup_statusline.sh          # status line symlink と settings 登録
 ├── .github/workflows/deploy.yml # VitePress site を GitHub Pages へ deploy
 ├── commands/                    # Claude/Codex が読む Markdown command 仕様（README.md あり）
@@ -45,15 +45,15 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 ### `tests/`
 
-shell 検証 scripts を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-pr-review.sh` と `test-report-review.sh` は Markdown workflow の必須句・禁止操作を静的検証する。
+shell 検証 scripts を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-pr-review.sh` と `test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性を検証する。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-pr-review.sh`, `tests/commands/test-report-review.sh`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-pr-review.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh:1-71`
 
 ### `templates/`
 
-issue、PR、README scaffold の template を置く。commands は `~/.config/claude-code-kit/templates/*.md` を参照するため、運用上は `templates/` をその場所へ symlink する。
+issue、PR、README scaffold の template 実体を置く。`install.sh` は各ファイルを Claude Code 用の `~/.claude/templates/` と Codex CLI 用の `~/.codex/templates/` の両方へ symlink し、commands は実行 agent に応じた installed path を参照する。
 
-根拠: `templates/issue.md:1-25`, `templates/pr.md:1-32`, `commands/task.md:131-138`, `commands/new-issue.md:69-76`, `templates/README.md`
+根拠: `templates/issue.md:1-25`, `templates/pr.md:1-32`, `commands/task.md:11-18`, `commands/new-issue.md:11-18`, `install.sh:10-19`, `install.sh:56-63`, `templates/README.md`
 
 ### `docs/`
 
@@ -83,12 +83,13 @@ access、auto-approval、token usage の月次ログを置く。log hooks と to
 
 | 対象 | source | target | 方法 | 根拠 |
 |---|---|---|---|---|
-| Claude commands | `commands/*.md` | `~/.claude/commands/*.md` | `install.sh` が symlink | `install.sh:15-20` |
-| Codex commands | `commands/*.md` | `~/.codex/commands/*.md` | `install.sh` が symlink | `install.sh:22-27` |
-| Claude hooks | `hooks/*.sh` | `~/.claude/hooks/*.sh` | `install.sh` が symlink | `install.sh:29-34` |
-| Codex hooks | `hooks/*.sh` | `~/.codex/hooks/*.sh`, `~/.codex/hooks.json` | `install.sh` が symlink と hooks.json 登録 | `install.sh:35-41`, `install.sh:58-146` |
-| Codex skills | `skills/*/` | `~/.codex/skills/*` | `install.sh` が symlink | `install.sh:43-48` |
-| templates | `templates/*.md` | `~/.config/claude-code-kit/templates/*.md` | `install.sh` が symlink | `install.sh:54-59` |
+| Claude commands | `commands/*.md` | `~/.claude/commands/*.md` | `install.sh` が symlink | `install.sh:21-26` |
+| Codex commands | `commands/*.md` | `~/.codex/commands/*.md` | `install.sh` が symlink | `install.sh:28-33` |
+| Claude hooks | `hooks/*.sh` | `~/.claude/hooks/*.sh` | `install.sh` が symlink | `install.sh:35-40` |
+| Codex hooks | `hooks/*.sh` | `~/.codex/hooks/*.sh`, `~/.codex/hooks.json` | `install.sh` が symlink と hooks.json 登録 | `install.sh:42-47`, `install.sh:72-194` |
+| Codex skills | `skills/*/` | `~/.codex/skills/*` | `install.sh` が symlink | `install.sh:49-54` |
+| Claude templates | `templates/*.md` | `~/.claude/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
+| Codex templates | `templates/*.md` | `~/.codex/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
 | statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `setup_statusline.sh` が symlink | `setup_statusline.sh:6-28` |
 | site | `site/.vitepress/dist` | GitHub Pages | GitHub Actions | `.github/workflows/deploy.yml:39-52` |
 

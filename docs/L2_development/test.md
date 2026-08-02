@@ -2,9 +2,9 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が3本ある。package.json に test script はなく、GitHub Actions も shell tests を実行しないため、現状はローカル検証である。
+このリポジトリには Bash で直接実行する shell tests が4本ある。package.json に test script はなく、GitHub Actions も shell tests を実行しないため、現状はローカル検証である。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-pr-review.sh`, `tests/commands/test-report-review.sh`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-pr-review.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`
 
 ## Hook safety test
 
@@ -27,7 +27,17 @@ bash tests/commands/test-report-review.sh
 
 `test-pr-review.sh` は別 agent routing、HEAD SHA binding、reviewer identity、最大 round、merge/main 操作禁止を確認する。`test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、command/skill catalog 整合性を確認する。
 
-根拠: `tests/commands/test-pr-review.sh:1-60`, `tests/commands/test-report-review.sh:1-72`
+根拠: `tests/commands/test-pr-review.sh:1-67`, `tests/commands/test-report-review.sh:1-72`
+
+## Installer contract test
+
+`tests/install/test-install.sh` は temporary fixture repository と isolated HOME を作成し、`install.sh` を2回実行する。repository の `templates/*.md` が `~/.claude/templates/` と `~/.codex/templates/` の両方へ個別 symlink されること、旧 `~/.config/claude-code-kit/templates` が作成されないこと、再実行しても結果が変わらないことを検証する。
+
+```bash
+bash tests/install/test-install.sh
+```
+
+根拠: `tests/install/test-install.sh:1-71`, `tests/README.md`
 
 ## Site build verification
 

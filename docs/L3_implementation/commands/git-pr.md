@@ -47,6 +47,10 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 
 根拠: `commands/git-pr.md:25-45`
 
+temp の PR body がない場合は `${TEMPLATES_DIR}/pr.md` を fallback として使う。`TEMPLATES_DIR` は Claude Code では `~/.claude/templates`、Codex CLI では `~/.codex/templates` である。
+
+根拠: `commands/git-pr.md:7-9`, `commands/git-pr.md:33-38`
+
 ### review handoff
 
 Step 6 の PR 作成に成功した場合だけ、`gh pr view --json number` で PR 番号を取得して `/pr-review #<number>` を自動実行する。番号取得や review に失敗しても、作成済み PR は close・merge・削除しない。
@@ -71,6 +75,7 @@ Step 6 の PR 作成に成功した場合だけ、`gh pr view --json number` で
 
 - 呼び出し元: `commands/task.md`（Phase 2 Step 1 から `/docs-sync` 完了後に自動呼び出し）、ユーザーの手動呼び出し
 - 呼び出すもの: `/pr-review`（PR 作成成功後）、`git push`・`gh pr create`
+- fallback PR template: `${TEMPLATES_DIR}/pr.md`
 - 依存 temp ファイル（任意）:
     - `SESSION_TMP_DIR/pr-title.txt`（`/task` が書き出す）
     - `SESSION_TMP_DIR/pr-body.md`（`/task` が書き出す）
