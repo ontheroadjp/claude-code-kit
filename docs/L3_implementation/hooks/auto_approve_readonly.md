@@ -276,6 +276,7 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 ## 変更履歴（git log より自動生成）
 
+- 32610ca fix(#196): fix variable-expansion guard gaps found in review
 - a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
 - e740c91 fix(#194): replace node/bash syntax-check denylist with strict single-arg allowlist
 - 6c041c6 fix(#194): close gh api/journalctl/node --check allowlist bypasses
@@ -285,4 +286,3 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 - b2320ec chore: auto-approve update_plan and log webrun payload
 - fc34db6 feat(#148): working repo dynamic defense — WIP commit before write ops (#149)
 - 8b28e5e fix(#146): tighten runtime version detection
-- 61b9658 fix(#146): restrict executable auto-approvals
