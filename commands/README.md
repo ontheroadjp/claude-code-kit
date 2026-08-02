@@ -36,6 +36,7 @@ PR レビューコメント対応は `/review-resolve`（`review-resolve.md`）�
 | `init-docs.md` | `/init-docs` | repo 再観測・設計ドキュメント再構築（重い初期化） |
 | `new-issue.md` | `/new-issue` | 漠然としたアイデアから issue を生成する任意 pre-/work ステップ |
 | `review-resolve.md` | `/review-resolve` | PR レビューコメントへの対応専用エントリポイント |
+| `pr-review.md` | `/pr-review` | 別 AI agent による PR レビューと承認済みスコープ内の修正ループ |
 | `triage-issues.md` | `/triage-issues` | open issue をドキュメントと照合して分類するスタンドアロン入口 |
 | `codex-review.md` | `/codex-review` | Codex CLI で PR をレビューし approve/request-changes を投稿 |
 | `git-commit.md` | `/git-commit` | コミット作成手順（WIP 正規化・Conventional Commits 形式） |
