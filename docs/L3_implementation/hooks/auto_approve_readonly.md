@@ -122,7 +122,9 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 **クォート追跡の詳細:** シングルクォート中は POSIX 上エスケープ機構自体が存在しない（`\` はリテラル文字）。このためシングルクォート判定はエスケープ処理より先に評価する — 逆順だと `'foo\'` のような閉じクォート直前の `\` が閉じクォートを誤って「エスケープ」したと解釈し、クォート状態がそれ以降の text（例えば後続の unquoted `$OPTS`）まで誤って持ち越されてしまう。
 
-根拠: `hooks/auto-approve-readonly.sh:133-183`, `hooks/auto-approve-readonly.sh:317-330`, `hooks/auto-approve-readonly.sh:744-895`
+クォート文字自体も、それが「他方のクォートの内側ではリテラル文字である」ケースを区別する。ダブルクォート内の `'`（例: `curl --user-agent "foo'bar" $OPTS ...`）はシングルクォート開始とはみなさない — bash はダブルクォート内で `'` に特別な意味を与えないため、無条件に `quote="'"` へ遷移すると、以降の実際の閉じダブルクォートを取りこぼしてクォート状態が誤って `'` のまま持ち越され、後続の unquoted `$OPTS` を見逃す。この遷移は現在 `quote` が空（unquoted 状態）のときのみ許可する。
+
+根拠: `hooks/auto-approve-readonly.sh:133-193`, `hooks/auto-approve-readonly.sh:327-340`, `hooks/auto-approve-readonly.sh:754-905`
 
 ### session-approved tool category
 

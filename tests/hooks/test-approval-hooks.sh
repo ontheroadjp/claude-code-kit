@@ -302,7 +302,8 @@ for command in \
     'OUT="--output=/tmp/evil"; git diff "$OUT"' \
     "OPTS='-o /tmp/evil'; curl --user-agent 'foo\\' \$OPTS https://example.com" \
     "YQOPT='-i'; yq \$YQOPT .key=value config.yml" \
-    "SCRIPT='{system(\"touch unsafe\")}'; awk \$SCRIPT README.md"; do
+    "SCRIPT='{system(\"touch unsafe\")}'; awk \$SCRIPT README.md" \
+    "OPTS='-o /tmp/evil'; curl --user-agent \"foo'bar\" \$OPTS https://example.com"; do
     output=$(run_auto "$command")
     assert_no_output "$output"
 done

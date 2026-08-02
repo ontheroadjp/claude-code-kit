@@ -174,9 +174,19 @@ _has_variable_expansion() {
 
         [ "$char" = '$' ] && return 0
 
+        # A quote character only changes state when it is not itself a
+        # literal character inside the OTHER quote style: a ' inside "..."
+        # (and a " inside '...', already handled by the early continue
+        # above) has no special meaning in bash and must not toggle state.
         case "$char" in
-            "'") quote="'" ;;
-            '"') [ "$quote" = '"' ] && quote="" || quote='"' ;;
+            "'") [ -z "$quote" ] && quote="'" ;;
+            '"')
+                if [ "$quote" = '"' ]; then
+                    quote=""
+                elif [ -z "$quote" ]; then
+                    quote='"'
+                fi
+                ;;
         esac
     done
     return 1
