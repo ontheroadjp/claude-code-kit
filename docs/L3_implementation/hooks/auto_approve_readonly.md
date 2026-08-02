@@ -278,6 +278,7 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 ## 変更履歴（git log より自動生成）
 
+- 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
 - 32610ca fix(#196): fix variable-expansion guard gaps found in review
 - a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
 - e740c91 fix(#194): replace node/bash syntax-check denylist with strict single-arg allowlist
@@ -287,4 +288,3 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 - 975df69 feat(#183): allow $() subshells when content is read-only
 - b2320ec chore: auto-approve update_plan and log webrun payload
 - fc34db6 feat(#148): working repo dynamic defense — WIP commit before write ops (#149)
-- 8b28e5e fix(#146): tighten runtime version detection
