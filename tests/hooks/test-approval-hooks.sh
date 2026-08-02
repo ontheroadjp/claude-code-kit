@@ -308,6 +308,15 @@ for command in \
     assert_no_output "$output"
 done
 
+# Round-3 review finding: _extract_subshell_contents / _strip_subshells had
+# no escape handling, so an escaped double quote (\") inside a $(...)
+# argument was misread as closing the string, miscounting paren depth for
+# the rest of the segment. When depth never returns to 0, the trailing text
+# (including a variable reference) is silently dropped from what
+# _has_variable_expansion ever sees, so it auto-approves. Must prompt fallback.
+output=$(run_auto 'OPTS='"'"'-o /tmp/evil'"'"'; curl $(printf https://example.com "\"(") $OPTS')
+assert_no_output "$output"
+
 mkdir -p "$(dirname "$SESSION_FILE")"
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
 output=$(run_auto 'git reset --hard')

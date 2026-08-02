@@ -114,7 +114,7 @@ PreToolUse hook。Read、session temp / session-listed file、read-only Bash、s
 
 `sed` の `e` / `w`、external command を pipe する `awk getline`、file output 等を含む curl short-option cluster は read-only とみなさない。Git write category は shared predicate により `+refspec` push、forced checkout/switch、forced branch deletion を除外する。
 
-根拠: `hooks/auto-approve-readonly.sh:23-920`, `hooks/lib/approval-safety.sh:1-119`, `docs/L3_implementation/hooks/auto_approve_readonly.md`
+根拠: `hooks/auto-approve-readonly.sh:23-951`, `hooks/lib/approval-safety.sh:1-119`, `docs/L3_implementation/hooks/auto_approve_readonly.md`
 
 ### `hooks/lib/approval-safety.sh`
 

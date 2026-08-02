@@ -9,7 +9,7 @@
 
 この分類に確信を持てない操作は出力なしで終了し、クライアントの通常許可フローへ戻す。破壊的操作は allowlist より先に評価し、session-approved が存在しても block する。
 
-根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:309-617`, `hooks/lib/approval-safety.sh`
+根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:619-951`, `hooks/lib/approval-safety.sh`
 
 ## セッションと実行元の解決
 
@@ -45,7 +45,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 12. command を quote-aware に segment 分割する。
 13. 全 segment が読み取り専用または session-approved の場合のみ承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:309-575`
+根拠: `hooks/auto-approve-readonly.sh:619-951`
 
 ## File tool の許可
 
@@ -64,7 +64,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 承認ファイル自身へのスコープ追加は block する。working repo 内の Write / Edit / apply_patch の場合は承認前に WIP commit を作成する。その他は通常許可フローへ戻す。
 
-根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:249-420`
+根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:628-716`
 
 ## Bash command の許可
 
@@ -104,7 +104,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 `curl` の短縮 option は単独形だけでなく結合形も検査する。`-so`、`-sO` のように file output や request body / upload / config を有効化する文字を含む option cluster は通常許可フローへ戻す。`-sSI` のような読み取り専用 cluster は引き続き承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:673-793`
+根拠: `hooks/auto-approve-readonly.sh:785-936`
 
 ### variable expansion の除外
 
@@ -124,7 +124,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 クォート文字自体も、それが「他方のクォートの内側ではリテラル文字である」ケースを区別する。ダブルクォート内の `'`（例: `curl --user-agent "foo'bar" $OPTS ...`）はシングルクォート開始とはみなさない — bash はダブルクォート内で `'` に特別な意味を与えないため、無条件に `quote="'"` へ遷移すると、以降の実際の閉じダブルクォートを取りこぼしてクォート状態が誤って `'` のまま持ち越され、後続の unquoted `$OPTS` を見逃す。この遷移は現在 `quote` が空（unquoted 状態）のときのみ許可する。
 
-根拠: `hooks/auto-approve-readonly.sh:133-193`, `hooks/auto-approve-readonly.sh:327-340`, `hooks/auto-approve-readonly.sh:754-905`
+根拠: `hooks/auto-approve-readonly.sh:133-193`, `hooks/auto-approve-readonly.sh:358-371`, `hooks/auto-approve-readonly.sh:785-936`
 
 ### session-approved tool category
 
@@ -138,7 +138,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 destructive guard に該当する操作は category があっても block する。
 
-根拠: `hooks/auto-approve-readonly.sh:267-306`, `hooks/lib/approval-safety.sh`
+根拠: `hooks/auto-approve-readonly.sh:520-561`, `hooks/lib/approval-safety.sh`
 
 ## 複合 command
 
@@ -168,7 +168,7 @@ newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 
 - 未対応のshell構文
 - 1つでも未許可のsegmentを含む複合command
 
-根拠: `hooks/auto-approve-readonly.sh:128-260`, `hooks/auto-approve-readonly.sh:657-755`
+根拠: `hooks/auto-approve-readonly.sh:128-131`, `hooks/auto-approve-readonly.sh:200-353`, `hooks/auto-approve-readonly.sh:403-457`, `hooks/auto-approve-readonly.sh:941-951`
 
 ## decision とログ
 
@@ -186,7 +186,7 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 
 `detail` は `cut -c1-120` で切り詰めてからログへ書き込む。`cut -c` は non-UTF-8-aware なロケール（`LC_ALL=C` 等）ではバイト単位に振る舞うため、日本語などマルチバイト文字を含む command を境界で切ると不正な UTF-8 バイト列を生成し、`grep` 等ロケール依存ツールがログをバイナリ扱いして検索に失敗する原因になっていた。`truncate_utf8_safe()` は `cut` の直後に `iconv -f UTF-8 -t UTF-8 -c` を通し、切り詰め境界に残った不完全なマルチバイトシーケンスを除去する（`iconv` 不在時は切り詰め結果をそのまま返すフォールバック）。
 
-根拠: `hooks/auto-approve-readonly.sh:64-75`, `hooks/auto-approve-readonly.sh:231-247`, `hooks/auto-approve-readonly.sh:361-380`
+根拠: `hooks/auto-approve-readonly.sh:64-75`, `hooks/auto-approve-readonly.sh:470-500`
 
 ## 動的防御（Working Repo Dynamic Defense）
 
@@ -245,7 +245,7 @@ After:
   user_prompt
 ```
 
-根拠: `hooks/auto-approve-readonly.sh:308-420`
+根拠: `hooks/auto-approve-readonly.sh:628-951`
 
 ### session-approved fast path の安全性根拠
 
@@ -270,11 +270,13 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 `tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作、`git merge-base`、`pgrep`、`gh api`（GET-only）、`gsettings get`系、`journalctl`、`gnome-extensions info/list`、`bash -n`、`node --check`/`-c` を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants、`git merge-base --output`、`gsettings set/reset`、`journalctl --vacuum-*/--rotate/--flush/--update-catalog/--smart-relinquish-var`、`gh api -X/-XPOST/-f/-fkey=value/--input`（区切り文字なしの結合形も含む）、`gnome-extensions enable/disable`、`bash -n` へのフラグ追加・複数引数、`node --check` へのフラグ追加・複数引数（アンダースコア表記や `--experimental-config-file` 経由の preload を含む）を negative case として固定する。
 
+variable expansion の除外については、`node --check $ARGS` 型の報告された bypass に加え、`bash -n`・`curl`・`gh api`・`git diff --output`・`sed`・`find`・`sort`・`date`・`journalctl`・`yq`・`awk` への同型 bypass を negative case として固定し、`cat $FILE`・`grep ... $FILE`・シングルクォート awk script 内の `$1` が引き続き auto-approve されることを positive case で固定する。加えて、`git -C $DIR` operand への変数隠蔽、double-quoted 変数の単一フラグ密輸、シングルクォート内バックスラッシュの誤エスケープ、ダブルクォート文字列内のシングルクォートによるクォート状態誤遷移、`_extract_subshell_contents`/`_strip_subshells` のエスケープ未対応（escaped `"` をクォート終了と誤認し後続の変数参照が silently drop される）という、レビューで発見された5件の追加 bypass を negative case として固定する。
+
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-508`
+根拠: `tests/hooks/test-approval-hooks.sh:1-584`
 
 ## 変更履歴（git log より自動生成）
 

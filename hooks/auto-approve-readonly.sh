@@ -199,7 +199,7 @@ _has_variable_expansion() {
 # This is conservative (may over-block) rather than permissive.
 _extract_subshell_contents() {
     local input="$1"
-    local i char depth=0 current="" quote="" saw_dollar=0
+    local i char depth=0 current="" quote="" saw_dollar=0 escaped=0
     local n="${#input}"
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
@@ -212,7 +212,26 @@ _extract_subshell_contents() {
             continue
         fi
 
-        # Inside $(...): handle nested $( using saw_dollar look-ahead
+        # No escape mechanism inside single quotes (POSIX): check this first,
+        # mirroring _has_variable_expansion's precedence, so a literal
+        # backslash there cannot be misread as escaping the closing quote,
+        # and a literal $( inside a single-quoted string is not mistaken for
+        # a nested subshell (single quotes suppress all expansion).
+        if [ "$quote" = "'" ]; then
+            current+="$char"; [ "$char" = "'" ] && quote=""; continue
+        fi
+
+        if [ "$escaped" = "1" ]; then
+            current+="$char"; escaped=0; continue
+        fi
+        if [ "$char" = "\\" ]; then
+            current+="$char"; escaped=1; continue
+        fi
+
+        # Inside $(...): handle nested $( using saw_dollar look-ahead.
+        # $(...) command substitution is still recognized inside a
+        # double-quoted string in real bash, so this runs before the
+        # quote='"' consume-check below.
         if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
             current+='('; depth=$((depth + 1)); saw_dollar=0; continue
         fi
@@ -221,15 +240,12 @@ _extract_subshell_contents() {
         fi
         saw_dollar=0
 
-        if [ "$quote" = "'" ]; then
-            current+="$char"; [ "$char" = "'" ] && quote=""; continue
-        fi
         if [ "$quote" = '"' ]; then
             current+="$char"; [ "$char" = '"' ] && quote=""; continue
         fi
 
         case "$char" in
-            "'") quote="'"; current+="$char" ;;
+            "'") [ -z "$quote" ] && quote="'"; current+="$char" ;;
             '"') quote='"'; current+="$char" ;;
             '(') depth=$((depth + 1)); current+="$char" ;;
             ')')
@@ -245,7 +261,7 @@ _extract_subshell_contents() {
 # The caller must have already verified the subshell contents via _subshells_are_safe.
 _strip_subshells() {
     local input="$1"
-    local i char depth=0 result="" quote=""
+    local i char depth=0 result="" quote="" escaped=0
     local n="${#input}"
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
@@ -258,18 +274,33 @@ _strip_subshells() {
             result+="$char"; continue
         fi
 
-        # Inside $(...): track nested $( and quotes to find the matching )
+        # No escape mechanism inside single quotes: check this first, so a
+        # literal backslash there cannot be misread as escaping the closing
+        # quote, and a literal $( inside a single-quoted string is not
+        # mistaken for a nested subshell (mirrors _extract_subshell_contents).
+        if [ "$quote" = "'" ]; then
+            [ "$char" = "'" ] && quote=""
+            continue
+        fi
+
+        if [ "$escaped" = "1" ]; then
+            escaped=0; continue
+        fi
+        if [ "$char" = "\\" ]; then
+            escaped=1; continue
+        fi
+
+        # Inside $(...): track nested $( (still recognized inside "...") and
+        # quotes to find the matching )
         if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
             depth=$((depth + 1)); i=$((i + 1)); continue
         fi
-        if [ "$quote" = "'" ]; then
-            [ "$char" = "'" ] && quote=""; continue
-        fi
         if [ "$quote" = '"' ]; then
-            [ "$char" = '"' ] && quote=""; continue
+            [ "$char" = '"' ] && quote=""
+            continue
         fi
         case "$char" in
-            "'") quote="'" ;;
+            "'") [ -z "$quote" ] && quote="'" ;;
             '"') quote='"' ;;
             '(') depth=$((depth + 1)) ;;
             ')') depth=$((depth - 1)) ;;
