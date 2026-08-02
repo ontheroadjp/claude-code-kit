@@ -122,7 +122,11 @@ for command in \
     'git -C /tmp status --porcelain' \
     'rg -n "foo|bar" README.md' \
     'printf value | sed -n '\''1p'\''' \
+    'sed -n '\''/error/p'\'' README.md' \
+    'sed -e '\''s/error/warning/'\'' README.md' \
+    'awk '\''{ getline value; print value }'\'' README.md' \
     'curl --head localhost' \
+    'curl -sSI localhost' \
     'node --version' \
     'npm --version' \
     'python --version' \
@@ -156,9 +160,13 @@ for command in \
     'git diff --output=/tmp/diff.txt' \
     'find . -delete' \
     'sed -i s/a/b/ README.md' \
+    'sed -e '\''w unsafe-output'\'' README.md' \
+    'sed '\''1w unsafe-output'\'' README.md' \
+    'sed -e '\''e touch unsafe-output'\'' README.md' \
     'sort -o /tmp/sorted README.md' \
     'yq -i .key=value config.yml' \
     'awk '\''BEGIN { system("touch /tmp/unsafe") }'\''' \
+    'awk '\''BEGIN { "touch unsafe-output" | getline result }'\''' \
     'env echo value' \
     'date --set tomorrow' \
     'hostname changed-host' \
@@ -168,6 +176,8 @@ for command in \
     'curl -T artifact localhost' \
     'curl -oartifact localhost' \
     'curl -K curl.conf localhost' \
+    'curl -so unsafe-output localhost' \
+    'curl -sO localhost/file' \
     'npm run docs:build' \
     'npm publish' \
     'npm audit --fix' \
@@ -228,12 +238,16 @@ assert_json_decision "$output" "approve"
 for command in \
     'git fetch origin main' \
     'git -C /tmp fetch origin main' \
-    'git pull --ff-only origin main'; do
+    'git pull --ff-only origin main' \
+    'git branch -d merged-branch'; do
     output=$(run_auto "$command")
     assert_json_decision "$output" "approve"
 done
 
 output=$(run_auto $'git status --porcelain\ngit checkout main\ngit pull --ff-only origin main\ngit status --short\ngit log -1 --oneline')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'test -d . && git branch --show-current && test -f README.md')
 assert_json_decision "$output" "approve"
 
 output=$(run_auto $'if [ -f ~/.config/claude-code-kit/partials/git-commit.md ]; then\n  sed -n '\''1,280p'\'' ~/.config/claude-code-kit/partials/git-commit.md\nelse\n  sed -n '\''1,280p'\'' partials/git-commit.md\nfi\ngit add docs/L3_implementation/specification_summary.md\ngit diff --staged\ngit commit -m "docs: sync documentation"\ngit push origin feature\ngit status --porcelain')
@@ -245,6 +259,17 @@ for command in \
     'gh pr merge 143'; do
     output=$(run_auto "$command")
     assert_no_output "$output"
+done
+
+for command in \
+    'git push origin +main:main' \
+    'git checkout -f main' \
+    'git checkout --force main' \
+    'git switch --force main' \
+    'git branch --delete --force old-branch' \
+    'git branch -df old-branch'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "block"
 done
 
 printf '%s\n' 'tool:git_write' 'tool:gh_pr_write' > "$SESSION_FILE"
@@ -276,7 +301,18 @@ assert_no_output "$output"
 output=$(run_guard 'git reset --hard')
 assert_json_decision "$output" "block"
 
+for command in \
+    'git push origin +main:main' \
+    'git checkout --force main' \
+    'git branch --delete --force old-branch'; do
+    output=$(run_guard "$command")
+    assert_json_decision "$output" "block"
+done
+
 output=$(run_guard 'git status --porcelain')
+assert_no_output "$output"
+
+output=$(run_guard 'test -d . && git branch --show-current && test -f README.md')
 assert_no_output "$output"
 
 run_cleanup "$SESSION_ID"

@@ -1,6 +1,34 @@
 #!/bin/bash
 # Shared PreToolUse Bash safety checks.
 
+approval_safety_is_force_push() {
+    local command="$1"
+
+    printf '%s' "$command" | grep -qE '\bgit\b[^#]*\bpush\b[^#]*([[:space:]]--force([=-][^[:space:]]*)?([[:space:]]|$)|[[:space:]]-[^-[:space:]]*f[^[:space:]]*([[:space:]]|$)|[[:space:]]\+[^[:space:]]+)'
+}
+
+approval_safety_is_force_checkout() {
+    local command="$1"
+
+    printf '%s' "$command" | grep -qE '\bgit\b[^#]*\b(checkout|switch)\b[^#]*([[:space:]]--force([=[:space:]]|$)|[[:space:]]-[^-[:space:]]*f[^[:space:]]*([[:space:]]|$))'
+}
+
+approval_safety_is_force_branch_delete() {
+    local command="$1" branch_segment
+
+    while IFS= read -r branch_segment; do
+        printf '%s' "$branch_segment" | grep -qE '[[:space:]]-[^-[:space:]]*D[^[:space:]]*([[:space:]]|$)' && return 0
+        printf '%s' "$branch_segment" | grep -qE '[[:space:]]-[^-[:space:]]*(d[^[:space:]]*f|f[^[:space:]]*d)[^[:space:]]*([[:space:]]|$)' && return 0
+
+        if printf '%s' "$branch_segment" | grep -qE '([[:space:]]--delete([=[:space:]]|$)|[[:space:]]-d([[:space:]]|$))' \
+            && printf '%s' "$branch_segment" | grep -qE '([[:space:]]--force([=[:space:]]|$)|[[:space:]]-f([[:space:]]|$))'; then
+            return 0
+        fi
+    done < <(printf '%s' "$command" | grep -oE '\bgit\b[^;&|#]*\bbranch\b[^;&|#]*' || true)
+
+    return 1
+}
+
 approval_safety_destructive_reason() {
     local command="$1"
 
@@ -44,7 +72,7 @@ approval_safety_destructive_reason() {
         printf '%s\n' "git history rewrite (filter-branch/filter-repo) detected"
         return 0
     fi
-    if printf '%s' "$command" | grep -qE '\bgit\b[^#]*\bpush\b[^#]*(--force\b|-f\b|--force-with-lease\b)'; then
+    if approval_safety_is_force_push "$command"; then
         printf '%s\n' "git force push may overwrite remote history"
         return 0
     fi
@@ -60,6 +88,10 @@ approval_safety_destructive_reason() {
         printf '%s\n' "git checkout -- . discards uncommitted changes"
         return 0
     fi
+    if approval_safety_is_force_checkout "$command"; then
+        printf '%s\n' "git checkout/switch --force may discard uncommitted changes"
+        return 0
+    fi
     if printf '%s' "$command" | grep -qE '\bgit\b[^#]*\brestore\b[^#]*(^|\s)\.((\s)|$)'; then
         printf '%s\n' "git restore . discards uncommitted changes"
         return 0
@@ -68,8 +100,8 @@ approval_safety_destructive_reason() {
         printf '%s\n' "git clean -fd permanently removes untracked files"
         return 0
     fi
-    if printf '%s' "$command" | grep -qE '\bgit\b[^#]*\bbranch\b[^#]*\s-D\b'; then
-        printf '%s\n' "git branch -D force deletes a branch"
+    if approval_safety_is_force_branch_delete "$command"; then
+        printf '%s\n' "git branch force delete permanently deletes a branch"
         return 0
     fi
     if printf '%s' "$command" | grep -qE '\bgit\b[^#]*\bstash\b[^#]*\b(drop|clear)\b'; then
