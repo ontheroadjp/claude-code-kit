@@ -135,7 +135,21 @@ for command in \
     'npm view vitepress version' \
     'npm list --depth=0' \
     'npm config get registry' \
-    'npm run'; do
+    'npm run' \
+    'git merge-base main HEAD' \
+    'git merge-base --is-ancestor main HEAD' \
+    'pgrep -f node' \
+    'gh api repos/octocat/hello-world' \
+    'gh api repos/octocat/hello-world --paginate' \
+    'gsettings get org.gnome.desktop.interface gtk-theme' \
+    'gsettings list-recursively org.gnome.desktop.interface' \
+    'journalctl -u ssh -n 50' \
+    'journalctl --since today' \
+    'gnome-extensions info example-extension-uuid' \
+    'gnome-extensions list' \
+    'bash -n script.sh' \
+    'node --check script.js' \
+    'node -c script.js'; do
     output=$(run_auto "$command")
     assert_json_decision "$output" "approve"
 done
@@ -190,7 +204,22 @@ for command in \
     'pytest' \
     'python -m pytest' \
     'echo "$(some-unknown-command)"' \
-    'cat <(some-unknown-command)'; do
+    'cat <(some-unknown-command)' \
+    'git merge-base --output=/tmp/x main HEAD' \
+    'gsettings set org.gnome.desktop.interface gtk-theme Adwaita' \
+    'gsettings reset org.gnome.desktop.interface gtk-theme' \
+    'journalctl --vacuum-time=1s' \
+    'journalctl --rotate' \
+    'journalctl --flush' \
+    'gh api repos/octocat/hello-world -X POST' \
+    'gh api repos/octocat/hello-world -f key=value' \
+    'gh api repos/octocat/hello-world --input body.json' \
+    'gnome-extensions disable example-extension-uuid' \
+    'gnome-extensions enable example-extension-uuid' \
+    'bash -n -c "echo hi"' \
+    'bash script.sh' \
+    'node --check -e "process.exit(1)"' \
+    'node script.js'; do
     output=$(run_auto "$command")
     assert_no_output "$output"
 done
@@ -447,6 +476,32 @@ commits_after=$(git -C "$TEST_GIT_REPO" log --oneline | wc -l | tr -d ' ')
 if [ "$commits_after" -ne "$commits_before" ]; then
     printf 'Expected no WIP commit for Write on clean tree, got %s (before %s)\n' \
         "$commits_after" "$commits_before" >&2
+    exit 1
+fi
+
+# --- Multibyte log truncation regression test ---
+# Force byte-wise `cut -c` (LC_ALL=C) to reproduce the truncation bug: a
+# multibyte command long enough to overflow the 120-char log limit at a
+# non-character-aligned byte offset must still produce a valid UTF-8,
+# grep-matchable log line.
+multibyte_command="echo A$(printf 'あ%.0s' $(seq 1 45))"
+output=$(jq -cn --arg command "$multibyte_command" '{tool_name:"Bash",tool_input:{command:$command}}' \
+    | env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
+        LC_ALL=C \
+        CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
+        CLAUDE_CODE_KIT_SESSION_ID="$SESSION_ID" \
+        CLAUDE_CODE_KIT_SESSION_APPROVED_FILE="$SESSION_FILE" \
+        CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
+        bash "$AUTO_HOOK")
+assert_json_decision "$output" "approve"
+
+multibyte_log_line=$(tail -n 1 "$LOG_FILE")
+if ! printf '%s' "$multibyte_log_line" | grep -qE 'result=approved[[:space:]]+tool=Bash'; then
+    printf 'Multibyte log line not grep-matchable: %s\n' "$multibyte_log_line" >&2
+    exit 1
+fi
+if ! printf '%s' "$multibyte_log_line" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1; then
+    printf 'Multibyte log line contains invalid UTF-8: %s\n' "$multibyte_log_line" >&2
     exit 1
 fi
 

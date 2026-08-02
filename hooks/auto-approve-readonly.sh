@@ -269,7 +269,7 @@ is_safe_git_read_command() {
     has_unsupported_expansion "$seg" && return 1
     printf '%s' "$seg" | grep -qE '(^|[[:space:]])--output([=[:space:]]|$)' && return 1
 
-    printf '%s' "$seg" | grep -qE '^git[[:space:]]+(status|log|diff|show|describe|rev-parse|ls-files|ls-tree|cat-file|blame|shortlog)([[:space:]]|$)' && return 0
+    printf '%s' "$seg" | grep -qE '^git[[:space:]]+(status|log|diff|show|describe|rev-parse|ls-files|ls-tree|cat-file|blame|shortlog|merge-base)([[:space:]]|$)' && return 0
     printf '%s' "$seg" | grep -qE '^git[[:space:]]+stash[[:space:]]+list([[:space:]]|$)' && return 0
     printf '%s' "$seg" | grep -qE '^git[[:space:]]+worktree[[:space:]]+list([[:space:]]|$)' && return 0
 
@@ -354,11 +354,26 @@ split_shell_segments() {
     printf '%s\n' "$current"
 }
 
+# cut -c operates byte-wise under a non-UTF-8-aware locale (e.g. LC_ALL=C),
+# which can split a multibyte character at the truncation boundary and emit
+# invalid UTF-8 into the log. iconv -c drops any incomplete trailing sequence
+# left by the cut, regardless of which locale produced it.
+truncate_utf8_safe() {
+    local text="$1" limit="${2:-120}"
+    local truncated
+    truncated=$(printf '%s' "$text" | cut -c1-"$limit")
+    if command -v iconv >/dev/null 2>&1; then
+        printf '%s' "$truncated" | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null || printf '%s' "$truncated"
+    else
+        printf '%s' "$truncated"
+    fi
+}
+
 log_decision() {
     local result="$1" tool="$2" detail="${3:-}"
     mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || return 0
     local short
-    short=$(printf '%s' "$detail" | tr '\n' ' ' | cut -c1-120)
+    short=$(truncate_utf8_safe "$(printf '%s' "$detail" | tr '\n' ' ')" 120)
     printf '[%s] agent=%s session=%s result=%-12s tool=%-10s %s\n' \
         "$(date '+%Y-%m-%d %H:%M:%S')" "$AGENT" "$LOG_SESSION_ID" \
         "$result" "$tool" "$short" >> "$LOG_FILE" || true
@@ -697,9 +712,13 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+(issue|pr|label|repo|release|run|workflow)[[:space:]]+(list|view|status)(\s|$)' && return 0
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+checks(\s|$)' && return 0
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+auth[[:space:]]+status(\s|$)' && return 0
+    if printf '%s' "$seg" | grep -qE '^gh[[:space:]]+api(\s|$)'; then
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X|--method|-f|-F|--field|--raw-field|--input)([=[:space:]]|$)' && return 1
+        return 0
+    fi
     # Standard read-only Unix tools (prefer fd over find)
     printf '%s' "$seg" | grep -qE '^cd(\s|$)' && return 0
-    printf '%s' "$seg" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|jq|column|nl)(\s|$)' && return 0
+    printf '%s' "$seg" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl)(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^find(\s|$)'; then
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(delete|exec|execdir|ok|okdir|fls|fprint|fprintf)([[:space:]]|$)' && return 1
         return 0
@@ -729,11 +748,31 @@ is_safe_segment() {
     fi
     printf '%s' "$seg" | grep -qE '^hostname[[:space:]]*$' && return 0
 
-    # Runtime version checks
+    # journalctl — read-only log query; exclude maintenance/mutating operations
+    if printf '%s' "$seg" | grep -qE '^journalctl(\s|$)'; then
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--setup-keys|--force)([=[:space:]]|$)' && return 1
+        return 0
+    fi
+
+    # gsettings — allow read-only introspection subcommands only
+    printf '%s' "$seg" | grep -qE '^gsettings[[:space:]]+(get|list-schemas|list-relocatable-schemas|list-keys|list-children|list-recursively|range|describe|writable)(\s|$)' && return 0
+
+    # gnome-extensions — allow read-only introspection subcommands only
+    printf '%s' "$seg" | grep -qE '^gnome-extensions[[:space:]]+(info|list)(\s|$)' && return 0
+
+    # Runtime version / syntax-check-only invocations
     printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^go[[:space:]]+version[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(bash|zsh)[[:space:]]+--version[[:space:]]*$' && return 0
+    if printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n(\s|$)'; then
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])-c([[:space:]]|$)' && return 1
+        return 0
+    fi
+    if printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)(\s|$)'; then
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-e|--eval|-p|--print)([=[:space:]]|$)' && return 1
+        return 0
+    fi
 
     # curl — allow default GET/HEAD requests only; reject writes and custom methods
     if printf '%s' "$seg" | grep -qE '^curl(\s|$)'; then
