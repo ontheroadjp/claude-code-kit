@@ -86,4 +86,5 @@ Step 6 の PR 作成に成功した場合だけ、`gh pr view --json number` で
 
 ## 変更履歴（git log より自動生成）
 
+- d94812c feat(#185): add autonomous cross-agent PR review workflow
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync

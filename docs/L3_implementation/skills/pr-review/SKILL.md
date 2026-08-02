@@ -30,3 +30,7 @@ Claude commands と Codex skills の挙動差を防ぐため、詳細仕様は c
 
 - command が missing/unreadable の場合は workflow を実行しない
 - review の具体的な gate と終了条件は command 側だけで管理する
+
+## 変更履歴（git log より自動生成）
+
+- d94812c feat(#185): add autonomous cross-agent PR review workflow

@@ -82,3 +82,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 - review 出力が所定形式でない場合は GitHub review を投稿せず `FAILED` で終了する
 - PR merge、close、branch 削除、main 同期は行わない
 - 3ラウンドで収束しない finding は人間判断へ返す
+
+## 変更履歴（git log より自動生成）
+
+- d94812c feat(#185): add autonomous cross-agent PR review workflow

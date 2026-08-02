@@ -70,6 +70,12 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 根拠: `commands/codex-review.md:1-155`
 
+### `/pr-review` (`commands/pr-review.md`)
+
+PR 番号を受け取り、実装元が Claude なら Codex、Codex なら Claude を read-only reviewer として起動する。各ラウンドで最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
+
+根拠: `commands/pr-review.md:1-190`
+
 ### `/coding-*` (`commands/coding-*.md`)
 
 `coding-general` は言語非依存の原則を定義し、`coding-py`、`coding-js`、`coding-ts` はそれぞれ言語固有ルールを追加する。`coding-ts` は `coding-general` と `coding-js` を先に参照する。
@@ -84,15 +90,15 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ### `/git-pr` (`commands/git-pr.md`)
 
-`git push` と `gh pr create` を担う単一責任のスラッシュコマンド。`/task` Phase 2 から `/docs-sync` 完了後に自動呼び出しされる。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-title.txt`（タイトル）・`pr-body.md`（本文）・`pr-docs-sync-result.md`（docs sync 結果）を参照し、存在しない場合は git diff / テンプレートから生成する。PR は ready for review として直接作成する（draft → ready 遷移なし）。ユーザーが手動で呼び出すこともできる。
+`git push` と `gh pr create` を担うスラッシュコマンド。`/task` Phase 2 から `/docs-sync` 完了後に自動呼び出しされる。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-title.txt`（タイトル）・`pr-body.md`（本文）・`pr-docs-sync-result.md`（docs sync 結果）を参照し、存在しない場合は git diff / テンプレートから生成する。PR は ready for review として直接作成し、作成成功後だけ PR 番号を `/pr-review` へ自動で引き継ぐ。Step 1〜7 の既存 PR 作成手順は変更せず、review handoff は Step 8 に分離されている。
 
-根拠: `commands/git-pr.md:1-60`
+根拠: `commands/git-pr.md:1-73`
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は 15 件で、`commands/` にある各 command と対応する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は 16 件で、`commands/` にある各 command と対応する。`pr-review` skill は merge・branch 削除・main 同期を人間管理に残す command の責務境界も保持する。
 
-根拠: `skills/init-docs/SKILL.md:1-14`, `skills/coding-ts/SKILL.md`, `skills/git-commit/SKILL.md`, `skills/git-pr/SKILL.md`, `skills/` 実体一覧
+根拠: `skills/init-docs/SKILL.md:1-14`, `skills/coding-ts/SKILL.md`, `skills/git-commit/SKILL.md`, `skills/git-pr/SKILL.md`, `skills/pr-review/SKILL.md`, `skills/` 実体一覧
 
 ## Hooks
 
@@ -151,6 +157,10 @@ codex()  { command codex  "$@"; bash ~/.claude/hooks/tmux-agent-status.sh 2>/dev
 `tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp 配下の Write/Edit approval、session temp 範囲外や symlink session temp の prompt fallback、cleanup hook による current session temp directory 削除、write-effect / ambiguous command の prompt fallback、`guard-destructive-cmd.sh` の JSON block output を検証する。また working repo dynamic defense として、Write / Edit / apply_patch / rm -rf の repo 内パス承認・WIP commit 作成・repo 外 prompt fallback・repo root / .git / 複数パス / 変数展開の除外・clean tree での WIP commit 非作成を検証する。
 
 根拠: `tests/hooks/test-approval-hooks.sh:1-407`
+
+`tests/commands/test-pr-review.sh` は `/pr-review` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、最大3ラウンド、HEAD SHA 結合、別 reviewer identity、session-approved 制限、GitHub review 投稿、および merge・main 同期・branch 削除の禁止を確認する。
+
+根拠: `tests/commands/test-pr-review.sh:1-60`
 
 ## Install and Status Line
 

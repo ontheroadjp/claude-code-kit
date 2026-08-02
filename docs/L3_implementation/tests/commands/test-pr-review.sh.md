@@ -40,3 +40,7 @@
 
 - 静的 contract test であり、外部 CLI や GitHub API の実通信は行わない
 - 文言変更時は意図した契約変更か確認して test pattern も更新する
+
+## 変更履歴（git log より自動生成）
+
+- d94812c feat(#185): add autonomous cross-agent PR review workflow
