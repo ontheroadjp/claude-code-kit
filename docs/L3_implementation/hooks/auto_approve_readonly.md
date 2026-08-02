@@ -81,10 +81,10 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | GitHub CLI | issue/PR/repository/release/run/workflow の list/view/status、`gh pr checks`、`gh auth status`、`gh api`（デフォルト GET） | write action、`gh api` の `-X/--method`, `-f/-F/--field`, `--raw-field`, `--input` |
 | Shell navigation / test | `cd`, `test`, `[ ... ]`, read-only `if` | command/process substitution、operatorを含む test |
 | Unix read tools | `ls`, `cat`, `head`, `tail`, grep 系、`rg`, `fd`, `wc`, `cut`, `tr`, `sed`, `awk`, `sort`, `jq`, `yq`, `nl`, `pgrep` など | 下記のwrite/execute mode |
-| Runtime | version 表示、`bash -n`（構文チェックのみ）、`node --check`/`-c`（構文チェックのみ） | script / program 実行、`bash -n` の `-c` 併用、`node --check` の `-e/--eval/-p/--print` 併用 |
+| Runtime | version 表示、`bash -n`（構文チェックのみ）、`node --check`/`-c`（構文チェックのみ） | script / program 実行、`bash -n` の `-c` 併用、`node --check` の `-e/--eval/-p/--print`・`-r/--require/--import/--loader/--experimental-loader` 併用（preload はチェックのみでも top-level code を実行するため） |
 | curl | default GET / HEAD 相当 | custom method、data/form、upload、config、file output |
 | npm | metadata照会、config取得、引数なしの `npm run` | script実行、publish、install、audit fix等 |
-| journalctl | ログ照会全般 | `--vacuum-size/--vacuum-time/--vacuum-files`, `--rotate`, `--flush`, `--sync`, `--relinquish-var`, `--setup-keys`, `--force` |
+| journalctl | ログ照会全般 | `--vacuum-size/--vacuum-time/--vacuum-files`, `--rotate`, `--flush`, `--sync`, `--relinquish-var`, `--setup-keys`, `--update-catalog`, `--force` |
 | gsettings | `get`, `list-schemas`, `list-relocatable-schemas`, `list-keys`, `list-children`, `list-recursively`, `range`, `describe`, `writable` | `set`, `reset`, `reset-recursively`, `monitor` |
 | gnome-extensions | `info`, `list` | `enable`, `disable`, `install`, `uninstall` 等 |
 
@@ -248,7 +248,7 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 ## テストと既知の制限
 
-`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作、`git merge-base`、`pgrep`、`gh api`（GET-only）、`gsettings get`系、`journalctl`、`gnome-extensions info/list`、`bash -n`、`node --check`/`-c` を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants、`git merge-base --output`、`gsettings set/reset`、`journalctl --vacuum-*/--rotate/--flush`、`gh api -X/-f/--input`、`gnome-extensions enable/disable`、`bash -n -c`、`node --check -e` を negative case として固定する。
+`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作、`git merge-base`、`pgrep`、`gh api`（GET-only）、`gsettings get`系、`journalctl`、`gnome-extensions info/list`、`bash -n`、`node --check`/`-c` を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants、`git merge-base --output`、`gsettings set/reset`、`journalctl --vacuum-*/--rotate/--flush/--update-catalog`、`gh api -X/-XPOST/-f/-fkey=value/--input`（区切り文字なしの結合形も含む）、`gnome-extensions enable/disable`、`bash -n -c`、`node --check -e/-r/--require/--import` を negative case として固定する。
 
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 

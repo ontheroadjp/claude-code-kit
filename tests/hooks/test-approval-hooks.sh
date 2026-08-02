@@ -211,14 +211,21 @@ for command in \
     'journalctl --vacuum-time=1s' \
     'journalctl --rotate' \
     'journalctl --flush' \
+    'journalctl --update-catalog' \
     'gh api repos/octocat/hello-world -X POST' \
+    'gh api repos/octocat/hello-world -XPOST' \
     'gh api repos/octocat/hello-world -f key=value' \
+    'gh api repos/octocat/hello-world -fkey=value' \
+    'gh api repos/octocat/hello-world -Fkey=value' \
     'gh api repos/octocat/hello-world --input body.json' \
     'gnome-extensions disable example-extension-uuid' \
     'gnome-extensions enable example-extension-uuid' \
     'bash -n -c "echo hi"' \
     'bash script.sh' \
     'node --check -e "process.exit(1)"' \
+    'node --check -r ./side-effect.js target.js' \
+    'node --check --require ./side-effect.js target.js' \
+    'node --check --import ./side-effect.js target.js' \
     'node script.js'; do
     output=$(run_auto "$command")
     assert_no_output "$output"
@@ -484,7 +491,10 @@ fi
 # multibyte command long enough to overflow the 120-char log limit at a
 # non-character-aligned byte offset must still produce a valid UTF-8,
 # grep-matchable log line.
-multibyte_command="echo A$(printf 'あ%.0s' $(seq 1 45))"
+# "echo AB" is a 7-byte ASCII prefix; each subsequent "あ" is 3 bytes, so byte
+# offset 120 falls on the middle byte of the 38th "あ" — a genuine
+# mid-character split, not a coincidental character boundary.
+multibyte_command="echo AB$(printf 'あ%.0s' $(seq 1 45))"
 output=$(jq -cn --arg command "$multibyte_command" '{tool_name:"Bash",tool_input:{command:$command}}' \
     | env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
         LC_ALL=C \

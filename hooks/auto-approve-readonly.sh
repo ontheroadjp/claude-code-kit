@@ -358,15 +358,25 @@ split_shell_segments() {
 # which can split a multibyte character at the truncation boundary and emit
 # invalid UTF-8 into the log. iconv -c drops any incomplete trailing sequence
 # left by the cut, regardless of which locale produced it.
+#
+# iconv still exits non-zero for an incomplete trailing sequence even with
+# -c ("incomplete character or shift sequence at end of buffer"), but it has
+# already flushed the cleaned, valid prefix to stdout by that point. Capture
+# that output exactly once — do not re-invoke iconv/printf based on its exit
+# status, or the fallback output gets appended after the already-flushed
+# stdout instead of replacing it.
 truncate_utf8_safe() {
     local text="$1" limit="${2:-120}"
-    local truncated
+    local truncated cleaned
     truncated=$(printf '%s' "$text" | cut -c1-"$limit")
     if command -v iconv >/dev/null 2>&1; then
-        printf '%s' "$truncated" | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null || printf '%s' "$truncated"
-    else
-        printf '%s' "$truncated"
+        cleaned=$(printf '%s' "$truncated" | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null)
+        if [ -n "$cleaned" ] || [ -z "$truncated" ]; then
+            printf '%s' "$cleaned"
+            return
+        fi
     fi
+    printf '%s' "$truncated"
 }
 
 log_decision() {
@@ -713,7 +723,8 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+checks(\s|$)' && return 0
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+auth[[:space:]]+status(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^gh[[:space:]]+api(\s|$)'; then
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X|--method|-f|-F|--field|--raw-field|--input)([=[:space:]]|$)' && return 1
+        # -X/-f/-F accept an attached value with no separator (e.g. -XPOST, -fkey=value)
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X[^[:space:]]*|-f[^[:space:]]*|-F[^[:space:]]*|--method([=[:space:]]|$)|--field([=[:space:]]|$)|--raw-field([=[:space:]]|$)|--input([=[:space:]]|$))' && return 1
         return 0
     fi
     # Standard read-only Unix tools (prefer fd over find)
@@ -750,7 +761,7 @@ is_safe_segment() {
 
     # journalctl — read-only log query; exclude maintenance/mutating operations
     if printf '%s' "$seg" | grep -qE '^journalctl(\s|$)'; then
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--setup-keys|--force)([=[:space:]]|$)' && return 1
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--setup-keys|--update-catalog|--force)([=[:space:]]|$)' && return 1
         return 0
     fi
 
@@ -770,7 +781,9 @@ is_safe_segment() {
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)(\s|$)'; then
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-e|--eval|-p|--print)([=[:space:]]|$)' && return 1
+        # --require/-r and --import/--loader preload modules and execute their
+        # top-level code even when --check skips executing the main script.
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-e|--eval|-p|--print|-r|--require|--import|--loader|--experimental-loader)([=[:space:]]|$)' && return 1
         return 0
     fi
 
