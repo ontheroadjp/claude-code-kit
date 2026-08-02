@@ -88,4 +88,5 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 ## 変更履歴（git log より自動生成）
 
+- b74d919 fix(#189): use codex exec for structured pr reviews
 - d94812c feat(#185): add autonomous cross-agent PR review workflow

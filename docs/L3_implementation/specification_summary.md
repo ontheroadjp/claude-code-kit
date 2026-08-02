@@ -78,7 +78,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ### `/pr-review` (`commands/pr-review.md`)
 
-PR 番号を受け取り、実装元が Claude なら Codex、Codex なら Claude を read-only reviewer として起動する。各ラウンドで最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
+PR 番号を受け取り、実装元が Claude なら `codex exec --sandbox read-only --ephemeral`、Codex なら Read-only の Claude を reviewer として起動する。Codex は `--output-last-message` で保存した最終回答だけを機械判定対象とする。各ラウンドで最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
 
 根拠: `commands/pr-review.md:1-190`
 
