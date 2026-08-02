@@ -280,6 +280,7 @@ variable expansion の除外については、`node --check $ARGS` 型の報告�
 
 ## 変更履歴（git log より自動生成）
 
+- ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
 - 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
 - 32610ca fix(#196): fix variable-expansion guard gaps found in review
 - a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
@@ -289,4 +290,3 @@ variable expansion の除外については、`node --check $ARGS` 型の報告�
 - 9d1d78f fix(#156): harden auto-approval boundary checks
 - 975df69 feat(#183): allow $() subshells when content is read-only
 - b2320ec chore: auto-approve update_plan and log webrun payload
-- fc34db6 feat(#148): working repo dynamic defense — WIP commit before write ops (#149)
