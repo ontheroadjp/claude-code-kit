@@ -2,24 +2,33 @@
 
 ## 通常作業フロー
 
-`/review-resolve` 以外の実装作業は `/work` から開始する。`/work` は main へ切り替え、`docs/.ai/repo.profile.json` を確認し、workspace 差分の扱いを決め、現状調査後に task または patch へ委譲する。
+`/review-resolve` と `/pr-review` 以外の作業は `/work` から開始する。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、それ以外は現状調査後に task または patch へ進む。
 
-根拠: `commands/work.md:7-119`
+根拠: `commands/work.md:7-143`
 
 ## ルーティング
 
-判定は「この変更の結果として `docs/*` に追加・変更・削除が必要か」で行う。
+issue 番号がある場合は最初に exact `report` label を判定する。
+
+- `report` label の issue: `commands/report-review.md` を Read し、read-only 評価で終了する。
+- report issue 以外: 次の実装 routing を行う。
 
 - issue 起点、または docs 変更が必要な場合: `commands/task.md` を Read し task flow を実行する。
 - issue なし、かつ docs 変更が不要な場合: `commands/patch.md` を Read し patch flow を実行する。
 
-根拠: `commands/work.md:61-92`
+根拠: `commands/work.md:53-115`
+
+## report-review flow
+
+`report-review.md` は issue title/body/labels/state/URL と必要な repository evidence を読み、Facts、Assessment、Opinions、Proposals、Risks and Unknowns を分離して標準出力へ提示する。ファイル、Git state、GitHub issue / PR を変更せず、task/patch/docs-sync/git-pr に委譲しない。
+
+根拠: `commands/report-review.md:5-14`, `commands/report-review.md:20-91`
 
 ## task flow
 
-`task.md` は docs 変更を伴う実装専用で、issue 確認または自動生成、現状調査補完、プラン策定、ユーザー許可、実装、commit、draft PR 作成、`/docs-sync` 実行へ進む。task flow は `docs/*` を直接変更しない。
+`task.md` は docs 変更を伴う実装専用で、issue 確認または自動生成、調査補完、プラン承認、実装、L3 per-file doc、commit、PR title/body 準備、`/docs-sync`、`/git-pr` へ進む。一般 docs は直接変更せず、L3 per-file doc だけを実装 snapshot として管理する。
 
-根拠: `commands/task.md:1-15`, `commands/task.md:42-154`
+根拠: `commands/task.md:1-15`, `commands/task.md:30-179`
 
 ## patch flow
 
@@ -29,9 +38,9 @@
 
 ## docs-sync flow
 
-`docs-sync.md` は main 以外の PR ブランチで実行され、PR の draft 状態確認、`git diff main...HEAD --name-only`、HARD STOP 判定、docs/README の最小更新、commit/push、draft PR の ready 化を行う。
+`docs-sync.md` は main 以外の branch で `git diff main...HEAD` を事実として HARD STOP を判定し、docs/README と既存 L3 per-file doc の変更履歴を最小更新・commit する。push と PR 作成は行わず、結果を session temp に書いて `/git-pr` へ渡す。
 
-根拠: `commands/docs-sync.md:13-35`, `commands/docs-sync.md:39-160`
+根拠: `commands/docs-sync.md:1-10`, `commands/docs-sync.md:13-173`
 
 ## init-docs flow
 
@@ -53,6 +62,12 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 根拠: `commands/codex-review.md:1-155`
 
+## pr-review flow
+
+`pr-review.md` は ready PR を実装元とは別の AI agent と GitHub account で review する。各 round の HEAD SHA を固定し、blocking finding は承認済み scope 内だけで元 agent が修正する。最大3 round で終了し、merge、branch 削除、main checkout/pull は人間に残す。
+
+根拠: `commands/pr-review.md:1-15`, `commands/pr-review.md:77-190`
+
 ## triage-issues flow
 
 `triage-issues.md` は open issue を取得し、repo profile と仕様サマリに照らして stale / inconsistent / duplicated / unclear / ready に分類する。close / comment / edit / label などの issue 操作はユーザー承認後のみ実行する。
@@ -69,10 +84,13 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 | `cd site && npm run docs:dev` | VitePress dev server | `site/package.json:4-8` |
 | `cd site && npm run docs:build` | VitePress build。CI でも実行 | `site/package.json:4-8`, `.github/workflows/deploy.yml:35-37` |
 | `cd site && npm run docs:preview` | built site preview | `site/package.json:4-8` |
+| `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
+| `bash tests/commands/test-pr-review.sh` | pr-review workflow contract | `tests/commands/test-pr-review.sh` |
+| `bash tests/commands/test-report-review.sh` | report-review workflow contract | `tests/commands/test-report-review.sh` |
 
 ## CI/CD
 
-`.github/workflows/deploy.yml` は main push と manual dispatch で実行される。build job は Node.js 24 を setup し、`site/` で `npm ci` と `npm run docs:build` を実行し、`site/.vitepress/dist` を Pages artifact として upload する。deploy job は `actions/deploy-pages@v4` で GitHub Pages に deploy する。
+`.github/workflows/deploy.yml` は main push と manual dispatch で実行される。build job は Node.js 24 を setup し、`site/` で `npm ci` と `npm run docs:build` を実行し、`site/.vitepress/dist` を Pages artifact として upload する。deploy job は `actions/deploy-pages@v5` で GitHub Pages に deploy する。
 
 根拠: `.github/workflows/deploy.yml:1-53`
 
@@ -80,4 +98,4 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 ## 未確認事項
 
-自動テスト用の dedicated test command は確認できない。site build が CI 上の主要検証である。根拠: `site/package.json:4-8`, `.github/workflows/deploy.yml:31-37`
+shell tests は存在するが CI workflow からは実行されない。CI 上の自動検証は VitePress build のみである。根拠: `tests/` 実体一覧、`.github/workflows/deploy.yml:17-52`

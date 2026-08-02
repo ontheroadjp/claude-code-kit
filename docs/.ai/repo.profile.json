@@ -13,14 +13,19 @@
     "ci:install": "cd site && npm ci",
     "site:dev": "cd site && npm run docs:dev",
     "site:build": "cd site && npm run docs:build",
-    "site:preview": "cd site && npm run docs:preview"
+    "site:preview": "cd site && npm run docs:preview",
+    "test:approval-hooks": "bash tests/hooks/test-approval-hooks.sh",
+    "test:pr-review": "bash tests/commands/test-pr-review.sh",
+    "test:report-review": "bash tests/commands/test-report-review.sh"
   },
   "active_commands": [
     "commands/work.md",
+    "commands/report-review.md",
     "commands/triage-issues.md",
     "commands/new-issue.md",
     "commands/review-resolve.md",
     "commands/codex-review.md",
+    "commands/pr-review.md",
     "commands/task.md",
     "commands/patch.md",
     "commands/docs-sync.md",
@@ -45,6 +50,7 @@
     "hooks/log-access-stop.sh",
     "hooks/log-access-tool.sh",
     "hooks/log-token-usage.sh",
+    "hooks/notify-slack.sh",
     "hooks/tmux-agent-status.sh"
   ],
   "external_cli_deps": [
@@ -54,7 +60,9 @@
     "node",
     "npm",
     "bc",
-    "codex"
+    "codex",
+    "claude",
+    "curl"
   ],
   "ci": {
     "workflows": [
@@ -82,6 +90,7 @@
   "skills": [
     "skills/codex-review/SKILL.md",
     "skills/work/SKILL.md",
+    "skills/report-review/SKILL.md",
     "skills/triage-issues/SKILL.md",
     "skills/task/SKILL.md",
     "skills/patch/SKILL.md",
@@ -89,6 +98,7 @@
     "skills/init-docs/SKILL.md",
     "skills/new-issue/SKILL.md",
     "skills/review-resolve/SKILL.md",
+    "skills/pr-review/SKILL.md",
     "skills/coding-general/SKILL.md",
     "skills/coding-py/SKILL.md",
     "skills/coding-js/SKILL.md",

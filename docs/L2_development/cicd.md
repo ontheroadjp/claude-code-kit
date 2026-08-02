@@ -22,7 +22,7 @@ GitHub Pages へ公開するため、workflow は `contents: read`、`pages: wri
 
 ## deploy job
 
-`deploy` job は `build` job に依存し、`github-pages` environment へ `actions/deploy-pages@v4` で deploy する。公開 URL は `steps.deployment.outputs.page_url` から environment URL に設定される。
+`deploy` job は `build` job に依存し、`github-pages` environment へ `actions/deploy-pages@v5` で deploy する。公開 URL は `steps.deployment.outputs.page_url` から environment URL に設定される。
 
 根拠: `.github/workflows/deploy.yml:44-53`
 
@@ -41,6 +41,6 @@ cd site && npm run docs:build
 
 ## 未確認事項
 
-専用の test job または test script は確認できない。テスト戦略を確定するには、将来 `site/package.json` に `test` script が追加されるか、`.github/workflows/` に別 workflow が追加された時点で再観測する。
+CI に専用 test job はない。repository には shell tests が存在するが、この workflow は VitePress build だけを実行する。ローカル test 手順は `docs/L2_development/test.md` に分離する。
 
-根拠: `site/package.json:4-14`, `.github/workflows/deploy.yml:17-53`
+根拠: `tests/` 実体一覧、`site/package.json:4-14`, `.github/workflows/deploy.yml:17-53`

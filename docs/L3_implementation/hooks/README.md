@@ -14,7 +14,7 @@
 ## 重要な設計判断
 
 - 承認フローの詳細は `docs/L3_implementation/hooks/auto_approve_readonly.md` に委ねており、README では概略のみ記載
-- `notify-slack.sh` は hook スクリプトではなく、hook から呼び出す helper として分類
+- `notify-slack.sh` は Notification / Stop event に登録される通知 hook として分類
 
 ## 統合ポイント
 
@@ -25,7 +25,7 @@
 
 hook を追加した場合は、イベントマッピング表とファイル一覧テーブルを更新すること。
 
-根拠: `hooks/README.md:1-60`
+根拠: `hooks/README.md:1-60`, `install.sh:165-186`
 
 ## 変更履歴（git log より自動生成）
 

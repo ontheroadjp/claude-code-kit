@@ -12,13 +12,15 @@
 
 ## Custom / Command の使い分け（AI向けルール）
 
-**重要: PR レビューコメントへの対話対応は `/review-resolve`、PR 作成後の別 agent による自律レビューは `/pr-review`、それ以外の全作業は直ちに `/work` を呼ぶこと。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。**
+**重要: PR レビューコメントへの対話対応は `/review-resolve`、PR 作成後の別 agent による自律レビューは `/pr-review`、それ以外の全作業は直ちに `/work` を呼ぶこと。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。**
 
 - **review-resolve.md**: PR レビューコメント対応専用のエントリポイント。`/work` を経由せず自己完結（checkout → 実装 → commit → push → 返信）。ユーザーが `/review-resolve #N` で直接呼び出す。
 - **pr-review.md**: PR 作成後のレビュー専用エントリポイント。実装元とは別の agent がレビューし、元 agent が承認済みスコープ内の指摘を PR ブランチ上で修正・commit・push・再レビューする。merge は行わず人間判断に残す。
-- **work.md**: review-resolve / pr-review 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理・現状調査・ルーティング判定を行い、task.md または patch.md へ委譲する。
+- **work.md**: review-resolve / pr-review 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
+  - `report` label の issue → report-review.md を Read し、実装・branch 作成を行わず評価して終了
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）
   - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → ドラフト PR 作成 → /docs-sync へ引き継ぎ）
+- **report-review.md**: `report` label の issue を read-only で評価し、Facts / Assessment / Opinions / Proposals / Risks and Unknowns を標準出力へ提示する。ファイル・Git・GitHub を変更しない。
 - **new-issue.md**: 漠然としたアイデアから 1 件または複数件の整形された issue を生成する任意の pre-`/work` エントリポイント。issue 作成のみで実装は行わない。
 - **triage-issues.md**: open issue を現状 docs と照合し、stale / inconsistent / duplicated / unclear / ready に分類するスタンドアロン入口。issue 操作はユーザー承認後のみ行う。
 - **codex-review.md**: Codex CLI で PR をレビューし、`CODEX_REVIEW_TOKEN` がある場合に approve/request-changes を投稿する。変更要求時は `/review-resolve` へ引き継ぐ。
@@ -31,7 +33,7 @@
 
 - **symlink-only 原則**: `~/.claude/` 配下には実体ファイルを置かず、全て本リポジトリへの symlink とする。このリポジトリが single source of truth。
 - ルーティング判定は単一質問: 「この変更で `docs/*` への追加・変更・削除が必要か？」
-- issue は task フローのみ必須（patch フローには不要）
+- 実装 issue は task フローで扱い、report issue は report-review フローで read-only 評価する（patch フローには issue 不要）
 - task フローのコミット形式: `<type>(#<issue number>): <short description>` (Conventional Commits)
 - ワークスペースのクリーン化は stash で行う（破壊的操作禁止）
 - git diff が事実。AI の要約・解釈は補助情報にとどめる
@@ -77,3 +79,17 @@ AI agent がテスト・検証・中間生成物などで一時ファイルを�
 - `site/` は VitePress + npm で、CI は `cd site && npm run docs:build` を実行する
 - 変更後は `docs/` の更新が必要になることが多い（/docs-sync を呼ぶ）
 - シンボリックリンクはリンク先の実体を変更するだけで反映される
+
+## Local Tooling Environment
+
+Observed by /init-docs on 2026-08-02:
+- gh: 2.96.0
+- gh auth: logged in to github.com; active account available for repository operations
+- node: v24.16.0
+- npm: 11.13.0
+- Node runtime manager hints: mise (`node 24.16.0`)
+
+Notes:
+- If `gh` operations fail with API schema or compatibility errors, check `gh --version` first. Prefer upgrading `gh` when possible; if upgrading is impossible, use an equivalent `gh api` REST call or GitHub Web UI for the affected operation.
+- Before npm operations, run `node --version` and `npm --version` to confirm Node.js and npm are available in the current shell. This also initializes Node.js in lazy-loaded runtime manager environments such as nvm or mise.
+- Do not install or upgrade `gh`, Node.js, or npm automatically without explicit user confirmation.

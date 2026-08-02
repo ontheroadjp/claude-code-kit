@@ -6,7 +6,8 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 
 | Command | Purpose |
 |---|---|
-| `/work` | Main entry point for development tasks. Gates, investigates, then routes to patch or task flow. |
+| `/work` | Main entry point. Routes report-labeled issues to read-only review; otherwise gates, investigates, and routes to patch or task flow. |
+| `/report-review` | Evaluates a report-labeled issue read-only and prints evidence-based opinions and proposals without changing files or GitHub state. |
 | `/triage-issues` | Standalone entry point for reviewing and cleaning up open issues so they are ready for `/work #N`. |
 | `/new-issue` | Optional pre-`/work` entry point. Turns a rough idea into one or more GitHub issues. |
 | `/review-resolve` | Handles PR review comments interactively without going through `/work`. |
@@ -64,6 +65,7 @@ This links `scripts/statusline.sh` to `~/.claude/statusline.sh` and adds a `stat
   rough idea -> issue draft(s) -> user runs /work #N
 
 /work (main entry)
+  report-labeled issue -> /report-review -> read-only evaluation on standard output
   docs not required -> patch flow: branch -> commit -> user ff-merges
   docs required     -> task flow: issue -> implement -> /docs-sync -> ready PR
                        -> opposite-agent /pr-review -> human merge
