@@ -4,19 +4,25 @@
 
 このサマリは、`commands/`、`skills/`、`hooks/`、`templates/`、`site/`、CI の現在の実体を、確認できた範囲で整理する。
 
-根拠: `rg --files -uu`, `docs/.ai/repo.profile.json`
+根拠: `rg --files -uu -g '!.git/**'`, `docs/.ai/repo.profile.json`
 
 ## Command Specifications
 
 ### `/work` (`commands/work.md`)
 
-全作業の通常入口。G-0 で main へ checkout し、現在の hook セッションに対応する `${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/<session-id>/session-approved` を削除して前回の承認状態をクリアする。その後 `docs/.ai/repo.profile.json` を確認し、workspace 差分の扱いをユーザーに選ばせ、現状調査後に task または patch へ委譲する。
+全作業の通常入口。G-0 で main へ checkout し、現在の hook セッションに対応する session-approved を削除して前回の承認状態をクリアする。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
-ルーティングは issue 起点かどうか、次に docs 変更が必要かで決まる。docs 変更が必要なら `commands/task.md`、不要なら `commands/patch.md` を Read して進む。
+exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。それ以外は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
-根拠: `commands/work.md:7-120`
+根拠: `commands/work.md:7-143`
+
+### `/report-review` (`commands/report-review.md`)
+
+`report` label の issue 専用 read-only workflow。issue context と必要な repository evidence を読み、Facts、Assessment、Opinions、Proposals、Risks and Unknowns を分離して標準出力に提示する。ファイル、Git state、GitHub issue / PR を変更せず、実装 workflow へ委譲しない。
+
+根拠: `commands/report-review.md:1-91`
 
 ### `/task` (`commands/task.md`)
 
@@ -96,9 +102,9 @@ PR 番号を受け取り、実装元が Claude なら Codex、Codex なら Claud
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は 16 件で、`commands/` にある各 command と対応する。`pr-review` skill は merge・branch 削除・main 同期を人間管理に残す command の責務境界も保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は17件で、commands と対応する。`report-review` skill は read-only 境界、`pr-review` skill は merge・branch 削除・main 同期を人間管理に残す境界を保持する。
 
-根拠: `skills/init-docs/SKILL.md:1-14`, `skills/coding-ts/SKILL.md`, `skills/git-commit/SKILL.md`, `skills/git-pr/SKILL.md`, `skills/pr-review/SKILL.md`, `skills/` 実体一覧
+根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/pr-review/SKILL.md`, `skills/` 実体一覧
 
 ## Hooks
 
@@ -140,6 +146,12 @@ codex()  { command codex  "$@"; bash ~/.claude/hooks/tmux-agent-status.sh 2>/dev
 
 根拠: `hooks/tmux-agent-status.sh:1-35`, `install.sh:155-187`
 
+### `hooks/notify-slack.sh`
+
+Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack 通知 script。installer は top-level hooks の symlink と event registration を両環境へ追加する。
+
+根拠: `hooks/notify-slack.sh`, `install.sh:33-45`, `install.sh:165-186`
+
 ### access / token log hooks
 
 `log-access-prompt.sh`、`log-access-tool.sh`、`log-access-stop.sh` はユーザー指示、tool access、modified files を session file / pending file / monthly log に記録する。`log-token-usage.sh` は transcript usage を集計して token usage log に追記する。
@@ -162,13 +174,17 @@ codex()  { command codex  "$@"; bash ~/.claude/hooks/tmux-agent-status.sh 2>/dev
 
 根拠: `tests/commands/test-pr-review.sh:1-60`
 
+`tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
+
+根拠: `tests/commands/test-report-review.sh:1-72`
+
 ## Install and Status Line
 
 `install.sh` は `commands/*.md` を `~/.claude/commands/` と `~/.codex/commands/`、`hooks/*.sh` を `~/.claude/hooks/` と `~/.codex/hooks/`、`skills/*/` を `~/.codex/skills/`、`templates/*.md` を `~/.config/claude-code-kit/templates/` に symlink する。その後 `jq` があれば migration helper（`remove_claude_hook` / `remove_codex_hook`）で旧 hook entry を除去してから `add_claude_hook` / `add_codex_hook` で新 entry を追加する。idempotent な設計のため複数回実行しても重複しない。Codex hooks は `/hooks` で review/trust してから利用する前提で案内する。
 
 `setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、settings に `statusLine` を追加する。`scripts/statusline.sh` は stdin JSON から context / five-hour / seven-day rate limit を抽出して表示する。
 
-根拠: `install.sh:15-163`, `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`
+根拠: `install.sh:12-188`, `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`
 
 ## VitePress Site and CI
 

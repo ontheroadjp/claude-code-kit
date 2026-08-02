@@ -9,10 +9,11 @@
 
 ## セキュリティ方針
 
-- 破壊的 Bash 操作は `hooks/guard-destructive-cmd.sh` で Lv0/Lv1 に分類する。Lv0 は即時ブロック、Lv1 は AI 自動実行ではなくユーザー手動実行へ委譲する。根拠: `hooks/guard-destructive-cmd.sh:12-127`
-- 読み取り専用操作とセッション承認済み操作のみ `hooks/auto-approve-readonly.sh` が自動承認する。根拠: `hooks/auto-approve-readonly.sh:73-181`
-- セッション承認は Stop hook で削除し、次セッションへ持ち越さない。根拠: `hooks/cleanup-session.sh:1-7`
-- コミット前に個人情報、IP アドレス、ドメイン名、絶対パスを diff から確認する。根拠: `partials/git-commit.md:31-40`
+- 破壊的 Bash 操作は `hooks/lib/approval-safety.sh` の共有判定を `auto-approve-readonly.sh` と `guard-destructive-cmd.sh` から利用して block する。根拠: `hooks/lib/approval-safety.sh:1-87`, `hooks/guard-destructive-cmd.sh:1-25`
+- 読み取り専用操作とセッション承認済み操作を `hooks/auto-approve-readonly.sh` が自動承認し、repo 内 write には WIP commit による動的防御を適用する。根拠: `hooks/auto-approve-readonly.sh:375-590`
+- セッション承認は Stop hook で削除し、次セッションへ持ち越さない。根拠: `hooks/cleanup-session.sh:39-50`
+- コミット前に個人情報、IP アドレス、ドメイン名、絶対パスを staged diff から確認する。根拠: `commands/git-commit.md:47-61`
+- `/report-review` はファイル、Git state、GitHub issue / PR を変更せず、評価を標準出力だけに提示する。根拠: `commands/report-review.md:5-14`, `commands/report-review.md:63-91`
 
 ## 運用・性能方針
 
@@ -25,9 +26,10 @@
 | 禁止事項 | 理由 | 根拠 |
 |---|---|---|
 | `~/.claude/` へ実体ファイルを置く | symlink-only 原則と single source of truth を壊す | `README.md:21-38` |
-| `/task` で `docs/*` を直接更新する | docs 同期は `/docs-sync` の責務 | `commands/task.md:5-9` |
+| `/task` で一般 docs を直接更新する | 一般 docs 同期は `/docs-sync` の責務。L3 per-file doc のみ task が管理する | `commands/task.md:5-9`, `commands/task.md:113-137` |
+| `/report-review` で実装・永続化・GitHub 投稿を行う | report issue は評価であり変更要求ではない | `commands/report-review.md:5-14` |
 | `/docs-sync` で L0 を通常更新する | L0 は意思決定記録であり git diff 追従対象ではない | `commands/docs-sync.md:86-88` |
-| `git add -A` / `git add .` を使う | 意図しないファイルをコミットしやすい | `commands/init-docs.md:279-280`, `partials/git-commit.md:25-40` |
+| `git add -A` / `git add .` を使う | 意図しないファイルをコミットしやすい | `commands/init-docs.md:374-376` |
 | AI が `git push --force` など不可逆な git 操作を自動実行する | 共有履歴・未追跡変更を破壊する可能性がある | `CLAUDE.md:55-61`, `hooks/guard-destructive-cmd.sh:90-126` |
 
 ## 整合性方針

@@ -8,11 +8,11 @@
 
 ## 解決する問題
 
-曖昧な AI 作業開始による、ドキュメント更新漏れ、issue/PR 追跡漏れ、レビューコメント対応の属人化、破壊的 git 操作、セッション承認の持ち越しを抑制する。
+曖昧な AI 作業開始による、ドキュメント更新漏れ、issue/PR 追跡漏れ、評価目的の report issue の誤実装、レビューコメント対応の属人化、破壊的 git 操作、セッション承認の持ち越しを抑制する。
 
-このため、`/work` はゲート確認・現状調査・docs 変更要否によるルーティングを担い、`/task` は issue と PR を伴う実装、`/patch` は軽微修正、`/docs-sync` は git diff に基づく docs 同期、`/review-resolve` は PR レビューコメント対応に分離されている。
+このため、`/work` は report label を実装 routing より先に判定し、report issue を read-only `/report-review` へ委譲する。それ以外では現状調査と docs 変更要否による routing を担い、`/task` は issue と PR を伴う実装、`/patch` は軽微修正、`/docs-sync` は git diff に基づく docs 同期、`/review-resolve` と `/pr-review` はレビュー責務を分離する。
 
-根拠: `commands/work.md:42-92`, `commands/task.md:42-144`, `commands/patch.md:11-95`, `commands/docs-sync.md:39-160`, `commands/review-resolve.md:1-6`
+根拠: `commands/work.md:47-115`, `commands/report-review.md:1-91`, `commands/task.md:30-170`, `commands/patch.md:11-95`, `commands/docs-sync.md:39-173`, `commands/review-resolve.md:1-6`, `commands/pr-review.md:1-7`
 
 ## 対象ユーザー
 
@@ -23,7 +23,7 @@ Claude Code または Codex CLI を使い、実装・ドキュメント同期・
 ## 設計上の制約
 
 - `~/.claude/` 配下は symlink-only とし、このリポジトリを single source of truth とする。根拠: `README.md:21-38`, `CLAUDE.md:27-35`
-- 作業入口は `/review-resolve`、`/work`、任意の `/new-issue` に限定する。根拠: `CLAUDE.md:13-25`
-- docs 変更要否を単一質問として扱う。根拠: `commands/work.md:69-92`, `CLAUDE.md:30`
+- 通常作業は `/work` から始め、report issue も `/work #N` 経由で read-only workflow へ送る。PR review 対応は `/review-resolve` と `/pr-review` に分離する。根拠: `CLAUDE.md`, `commands/work.md:49-68`
+- report issue 以外は docs 変更要否を単一質問として扱う。根拠: `commands/work.md:84-115`, `CLAUDE.md`
 - docs 同期は `git diff` を事実として扱う。根拠: `commands/docs-sync.md:1-10`, `CLAUDE.md:35`
 - L0 は `/docs-sync` では更新せず、設計方針の再観測時に `/init-docs` が更新する。根拠: `commands/init-docs.md:104-122`, `commands/docs-sync.md:86-88`

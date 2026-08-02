@@ -1,6 +1,6 @@
 # /work
 
-全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、`commands/task.md` または `commands/patch.md` を Read して委譲します。
+全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、report issue は `commands/report-review.md`、それ以外は `commands/task.md` または `commands/patch.md` を Read して委譲します。
 
 ---
 
@@ -50,6 +50,23 @@ SESSION_APPROVED=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/cu
 
 ユーザーに作業の目的を尋ねる。
 
+#### report issue の事前ルーティング
+
+ユーザーが issue 番号を明示している場合、現状調査より先に以下で label を取得する:
+
+```bash
+gh issue view <issue番号> --json labels --jq '.labels[].name'
+```
+
+- label の name が `report` と完全一致する場合:
+    - `commands/report-review.md` を Read し、その内容に従う
+    - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
+    - `/report-review` の完了後に `/work` も終了する
+- `report` と完全一致する label がない場合:
+    - 既存どおり現状調査と2段階ルーティングへ進む
+- issue の取得に失敗した場合:
+    - エラーを報告して終了し、推測でルーティングしない
+
 #### 現状調査
 
 以下を調査・整理する（ルーティング判定の前に必ず行う）:
@@ -64,7 +81,7 @@ SESSION_APPROVED=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/cu
 この調査結果は task.md または patch.md の実装フェーズに引き継がれる。
 G-1 で Read した `docs/.ai/repo.profile.json` および現状調査で Read した `docs/L3_implementation/specification_summary.md` はコンテキスト内に保持されているため、task.md / patch.md で再度 Read しない。
 
-以下の2段階でルーティングを判定する:
+report issue の事前ルーティングに該当しなかった場合、以下の2段階でルーティングを判定する:
 
 **判定基準:**
 

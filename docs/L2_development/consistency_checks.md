@@ -1,97 +1,85 @@
 # Consistency Checks
 
-このファイルは `/init-docs` Phase 4 の整合性検証結果を記録する。
+最終実行: 2026-08-02
 
-最終実行: 2026-06-18（CI / VitePress site / command 一覧 / skill 一覧 / hooks 実体を再観測し、repo profile と L0-L3 docs を再検証）
+## docs → 実体
 
-## 4-1. docs -> 実体 の検証
+### Command / skill paths
 
-### 参照パス
+- `commands/` には README を除いて17個の command specification が存在する。
+- `skills/` には17個の `SKILL.md` が存在し、`report-review` と `pr-review` を含め command と1:1で対応する。
+- `/work` が参照する `commands/report-review.md`、`commands/task.md`、`commands/patch.md` はすべて存在する。
 
-| パス | 実在 | 根拠 |
-|---|---|---|
-| `commands/work.md` | yes | `rg --files -uu` |
-| `commands/task.md` | yes | `rg --files -uu` |
-| `commands/patch.md` | yes | `rg --files -uu` |
-| `commands/docs-sync.md` | yes | `rg --files -uu` |
-| `commands/init-docs.md` | yes | `rg --files -uu` |
-| `commands/review-resolve.md` | yes | `rg --files -uu` |
-| `commands/codex-review.md` | yes | `rg --files -uu` |
-| `commands/triage-issues.md` | yes | `rg --files -uu` |
-| `commands/new-issue.md` | yes | `rg --files -uu` |
-| `commands/coding-general.md` | yes | `rg --files -uu` |
-| `commands/coding-py.md` | yes | `rg --files -uu` |
-| `commands/coding-js.md` | yes | `rg --files -uu` |
-| `commands/coding-ts.md` | yes | `rg --files -uu` |
-| `templates/issue.md` | yes | `templates/issue.md:1-25` |
-| `templates/pr.md` | yes | `templates/pr.md:1-32` |
-| `templates/readme.md` | yes | `rg --files -uu` |
-| `partials/git-commit.md` | yes | `partials/git-commit.md:1-15` |
-| `hooks/auto-approve-readonly.sh` | yes | `hooks/auto-approve-readonly.sh:1-181` |
-| `hooks/cleanup-session.sh` | yes | `hooks/cleanup-session.sh:1-7` |
-| `hooks/guard-destructive-cmd.sh` | yes | `hooks/guard-destructive-cmd.sh:1-128` |
-| `hooks/log-access-prompt.sh` | yes | `rg --files -uu` |
-| `hooks/log-access-stop.sh` | yes | `rg --files -uu` |
-| `hooks/log-access-tool.sh` | yes | `rg --files -uu` |
-| `hooks/log-token-usage.sh` | yes | `rg --files -uu` |
-| `site/package.json` | yes | `site/package.json:1-14` |
-| `site/package-lock.json` | yes | `rg --files -uu site` |
-| `site/.vitepress/config.mts` | yes | `site/.vitepress/config.mts:1-78` |
-| `.github/workflows/deploy.yml` | yes | `.github/workflows/deploy.yml:1-53` |
-| `docs/.ai/repo.profile.json` | yes | this run |
-| `docs/L0_concept/concept.md` | yes | this run |
-| `docs/L0_concept/policy.md` | yes | this run |
-| `docs/L1_project/project_overview.md` | yes | this run |
-| `docs/L1_project/repository_structure.md` | yes | this run |
-| `docs/L2_development/operation_model.md` | yes | this run |
-| `docs/L2_development/consistency_checks.md` | yes | this run |
-| `docs/L2_development/cicd.md` | yes | this run |
-| `docs/L3_implementation/specification_summary.md` | yes | this run |
+根拠: `rg --files commands -g '*.md'`、`rg --files skills -g 'SKILL.md'`、`commands/work.md:53-115`
 
-### コマンド
+### Hooks
 
-| コマンド | 実体 | 根拠 |
-|---|---|---|
-| `./install.sh` | executable script in repo root | `install.sh:1-149` |
-| `./setup_statusline.sh` | executable script in repo root | `setup_statusline.sh:1-57` |
-| `cd site && npm ci` | CI install command in `site/` | `.github/workflows/deploy.yml:31-33` |
-| `cd site && npm run docs:dev` | npm script | `site/package.json:4-8` |
-| `cd site && npm run docs:build` | npm script and CI command | `site/package.json:4-8`, `.github/workflows/deploy.yml:35-37` |
-| `cd site && npm run docs:preview` | npm script | `site/package.json:4-8` |
-| `npm ci` | CI install step in `site/` | `.github/workflows/deploy.yml:31-33` |
+`install.sh` が `hooks/*.sh` として symlink する top-level script は9本である。Notification / Stop の Slack 通知を含む event registration は存在する。`hooks/lib/approval-safety.sh` は top-level symlink 対象ではなく、approval hooks が source する共有 helper である。
 
-## 4-2. repo.profile.json <-> docs の突合
+根拠: `install.sh:33-45`, `install.sh:158-187`, `hooks/` 実体一覧、`hooks/lib/approval-safety.sh`
 
-- `doc_roots` は現存する L0-L3 directory と一致する。根拠: `docs/.ai/repo.profile.json`, `docs/` 実体一覧
-- `commands` は operation_model のローカル・CI コマンド表で説明済み。根拠: `docs/L2_development/operation_model.md`
-- `active_commands` は project_overview と specification_summary で説明済み。根拠: `docs/L1_project/project_overview.md`, `docs/L3_implementation/specification_summary.md`
-- `templates` は `templates/*.md` として docs/site docs に記述済み。根拠: `templates/issue.md:1-25`, `templates/pr.md:1-32`, `site/guide/installation.md`
-- `hooks` は現存 9 本に一致する。`install.sh` の Claude settings 登録と Codex hooks.json 登録も現存 hook のみを登録する。根拠: `hooks/` 実体一覧, `install.sh:119-149`
-- `primary_docs.investigation` と `primary_docs.structure` は実在する。根拠: `docs/L3_implementation/specification_summary.md`, `docs/L1_project/repository_structure.md`
+### Tests
 
-## 4-3. CI 定義との整合性
+次の3 command は実ファイルに対応し、Bash で実行可能である。
 
-CI は存在する。`.github/workflows/deploy.yml` は main push と workflow_dispatch で実行され、Node.js 24、npm cache、`site/package-lock.json`、`site/` working directory、`npm ci`、`npm run docs:build`、GitHub Pages artifact upload/deploy を定義する。専用 docs として `docs/L2_development/cicd.md` を生成済み。
+| command | target |
+|---|---|
+| `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
+| `bash tests/commands/test-pr-review.sh` | pr-review declarative contract |
+| `bash tests/commands/test-report-review.sh` | report-review declarative contract |
 
-根拠: `.github/workflows/deploy.yml:1-53`
+根拠: `tests/` 実体一覧、`docs/.ai/repo.profile.json:commands`
 
-## 4-4. 根拠表記
+### Runtime / build commands
 
-断定的な仕様説明には `path:line` または実体一覧・設定ファイル名を根拠として記載した。wildcard しか示せない箇所は、該当領域が同一構造を持つことを `rg --files -uu` の観測結果として扱った。
+| command | 実体 |
+|---|---|
+| `./install.sh` | executable installer |
+| `./setup_statusline.sh` | executable statusline installer |
+| `cd site && npm ci` | CI install step |
+| `cd site && npm run docs:dev` | `site/package.json:scripts.docs:dev` |
+| `cd site && npm run docs:build` | package script and CI build step |
+| `cd site && npm run docs:preview` | `site/package.json:scripts.docs:preview` |
 
-## 4-5. 未確認事項
+根拠: `install.sh`, `setup_statusline.sh`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-42`
 
-| 項目 | 状態 | 次に見るべきファイル |
-|---|---|---|
-| dedicated test command | `site/package.json` に test script がないため、site build を CI 上の主要検証として扱う | `site/package.json` |
+## repo.profile.json ↔ docs
 
-## 4-6. Done Criteria 判定
+- `doc_roots` の4 directory は実在する。
+- `primary_docs.investigation` と `primary_docs.structure` は実在する。
+- `active_commands` は command specifications 17件と一致する。
+- `skills` は skill wrappers 17件と一致する。
+- `hooks` は installer が配置する top-level hook scripts 9件と一致する。
+- `commands` の install / site / test commands は `operation_model.md`、`test.md`、`cicd.md` で説明される。
+
+根拠: `docs/.ai/repo.profile.json`、`docs/L2_development/operation_model.md`、`docs/L2_development/test.md`、`docs/L2_development/cicd.md`
+
+## CI 定義との整合性
+
+CI の事実は `.github/workflows/deploy.yml` を優先した。Node.js 24、npm cache、`site/package-lock.json`、`site/` での `npm ci` と `npm run docs:build`、`site/.vitepress/dist` upload、GitHub Pages deploy を docs に反映している。shell tests は CI job に含まれないことを明示した。
+
+根拠: `.github/workflows/deploy.yml:17-53`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
+
+## AGENTS / CLAUDE
+
+`AGENTS.md` は `CLAUDE.md` への symlink である。Claude Code と Codex CLI は同じ AI 運用情報を参照する。
+
+根拠: `readlink AGENTS.md` の結果 `CLAUDE.md`
+
+## 未確認事項
+
+- shell tests の coverage collection / threshold は定義されていない。確認先: `tests/`、`.github/workflows/`。
+- shell tests は CI で実行されない。確認先: `.github/workflows/deploy.yml`。
+- npm audit findings の解消 version は一部未提供である。確認先: `site/package-lock.json` と再実行時の `npm audit --json`。
+- `install.sh` が生成する `skills/pr-review/pr-review` と `skills/report-review/report-review` の self-referential symlink は `.gitignore` に個別 entry がない。installer 実行後の working tree 影響は `.gitignore` と `install.sh:61-66` を確認する。
+
+## Done Criteria
 
 | 条件 | 判定 | 理由 |
 |---|---|---|
-| docs に記載された事実が実体と矛盾していない | yes | command / skill / hook / CI / site paths を再観測し、存在確認済み |
-| repo.profile.json と docs が相互に説明可能 | yes | commands / active_commands / hooks / templates / site / CI を docs に反映 |
-| CI 定義と docs の手順が一致している | yes | `npm ci` と `npm run docs:build` を operation_model と repo profile に反映 |
-| 未確認事項が明示的に分離されている | yes | dedicated test command の不在のみ記録 |
+| docs の事実が実体と矛盾しない | yes | path、command、workflow、dependency を再観測した |
+| repo profile と docs が相互に説明可能 | yes | command/skill/hook/test lists と説明先を突合した |
+| CI と docs が一致する | yes | Node.js 24 と site npm build/deploy を CI から採用した |
+| 未確認事項が分離されている | yes | coverage と CI test 非登録を明記した |
 
 判定: 完了。

@@ -180,9 +180,11 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 | working tree が clean | WIP commit は作成しない（承認のみ） |
 | working tree が dirty | `git add -A` でステージングし commit |
 
-WIP commit が積み上がった場合、`partials/git-commit.md` が `git commit` 実行前に自動的に検出して `git reset --soft $(git merge-base HEAD main)` で squash する（#150 / PR #151 で実装）。手動で整理する場合は `git rebase -i $(git merge-base HEAD main)` または GitHub の squash merge を利用する。
+WIP commit が積み上がった場合、`commands/git-commit.md` は HEAD の message が `wip:` で始まるときだけ、HEAD から遡って最初の non-WIP commit を特定し、その commit へ soft reset する。これにより直近で連続する WIP commits だけを staged changes に戻し、それ以前の non-WIP commits は変更しない。
 
-この自動 squash はフック（hook）と `partials/git-commit.md` が**それぞれ自分の責任範囲だけを担う**設計になっている。フックは「書き込み前に WIP commit を作る」だけを行い、最終的な squash は git-commit.md が自分で wip: commits の有無を検出して処理する。フックが「git-commit.md が後で squash してくれる」と期待したり、git-commit.md が「フックが working tree をクリーンにしているはず」と前提を置いたりしない。1 つのツールは他のツールの挙動に依存してはいけない。
+この自動 squash は hook と `commands/git-commit.md` がそれぞれの責務を担う。hook は書き込み前の復旧点を作り、git-commit workflow は commit 直前に連続 WIP だけを正規化する。
+
+根拠: `commands/git-commit.md:25-45`
 
 ### 判定フロー
 

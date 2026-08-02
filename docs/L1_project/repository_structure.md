@@ -13,7 +13,7 @@ core-toolkit-for-claude/
 ├── commands/                    # Claude/Codex が読む Markdown command 仕様（README.md あり）
 ├── docs/                        # /init-docs が管理する L0-L3 設計 docs
 ├── hooks/                       # Claude Code / Codex hook scripts（README.md あり）
-├── partials/                    # commands から Read される共通手順
+├── logs/                        # access / auto-approval / token usage の月次ログ
 ├── scripts/                     # status line / token usage 表示 scripts（README.md あり）
 ├── site/                        # VitePress documentation site
 ├── skills/                      # Codex skill wrappers（README.md あり）
@@ -27,9 +27,9 @@ core-toolkit-for-claude/
 
 ### `commands/`
 
-Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、`task.md` と `patch.md` は `work.md` から Read される委譲先である。`docs-sync.md`、`init-docs.md`、`new-issue.md`、`review-resolve.md`、`triage-issues.md`、`coding-*.md` も同じ command 群として管理される。
+Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md`、実装は `task.md` または `patch.md` に委譲する。PR 作成後は `git-pr.md` が `pr-review.md` へ引き継ぐ。
 
-根拠: `commands/work.md:1-4`, `commands/task.md:1-9`, `commands/patch.md:1-8`, `commands/new-issue.md:1-9`, `commands/README.md`
+根拠: `commands/work.md:1-115`, `commands/report-review.md:1-14`, `commands/git-pr.md:63-73`, `commands/README.md`
 
 ### `skills/`
 
@@ -45,21 +45,15 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 ### `tests/`
 
-hook などの検証 scripts を置く。`tests/hooks/test-approval-hooks.sh` は PreToolUse hook の block / approve / prompt fallback と JSON output を検証する。
+shell 検証 scripts を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-pr-review.sh` と `test-report-review.sh` は Markdown workflow の必須句・禁止操作を静的検証する。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/README.md`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-pr-review.sh`, `tests/commands/test-report-review.sh`
 
 ### `templates/`
 
 issue、PR、README scaffold の template を置く。commands は `~/.config/claude-code-kit/templates/*.md` を参照するため、運用上は `templates/` をその場所へ symlink する。
 
 根拠: `templates/issue.md:1-25`, `templates/pr.md:1-32`, `commands/task.md:131-138`, `commands/new-issue.md:69-76`, `templates/README.md`
-
-### `partials/`
-
-slash command ではない共通手順を置く。現在は commit 手順を `partials/git-commit.md` に集約している。
-
-根拠: `partials/git-commit.md:1-15`, `commands/task.md:113-116`, `commands/patch.md:50-52`
 
 ### `docs/`
 
@@ -79,6 +73,12 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 
 根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/README.md`
 
+### `logs/`
+
+access、auto-approval、token usage の月次ログを置く。log hooks と token usage script が repository-local な観測記録として利用する。
+
+根拠: `logs/` 実体一覧、`hooks/log-access-stop.sh`、`hooks/log-token-usage.sh`
+
 ## デプロイ構成
 
 | 対象 | source | target | 方法 | 根拠 |
@@ -88,7 +88,7 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 | Claude hooks | `hooks/*.sh` | `~/.claude/hooks/*.sh` | `install.sh` が symlink | `install.sh:29-34` |
 | Codex hooks | `hooks/*.sh` | `~/.codex/hooks/*.sh`, `~/.codex/hooks.json` | `install.sh` が symlink と hooks.json 登録 | `install.sh:35-41`, `install.sh:58-146` |
 | Codex skills | `skills/*/` | `~/.codex/skills/*` | `install.sh` が symlink | `install.sh:43-48` |
-| templates | `templates/` | `~/.config/claude-code-kit/templates/` | README 記載の手動 symlink | `README.md:43-50` |
+| templates | `templates/*.md` | `~/.config/claude-code-kit/templates/*.md` | `install.sh` が symlink | `install.sh:54-59` |
 | statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `setup_statusline.sh` が symlink | `setup_statusline.sh:6-28` |
 | site | `site/.vitepress/dist` | GitHub Pages | GitHub Actions | `.github/workflows/deploy.yml:39-52` |
 
