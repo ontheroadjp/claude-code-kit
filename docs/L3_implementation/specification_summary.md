@@ -112,13 +112,15 @@ PR 番号を受け取り、実装元が Claude なら `codex exec --sandbox read
 
 PreToolUse hook。Read、session temp / session-listed file、read-only Bash、session-approved tool category を自動承認する。Write / Edit / apply_patch は working repo（Claude/Codex 起動時の PWD が属する git リポジトリ）内であれば WIP commit 後に承認する動的防御を持つ。Bash は session-approved fast path → repo 内 rm -rf 動的防御 → destructive guard → write redirect → quote-aware segment 分割 → read-only 判定の順で評価し、分類不能な構文や write mode は通常許可フローへ戻す。`$()` は中身を再帰的に `is_safe_segment` で検証し、全て read-only であれば承認する（backtick と `<()` は常時ブロック）。詳細な許可順序・対象・除外条件は[auto-approve-readonly hook specification](https://github.com/ontheroadjp/core-toolkit-for-claude/blob/main/docs/L3_implementation/hooks/auto_approve_readonly.md)を参照する。decision log は `agent=claude|codex` と `session=<id|n/a>` を含む。
 
-根拠: `hooks/auto-approve-readonly.sh:23-755`, `hooks/lib/approval-safety.sh:1-87`, `docs/L3_implementation/hooks/auto_approve_readonly.md`
+`sed` の `e` / `w`、external command を pipe する `awk getline`、file output 等を含む curl short-option cluster は read-only とみなさない。Git write category は shared predicate により `+refspec` push、forced checkout/switch、forced branch deletion を除外する。
+
+根拠: `hooks/auto-approve-readonly.sh:23-770`, `hooks/lib/approval-safety.sh:1-119`, `docs/L3_implementation/hooks/auto_approve_readonly.md`
 
 ### `hooks/lib/approval-safety.sh`
 
-PreToolUse hook で共有する Bash safety helper。system directory 破壊、block device 操作、fork bomb、history rewrite、force push、hard reset、checkout/restore dot、clean、branch -D、stash drop/clear を破壊的操作として検出し、JSON block decision を生成する。
+PreToolUse hook で共有する Bash safety helper。system directory 破壊、block device 操作、fork bomb、history rewrite、force push、hard reset、checkout/restore dot、clean、forced branch deletion、stash drop/clear を破壊的操作として検出し、JSON block decision を生成する。Git force predicate は session-approved fast path と destructive guard で共有し、branch deletion は同一 shell segment 内の delete / force option だけを組み合わせる。
 
-根拠: `hooks/lib/approval-safety.sh:1-87`
+根拠: `hooks/lib/approval-safety.sh:1-119`, `docs/L3_implementation/hooks/lib/approval-safety.sh.md`
 
 ### `hooks/guard-destructive-cmd.sh`
 
@@ -166,9 +168,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 ## Tests
 
-`tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp 配下の Write/Edit approval、session temp 範囲外や symlink session temp の prompt fallback、cleanup hook による current session temp directory 削除、write-effect / ambiguous command の prompt fallback、`guard-destructive-cmd.sh` の JSON block output を検証する。また working repo dynamic defense として、Write / Edit / apply_patch / rm -rf の repo 内パス承認・WIP commit 作成・repo 外 prompt fallback・repo root / .git / 複数パス / 変数展開の除外・clean tree での WIP commit 非作成を検証する。
+`tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp 配下の Write/Edit approval、session temp 範囲外や symlink session temp の prompt fallback、cleanup hook による current session temp directory 削除、write-effect / ambiguous command の prompt fallback、`guard-destructive-cmd.sh` の JSON block output を検証する。Bash boundary coverage は safe な sed / awk / curl / Git 操作と、`sed e/w`、pipe-based `awk getline`、unsafe curl option cluster、Git force variants の両面を含む。複数 segment の無関係な `-d` / `-f` を forced branch deletion と誤認しないことも固定する。また working repo dynamic defense として、Write / Edit / apply_patch / rm -rf の repo 内パス承認・WIP commit 作成・repo 外 prompt fallback・repo root / .git / 複数パス / 変数展開の除外・clean tree での WIP commit 非作成を検証する。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-407`
+根拠: `tests/hooks/test-approval-hooks.sh:1-453`
 
 `tests/commands/test-pr-review.sh` は `/pr-review` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、最大3ラウンド、各ラウンドの base refresh と失敗時の停止、HEAD SHA 結合、別 reviewer identity、session-approved 制限、GitHub review 投稿、および merge・main 同期・branch 削除の禁止を確認する。
 

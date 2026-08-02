@@ -49,3 +49,9 @@ Git force 判定を session-approved 側へ複製せず shared predicate とし�
 ## 注意事項・既知の制限
 
 この helper は shell parser ではなく、command text に対する保守的な pattern matching である。安全と断定できない構文を実行する役割は持たず、呼び出し元の通常許可フローへ委ねる。comment と command の完全な構文解析は行わない。
+
+## 変更履歴（git log より自動生成）
+
+- 8d7c8c0 fix(#156): scope branch force checks to command segments
+- 9d1d78f fix(#156): harden auto-approval boundary checks
+- 4e45161 fix(#134): block destructive bash before auto-approval
