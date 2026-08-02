@@ -257,6 +257,38 @@ for command in \
     assert_no_output "$output"
 done
 
+# Unquoted variable expansion bypass: a pure-assignment segment stages a
+# dangerous flag string, and a later unquoted reference smuggles it past an
+# exclusion-based/single-token-shape allowlist check. All must prompt fallback.
+for command in \
+    'ARGS="--require=./side-effect.js target.js"; node --check $ARGS' \
+    "FILE='script.sh extra-arg'; bash -n \$FILE" \
+    "OPTS='-o /tmp/evil http://example.com'; curl \$OPTS" \
+    "OPTS='-XPOST'; gh api repos/octocat/hello-world \$OPTS" \
+    "GITOPT='--output=/tmp/evil'; git diff \$GITOPT" \
+    "SEDOPT='-i'; sed \$SEDOPT s/a/b/ README.md" \
+    "FINDOPT='-delete'; find . \$FINDOPT" \
+    "SORTOPT='-o /tmp/sorted'; sort \$SORTOPT README.md" \
+    "DATEOPT='--set tomorrow'; date \$DATEOPT" \
+    "JOPT='--rotate'; journalctl \$JOPT"; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
+# Unquoted variable expansion in flag-invariant plain tools remains safe and
+# stays auto-approved (no exclusion/single-token-shape check to bypass).
+for command in \
+    'FILE=README.md; cat $FILE' \
+    'FILE=README.md; grep -n foo $FILE'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# awk script field references ($1, $2, ...) inside a single-quoted script are
+# not flagged as unquoted variable expansion.
+output=$(run_auto 'awk '\''{ print $1 }'\'' README.md')
+assert_json_decision "$output" "approve"
+
 mkdir -p "$(dirname "$SESSION_FILE")"
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
 output=$(run_auto 'git reset --hard')

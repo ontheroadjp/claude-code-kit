@@ -130,6 +130,47 @@ has_unsupported_expansion() {
     printf '%s' "$1" | grep -qE '`|[<>]\('
 }
 
+# Return 0 if the segment contains a $ variable/parameter reference outside
+# any quoting. Callers use this to guard allowlist branches whose safety
+# determination scans the literal text for the absence of a dangerous flag,
+# or requires an exact single-token shape: bash word-splits (and can
+# glob-expand) an unquoted $VAR/${VAR} at actual execution time, so a value
+# staged by an earlier pure-assignment segment can inject flags/tokens that
+# never appear in the literal text this hook inspects. $(...) subshells are
+# validated and placeholder-stripped by the caller before this runs, so any
+# remaining bare $ here is a plain variable/parameter reference. Double- and
+# single-quoted "$VAR"/'$VAR' are not word-split and are not flagged.
+_has_unquoted_variable_expansion() {
+    local input="$1"
+    local i char quote="" escaped=0
+    local n="${#input}"
+    for ((i = 0; i < n; i++)); do
+        char="${input:i:1}"
+        if [ "$escaped" = "1" ]; then
+            escaped=0
+            continue
+        fi
+        if [ "$char" = "\\" ]; then
+            escaped=1
+            continue
+        fi
+        if [ "$quote" = "'" ]; then
+            [ "$char" = "'" ] && quote=""
+            continue
+        fi
+        if [ "$quote" = '"' ]; then
+            [ "$char" = '"' ] && quote=""
+            continue
+        fi
+        case "$char" in
+            "'") quote="'" ;;
+            '"') quote='"' ;;
+            '$') return 0 ;;
+        esac
+    done
+    return 1
+}
+
 # Extract the contents of each top-level $(...) group, one per line.
 # Handles nested parens and quoted strings inside the subshell.
 # Known limitation: single quotes at depth=0 are not tracked, so $() inside
@@ -267,6 +308,11 @@ is_safe_git_read_command() {
     seg=$(normalize_git_directory_prefix "$1")
 
     has_unsupported_expansion "$seg" && return 1
+    # --output exclusion (and the branch/tag exclusion-then-allow checks below)
+    # scan literal text for a dangerous flag; an unquoted variable can smuggle
+    # that flag past them at execution time, so refuse to classify any git
+    # segment referencing one as read-only.
+    _has_unquoted_variable_expansion "$seg" && return 1
     printf '%s' "$seg" | grep -qE '(^|[[:space:]])--output([=[:space:]]|$)' && return 1
 
     printf '%s' "$seg" | grep -qE '^git[[:space:]]+(status|log|diff|show|describe|rev-parse|ls-files|ls-tree|cat-file|blame|shortlog|merge-base)([[:space:]]|$)' && return 0
@@ -723,6 +769,8 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+checks(\s|$)' && return 0
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+auth[[:space:]]+status(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^gh[[:space:]]+api(\s|$)'; then
+        # An unquoted variable can smuggle -X/-f/-F/etc past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         # -X/-f/-F accept an attached value with no separator (e.g. -XPOST, -fkey=value)
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X[^[:space:]]*|-f[^[:space:]]*|-F[^[:space:]]*|--method([=[:space:]]|$)|--field([=[:space:]]|$)|--raw-field([=[:space:]]|$)|--input([=[:space:]]|$))' && return 1
         return 0
@@ -731,29 +779,44 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^cd(\s|$)' && return 0
     printf '%s' "$seg" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl)(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^find(\s|$)'; then
+        # An unquoted variable can smuggle -delete/-exec/etc past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(delete|exec|execdir|ok|okdir|fls|fprint|fprintf)([[:space:]]|$)' && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^sed(\s|$)'; then
+        # An unquoted variable can smuggle -i/e/w past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--in-place)([^[:space:]]*|$)' && return 1
         printf '%s' "$seg" | grep -qE "(^|[^[:alnum:]_-])([0-9,$]+)?[ew]([[:space:]]|['\"]|$)" && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^sort(\s|$)'; then
+        # An unquoted variable can smuggle -o/--output past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-o|--output)([=[:space:]]|$)' && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^yq(\s|$)'; then
+        # An unquoted variable can smuggle -i/--inplace past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--inplace)([=[:space:]]|$)' && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^awk(\s|$)'; then
+        # Quote-tracked, so an awk script's single-quoted $1-style field refs
+        # are not flagged — only a genuinely unquoted $ outside the script
+        # rejects. An unquoted variable could otherwise smuggle system()/
+        # getline past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE 'system[[:space:]]*\(' && return 1
         printf '%s' "$seg" | grep -qE '\|[[:space:]]*getline([[:space:](;}]|$)' && return 1
         return 0
     fi
     printf '%s' "$seg" | grep -qE '^env[[:space:]]*$' && return 0
     if printf '%s' "$seg" | grep -qE '^date(\s|$)'; then
+        # An unquoted variable can smuggle -s/--set past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-s|--set)([=[:space:]]|$)' && return 1
         return 0
     fi
@@ -761,6 +824,8 @@ is_safe_segment() {
 
     # journalctl — read-only log query; exclude maintenance/mutating operations
     if printf '%s' "$seg" | grep -qE '^journalctl(\s|$)'; then
+        # An unquoted variable can smuggle --vacuum-*/--rotate/etc past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--smart-relinquish-var|--setup-keys|--update-catalog|--force)([=[:space:]]|$)' && return 1
         return 0
     fi
@@ -782,11 +847,19 @@ is_safe_segment() {
     # preload modules via --experimental-config-file, so any denylist of
     # specific flag spellings is provably incomplete; only the single-argument
     # shape is safe to auto-approve.
-    printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
-    printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+    # An unquoted variable is one token in this literal text but bash
+    # word-splits it into an arbitrary number of argv entries at execution
+    # time, so it can defeat the single-argument shape these two patterns
+    # require. Reject rather than trust the literal-text token count.
+    if ! _has_unquoted_variable_expansion "$seg"; then
+        printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+        printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+    fi
 
     # curl — allow default GET/HEAD requests only; reject writes and custom methods
     if printf '%s' "$seg" | grep -qE '^curl(\s|$)'; then
+        # An unquoted variable can smuggle -o/-X/--data/etc past this exclusion scan.
+        _has_unquoted_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-[^-[:space:]]*[oOXdFTK][^[:space:]]*|--output|--remote-name|--remote-name-all|--request|--data[^[:space:]]*|--form[^[:space:]]*|--upload-file|--json|--config)([=[:space:]]|$)' && return 1
         return 0
     fi
