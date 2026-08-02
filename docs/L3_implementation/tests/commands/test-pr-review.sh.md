@@ -22,11 +22,12 @@
 - GitHub APPROVED / CHANGES_REQUESTED 投稿
 - reviewer identity と Claude read-only tools
 - session-approved による修正範囲制限
+- 各 review round の先頭で current base branch を fetch し、失敗時は stale な review context を生成せず `FAILED` で停止すること
 - merge、main checkout/pull、branch deletion の禁止
 - `/git-pr` から `/pr-review` への handoff
 - skill の source-of-truth path
 
-根拠: `tests/commands/test-pr-review.sh:38-57`
+根拠: `tests/commands/test-pr-review.sh:38-60`
 
 ## 重要な設計判断
 

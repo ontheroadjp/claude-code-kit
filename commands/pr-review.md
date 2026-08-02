@@ -80,7 +80,13 @@ mkdir -p "$SESSION_TMP_DIR"
 
 ### 4.1 review 対象の固定
 
-各ラウンド開始時に GitHub から最新の `headRefOid` を再取得し、local HEAD と一致させる。次を一時ファイルへ保存する:
+各ラウンド開始時に最初に base branch を更新する:
+
+```bash
+git fetch origin "<baseRefName>"
+```
+
+fetch に失敗した場合は stale な base から review context を生成・投稿せず、`FAILED` で終了する。fetch 成功後に GitHub から最新の `headRefOid` を再取得し、local HEAD と一致させる。次を一時ファイルへ保存する:
 
 ```bash
 git diff --find-renames "origin/<baseRefName>...HEAD" > "$SESSION_TMP_DIR/round-${ROUND}.diff"
