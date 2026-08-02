@@ -14,6 +14,9 @@
 - セッション承認は Stop hook で削除し、次セッションへ持ち越さない。根拠: `hooks/cleanup-session.sh:39-50`
 - コミット前に個人情報、IP アドレス、ドメイン名、絶対パスを staged diff から確認する。根拠: `commands/git-commit.md:47-61`
 - `/report-review` はファイル、Git state、GitHub issue / PR を変更せず、評価を標準出力だけに提示する。根拠: `commands/report-review.md:5-14`, `commands/report-review.md:63-91`
+- Bash 自動承認の allowlist は、危険なフラグを列挙する denylist ではなく、安全な形（単一引数・フラグなしなど）だけを許可する allowlist 型で設計する。オプション名の表記ゆれ（ハイフン/アンダースコア等）や新規フラグの追加に対し、denylist は網羅性を保証できない。根拠: issue #196
+- allowlist の拡張は `logs/auto-approve/*.log` の実使用ログから摩擦点を特定した上で行う。推測でルールを追加しない。根拠: `logs/auto-approve/`
+- allowlist 判定は pure assignment された変数の未引用展開（例: `ARGS='...'; cmd $ARGS`）で bypass され得るため、新しい allowlist ルールを追加する際はこの弱点（未解決）を考慮する。根拠: issue #196
 
 ## 運用・性能方針
 
