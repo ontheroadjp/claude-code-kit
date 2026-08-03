@@ -11,6 +11,7 @@
 ## 定数
 
 - `MAX_REVIEW_ROUNDS=3`
+- `TRIVIAL_FIX_MAX_LINES=5`（1 finding あたりの修正行数がこの値以下かつ機械的な修正のみの場合に trivial round と分類する）
 - reviewer の GitHub token は `AI_REVIEW_TOKEN` を優先し、未設定の場合のみ後方互換のため `CODEX_REVIEW_TOKEN` を使用する
 - 一時ファイルは `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/` 配下だけに作成する
 
@@ -93,12 +94,32 @@ git diff --find-renames "origin/<baseRefName>...HEAD" > "$SESSION_TMP_DIR/round-
 gh pr view <PR番号> --json title,body,comments,reviews > "$SESSION_TMP_DIR/round-${ROUND}-context.json"
 ```
 
+`ROUND == 1` の場合、reviewer には `round-${ROUND}.diff`（PR 全体の diff）をそのまま渡す。
+
+base branch の drift を検出するため、fetch 後に現在の base SHA を毎ラウンド記録する:
+
+```bash
+git rev-parse "origin/<baseRefName>" > "$SESSION_TMP_DIR/round-${ROUND}-base-sha.txt"
+```
+
+`ROUND >= 2` の場合、次の両方を満たすときだけ増分 diff を生成する:
+
+- 直前ラウンドの `$SESSION_TMP_DIR/round-$((ROUND-1))-review.txt` から `REVIEWED_HEAD_SHA:` の値（`PREV_REVIEWED_SHA`）を取得できる
+- `$SESSION_TMP_DIR/round-$((ROUND-1))-base-sha.txt` の内容が今回記録した base SHA と一致する（base branch が前ラウンド以降に進んでいない）
+
+```bash
+git diff --find-renames "${PREV_REVIEWED_SHA}..HEAD" > "$SESSION_TMP_DIR/round-${ROUND}-incremental.diff"
+```
+
+`PREV_REVIEWED_SHA` が取得できない場合（前ラウンドの出力が所定形式でない等）、または base branch が前ラウンド以降に進んでいる場合は、増分 diff を生成しない。base drift 時に増分 diff を生成しないのは、増分 diff（自ブランチの新規コミットのみ）では base 側の変化による影響を reviewer が確認できないためである。`round-${ROUND}-incremental.diff` を生成できた場合でも、reviewer に実際に渡す diff（増分か全体か）とプロンプトの分岐（confirm-only か通常か）は 4.2 の条件でのみ決定する（4.1 はファイル生成のみを担当し、reviewer への提供内容は決定しない）。
+
 reviewer には以下を必ず要求する:
 
 - repo の `AGENTS.md` / `CLAUDE.md` と diff を根拠にレビューする
 - ファイルを編集せず、read-only sandbox 内の読み取り操作だけを使用する
 - 日本語で回答する
 - blocking finding のみ `REQUEST_CHANGES` とする
+- `ROUND >= 2` かつ増分 diff モードの場合は、直前ラウンドで指摘した blocking finding が渡された増分 diff で解消されているかを判定基準に含める
 - 末尾に次の機械判定可能な形式を必ず出力する
 
 ```text
@@ -111,6 +132,12 @@ FINDINGS:
 finding がない場合は `FINDINGS: none` とする。
 
 ### 4.2 別 agent による review
+
+4.1 で `round-${ROUND}-incremental.diff` が生成されている（`PREV_REVIEWED_SHA` を取得でき、かつ base drift がなかった）、かつ `$SESSION_TMP_DIR/round-$((ROUND-1))-trivial.flag` が存在し内容が `true` の場合にのみ、このラウンドは **confirm-only モード**とする。reviewer への指示（review instructions）を「直前ラウンドの blocking finding 一覧と `round-${ROUND}-incremental.diff` だけを根拠に、指摘が解消されたか・増分 diff 内に新たな blocking finding がないかだけを判定する」に限定し、PR 全体の設計方針の再評価は求めない。
+
+上記条件を満たさない場合（`ROUND == 1`、`round-${ROUND}-incremental.diff` が未生成、または trivial flag が存在しない）は **通常モード**とする。reviewer には 4.1 で確定した diff（`round-${ROUND}.diff`、すなわち今回 fetch した最新 base に対する PR 全体の diff）を渡し、PR 全体の設計方針を評価対象に含める。
+
+confirm-only モードでも別 agent の起動・書き込み権限の禁止（read-only sandbox / `Read` ツール限定）・機械判定契約（`VERDICT` / `REVIEWED_HEAD_SHA` / `FINDINGS`）は通常モードと同一とする。**APPROVE の可否は必ずこのラウンドの別 agent 起動結果に基づく — confirm-only モードであっても別 agent の起動自体を省略しない。**
 
 実装元が Claude の場合は Codex を実行する:
 
@@ -181,10 +208,15 @@ REQUEST_CHANGES の場合、元 agent が各 finding と該当ファイルを直
 修正した場合:
 
 1. 対象 repo の検証コマンドを実行する
-2. `/git-commit` を実行する。PR/commit から issue 番号を取得できれば使用し、取得できなければ `issue_number=none` とする
-3. 公開仕様や docs との整合性が変わる場合は `/docs-sync` を実行する
-4. `git push` を実行する（force push 禁止）
-5. workspace が clean であることを確認して次ラウンドへ進む
+2. `/git-commit` を実行する**前に**、working tree にステージされている修正の diff 行数を finding ごとに記録する: `git diff --numstat -- <該当ファイル>`（addition + deletion の合計。複数 finding が同一 hunk を指す場合はその hunk 全体を 1 件分として数える）。commit 後は working tree がクリーンになり `git diff` では計測できなくなるため、必ずこの時点で記録する
+3. `/git-commit` を実行する。PR/commit から issue 番号を取得できれば使用し、取得できなければ `issue_number=none` とする
+4. 公開仕様や docs との整合性が変わる場合は `/docs-sync` を実行する
+5. `git push` を実行する（force push 禁止）
+6. このラウンドで適用した修正が全て次を満たす場合、trivial round と分類し `$SESSION_TMP_DIR/round-${ROUND}-trivial.flag` に `true` を書き込む。1件でも満たさない場合はこのファイルを作成しない（前ラウンドのフラグが残っていれば削除する）:
+    - 修正対象が session-approved 内のみ
+    - Step 2 で記録した finding 1件あたりの diff 行数が `TRIVIAL_FIX_MAX_LINES` 以下
+    - typo・コメント・ドキュメント文言の修正など、実行コード・設定値・判定条件を変更しない機械的な修正である（実行コードやパラメータの値変更は対象外とする）
+7. workspace が clean であることを確認して次ラウンドへ進む
 
 ## Step 5: 終了状態
 

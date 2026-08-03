@@ -78,9 +78,13 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ### `/pr-review` (`commands/pr-review.md`)
 
-PR 番号を受け取り、実装元が Claude なら `codex exec --sandbox read-only --ephemeral`、Codex なら Read-only の Claude を reviewer として起動する。Codex は `--output-last-message` で保存した最終回答だけを機械判定対象とする。各ラウンドで base branch を fetch してから最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。base fetch に失敗した場合は stale な review context を生成・投稿せず FAILED で終了する。blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
+PR 番号を受け取り、実装元が Claude なら `codex exec --sandbox read-only --ephemeral`、Codex なら Read-only の Claude を reviewer として起動する。Codex は `--output-last-message` で保存した最終回答だけを機械判定対象とする。各ラウンドで base branch を fetch してから最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。base fetch に失敗した場合は stale な review context を生成・投稿せず FAILED で終了する。
 
-根拠: `commands/pr-review.md:1-197`
+round 1 は PR 全体 diff を reviewer に渡すが、round 2 以降は直前ラウンドの `REVIEWED_HEAD_SHA` からの増分 diff と直前 findings だけを渡す（SHA を復元できない場合、または base branch が前ラウンド以降に進んでいる場合は全体 diff にフォールバック — base drift の影響を増分 diff だけでは検知できないため）。さらに直前ラウンドの修正が全て session-approved 内・`TRIVIAL_FIX_MAX_LINES=5` 行以下・機械的なものだった場合、かつ今回増分 diff が実際に生成されている場合にのみ、そのラウンドは confirm-only モードになり、reviewer プロンプトを増分 diff と前回 findings の解消確認だけに絞る。confirm-only モードでも別 agent の起動と機械判定契約は省略されず、APPROVED は必ず独立 reviewer の起動結果に基づく。
+
+blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
+
+根拠: `commands/pr-review.md:1-229`
 
 ### `/coding-*` (`commands/coding-*.md`)
 
@@ -172,9 +176,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/hooks/test-approval-hooks.sh:1-614`
 
-`tests/commands/test-pr-review.sh` は `/pr-review` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、最大3ラウンド、各ラウンドの base refresh と失敗時の停止、HEAD SHA 結合、別 reviewer identity、session-approved 制限、GitHub review 投稿、および merge・main 同期・branch 削除の禁止を確認する。
+`tests/commands/test-pr-review.sh` は `/pr-review` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、最大3ラウンド、各ラウンドの base refresh と失敗時の停止、HEAD SHA 結合、別 reviewer identity、session-approved 制限、GitHub review 投稿、round 2+ の増分 diff スコープと trivial round による confirm-only モード、および merge・main 同期・branch 削除の禁止を確認する。
 
-根拠: `tests/commands/test-pr-review.sh:1-67`
+根拠: `tests/commands/test-pr-review.sh:1-77`
 
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 

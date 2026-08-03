@@ -16,14 +16,15 @@
   → 別 GitHub reviewer identity の確認
   → 各ラウンドで最新 base を取得
   → 最新 HEAD SHA を固定
-  → opposite agent の read-only review
+  → round 1 はPR全体diff、round 2+は前ラウンドレビュー済みSHAからの増分diffを生成
+  → 前ラウンドが trivial round なら confirm-only モード、それ以外は通常モードで opposite agent が read-only review
   → GitHub に APPROVED / CHANGES_REQUESTED を投稿
-  → blocking finding があれば元 agent が検証・修正
+  → blocking finding があれば元 agent が検証・修正し、修正が全て trivial なら次ラウンド向けに trivial flag を残す
   → 最大3ラウンド再レビュー
   → APPROVED / CHANGES_REQUESTED / FAILED で終了
 ```
 
-根拠: `commands/pr-review.md:17-79`, `commands/pr-review.md:81-197`
+根拠: `commands/pr-review.md:18-34`, `commands/pr-review.md:82-229`
 
 ## 主要な判定ロジック
 
@@ -45,13 +46,27 @@ GitHub review 投稿には `AI_REVIEW_TOKEN` を優先し、既存 `CODEX_REVIEW
 
 この base refresh と多段照合により、複数ラウンド中の base 更新を diff に反映し、review 中や投稿直前に追加 push があった場合も古い結果を最新 HEAD の approval として扱わない。
 
-根拠: `commands/pr-review.md:81-111`, `commands/pr-review.md:140-169`
+根拠: `commands/pr-review.md:82-114`, `commands/pr-review.md:156-174`
+
+### インクリメンタルレビュー（round 2+ のスコープ縮小）
+
+round 2 以降は、(1) 直前ラウンドの `REVIEWED_HEAD_SHA`（`PREV_REVIEWED_SHA`）を取得でき、かつ (2) 各ラウンドで記録する base SHA（`round-${ROUND}-base-sha.txt`）が前ラウンドと一致する（base drift なし）場合にのみ、増分 diff（`round-${ROUND}-incremental.diff`）を生成する（Step 4.1）。いずれかの条件を満たさない場合、または base drift があった場合は増分 diff を生成しない（base 側の変化を増分 diff だけでは reviewer が確認できないため）。
+
+生成した増分 diff を実際に reviewer へ渡すか、round 1 と同様に `origin/<baseRefName>...HEAD` の全体 diff を渡すかは Step 4.2 の trivial flag 判定でのみ決定する（4.1 は diff ファイルの生成だけを担当し、reviewer への提供内容を決定しない）。
+
+根拠: `commands/pr-review.md:96-116`
+
+### trivial round と confirm-only モード
+
+Step 4.5 の修正適用後、修正が session-approved 内のみ・（commit 前に記録した）finding 1件あたりの diff 行数が `TRIVIAL_FIX_MAX_LINES=5` 以下・typo やコメント・ドキュメント文言の修正など実行コード/設定値/判定条件を変更しない機械的な修正のみ（実行コードやパラメータの値変更は対象外）を満たす場合、そのラウンドを trivial round として `round-${ROUND}-trivial.flag` に記録する。次ラウンドの reviewer 起動（Step 4.2）は、このフラグに加えて `round-${ROUND}-incremental.diff` が実際に生成されている（`PREV_REVIEWED_SHA` を取得でき、かつ base drift がなかった）場合にのみ、増分 diff と直前 findings の解消確認だけに絞った confirm-only モードのプロンプトを使う。confirm-only モードでも別 agent の起動・read-only 制約・機械判定契約は変更せず、APPROVE の可否は必ずこのラウンドの別 agent 起動結果に基づく（reviewer 起動自体を省略しない）。
+
+根拠: `commands/pr-review.md:133-141`, `commands/pr-review.md:208-219`
 
 ### bounded remediation
 
 review は `MAX_REVIEW_ROUNDS=3` に制限する。元 agent は finding の妥当性をコードと docs から再検証し、session-approved 内だけを修正する。最終ラウンドの変更要求、スコープ拡大、破壊的操作、秘密情報、権限追加が必要な finding は自動修正せず `CHANGES_REQUESTED` で人間へ返す。
 
-根拠: `commands/pr-review.md:11-15`, `commands/pr-review.md:171-187`
+根拠: `commands/pr-review.md:11-16`, `commands/pr-review.md:198-219`
 
 ## 重要な設計判断
 
@@ -59,7 +74,13 @@ review は `MAX_REVIEW_ROUNDS=3` に制限する。元 agent は finding の妥�
 
 base branch は初回 gate 後にも進む可能性がある。各ラウンドの diff 生成直前に base を fetch することで、そのラウンドの reviewer に最新の比較対象を渡す。fetch 失敗時は以前の remote-tracking ref を使わず fail closed とし、stale な context に基づく review 投稿を防ぐ。
 
-根拠: `commands/pr-review.md:81-94`
+根拠: `commands/pr-review.md:84-90`
+
+### インクリメンタルレビュー・confirm-only モードを導入した理由
+
+各ラウンドで reviewer subprocess をコールドスタートし、PR 全体 diff をゼロから読み直す設計は round 数に比例して遅くなる。round 1 は依然として全体をレビューする必要があるが、round 2 以降は「直前ラウンドで指摘された finding が解消されたか」「新たな blocking finding がその増分に含まれるか」を確認できれば十分なケースが多い。増分 diff と直前 findings だけを渡すことで reviewer が読む範囲を絞り、trivial な修正が続く場合はさらにプロンプト自体を confirm-only に絞ってレビュー負荷を減らす。ただし APPROVED の最終判定を出す reviewer 起動そのものは省略しない — 「別 agent による客観レビュー」という設計原則を壊さないため。`PREV_REVIEWED_SHA` が取得できない場合は全体 diff にフォールバックし、fail-safe を優先する。
+
+根拠: `commands/pr-review.md:82-140`, `commands/pr-review.md:214-217`
 
 ### reviewer subprocess を read-only にする理由
 
@@ -67,13 +88,13 @@ base branch は初回 gate 後にも進む可能性がある。各ラウンド�
 
 Codex の専用 review subcommand は固定の finding 形式を出力するため使用しない。汎用 exec に機械可読契約を明示し、`--output-last-message` で最終回答だけを保存することで、進行イベントを混ぜずに `VERDICT`、`REVIEWED_HEAD_SHA`、`FINDINGS` を検証できる。
 
-根拠: `commands/pr-review.md:113-138`
+根拠: `commands/pr-review.md:142-166`
 
 ### merge を行わない理由
 
 AI に review と修正の反復を任せつつ、main への統合は人間の明示操作として残すためである。review が失敗または収束しない場合も PR を保持し、現在状態から人間が判断できる。
 
-根拠: `commands/pr-review.md:3-7`, `commands/pr-review.md:189-197`
+根拠: `commands/pr-review.md:3-7`, `commands/pr-review.md:221-229`
 
 ## 統合ポイント
 
@@ -82,7 +103,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 - reviewer CLI: `codex exec --sandbox read-only --ephemeral` または `claude -p`
 - commit/docs: `/git-commit`、必要な場合は `/docs-sync`
 - GitHub: `gh pr view`、`gh pr review`、`gh api user`
-- 一時ファイル: `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/`
+- 一時ファイル: `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/`（各ラウンドの diff・増分 diff・review 出力・trivial flag を含む）
 
 ## 注意事項・既知の制限
 
@@ -93,9 +114,15 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 - review 出力が所定形式でない場合は GitHub review を投稿せず `FAILED` で終了する
 - PR merge、close、branch 削除、main 同期は行わない
 - 3ラウンドで収束しない finding は人間判断へ返す
+- round 2+ の増分レビューは `PREV_REVIEWED_SHA` が前ラウンド出力から取得できることに依存する。取得できない場合は全体 diff にフォールバックする
+- confirm-only モードは reviewer への指示範囲を絞るだけで、reviewer 起動・GitHub review 投稿の必須要件は変えない
 
 ## 変更履歴（git log より自動生成）
 
+- 2dcec34 fix(#201): decouple incremental-diff generation from what the reviewer actually receives
+- b128570 fix(#201): measure trivial-fix line counts before commit and align L3 doc with source of truth
+- 9d2d38f fix(#201): guard incremental pr-review diff against base drift and mode-selection ambiguity
+- ad8e042 feat(#201): scope pr-review rounds to incremental diff and add trivial-fix confirm-only mode
 - cbe90ba fix(#187): refresh pr base before each review round
 - b74d919 fix(#189): use codex exec for structured pr reviews
 - d94812c feat(#185): add autonomous cross-agent PR review workflow
