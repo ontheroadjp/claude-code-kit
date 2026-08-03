@@ -36,7 +36,6 @@ skills/
 | `init-docs/` | `commands/init-docs.md` | docs 再構築 |
 | `new-issue/` | `commands/new-issue.md` | issue 生成 |
 | `review-resolve/` | `commands/review-resolve.md` | PR レビューコメント対応 |
-| `pr-review/` | `commands/pr-review.md` | 別 AI agent による PR レビューと修正ループ |
 | `triage-issues/` | `commands/triage-issues.md` | issue トリアージ |
 | `codex-review/` | `commands/codex-review.md` | Codex による PR レビュー |
 | `git-commit/` | `commands/git-commit.md` | コミット作成 |

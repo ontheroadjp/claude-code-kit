@@ -76,16 +76,6 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 根拠: `commands/codex-review.md:1-155`
 
-### `/pr-review` (`commands/pr-review.md`)
-
-PR 番号を受け取り、実装元が Claude なら `codex exec --sandbox read-only --ephemeral`、Codex なら Read-only の Claude を reviewer として起動する。Codex は `--output-last-message` で保存した最終回答だけを機械判定対象とする。各ラウンドで base branch を fetch してから最新 `headRefOid` を固定し、reviewer 出力・GitHub review の `commit_id`・現在 HEAD が同じ SHA の場合だけ APPROVED とする。base fetch に失敗した場合は stale な review context を生成・投稿せず FAILED で終了する。
-
-round 1 は PR 全体 diff を reviewer に渡すが、round 2 以降は直前ラウンドの `REVIEWED_HEAD_SHA` からの増分 diff と直前 findings だけを渡す（SHA を復元できない場合、または base branch が前ラウンド以降に進んでいる場合は全体 diff にフォールバック — base drift の影響を増分 diff だけでは検知できないため）。さらに直前ラウンドの修正が全て session-approved 内・`TRIVIAL_FIX_MAX_LINES=5` 行以下・機械的なものだった場合、かつ今回増分 diff が実際に生成されている場合にのみ、そのラウンドは confirm-only モードになり、reviewer プロンプトを増分 diff と前回 findings の解消確認だけに絞る。confirm-only モードでも別 agent の起動と機械判定契約は省略されず、APPROVED は必ず独立 reviewer の起動結果に基づく。
-
-blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
-
-根拠: `commands/pr-review.md:1-229`
-
 ### `/coding-*` (`commands/coding-*.md`)
 
 `coding-general` は言語非依存の原則を定義し、`coding-py`、`coding-js`、`coding-ts` はそれぞれ言語固有ルールを追加する。`coding-ts` は `coding-general` と `coding-js` を先に参照する。
@@ -100,15 +90,15 @@ blocking finding は元 agent が session-approved 内で検証・修正し、�
 
 ### `/git-pr` (`commands/git-pr.md`)
 
-`git push` と `gh pr create` を担うスラッシュコマンド。`/task` Phase 2 から `/docs-sync` 完了後に自動呼び出しされる。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-title.txt`（タイトル）・`pr-body.md`（本文）・`pr-docs-sync-result.md`（docs sync 結果）を参照し、存在しない場合は git diff / テンプレートから生成する。PR は ready for review として直接作成し、作成成功後だけ PR 番号を `/pr-review` へ自動で引き継ぐ。Step 1〜7 の既存 PR 作成手順は変更せず、review handoff は Step 8 に分離されている。
+`git push` と `gh pr create` を担うスラッシュコマンド。`/task` Phase 2 から `/docs-sync` 完了後に自動呼び出しされる。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-title.txt`（タイトル）・`pr-body.md`（本文）・`pr-docs-sync-result.md`（docs sync 結果）を参照し、存在しない場合は git diff / テンプレートから生成する。PR は ready for review として直接作成し、Step 7 の URL 報告でフローは完結する（作成後の自動 review・merge は行わない）。
 
 根拠: `commands/git-pr.md:1-73`
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は17件で、commands と対応する。`report-review` skill は read-only 境界、`pr-review` skill は merge・branch 削除・main 同期を人間管理に残す境界を保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は16件で、commands と対応する。`report-review` skill は read-only 境界を保持する。
 
-根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/pr-review/SKILL.md`, `skills/` 実体一覧
+根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/` 実体一覧
 
 ## Hooks
 
@@ -175,10 +165,6 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 `tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp 配下の Write/Edit approval、session temp 範囲外や symlink session temp の prompt fallback、cleanup hook による current session temp directory 削除、write-effect / ambiguous command の prompt fallback、`guard-destructive-cmd.sh` の JSON block output を検証する。Bash boundary coverage は safe な sed / awk / curl / Git 操作と、`sed e/w`、pipe-based `awk getline`、unsafe curl option cluster、Git force variants の両面を含む。複数 segment の無関係な `-d` / `-f` を forced branch deletion と誤認しないことも固定する。また working repo dynamic defense として、Write / Edit / apply_patch / rm -rf の repo 内パス承認・WIP commit 作成・repo 外 prompt fallback・repo root / .git / 複数パス / 変数展開の除外・clean tree での WIP commit 非作成を検証する。
 
 根拠: `tests/hooks/test-approval-hooks.sh:1-614`
-
-`tests/commands/test-pr-review.sh` は `/pr-review` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、最大3ラウンド、各ラウンドの base refresh と失敗時の停止、HEAD SHA 結合、別 reviewer identity、session-approved 制限、GitHub review 投稿、round 2+ の増分 diff スコープと trivial round による confirm-only モード、および merge・main 同期・branch 削除の禁止を確認する。
-
-根拠: `tests/commands/test-pr-review.sh:1-77`
 
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 

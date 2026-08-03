@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`commands/git-pr.md` は `git push` と `gh pr create` を担い、作成成功後の PR を `/pr-review` へ引き継ぐスラッシュコマンドである。`/git-commit` が commit 操作を集約するのと同様に、push・PR 作成操作をここに集約する。
+`commands/git-pr.md` は `git push` と `gh pr create` を担うスラッシュコマンドである。`/git-commit` が commit 操作を集約するのと同様に、push・PR 作成操作をここに集約する。PR 作成・URL 報告でこのコマンドの責務は完結し、以降の review・merge は自動実行しない（`/work`・`/task` のゴールは ready PR の作成まで）。
 
 `/task` Phase 2 から `/docs-sync` 完了後に呼び出される。ユーザーが手動で呼び出すこともできる。
 
@@ -10,7 +10,7 @@
 
 ## 動作の概要
 
-8 ステップで構成される。Step 1〜7 は従来の PR 作成フローで、Step 8 は作成後の review handoff である:
+7 ステップで構成される、PR 作成フロー:
 
 ```
 Step 1: セッション temp ディレクトリの特定
@@ -19,11 +19,10 @@ Step 3: PR body の準備（temp ファイルまたは diff から生成）
 Step 4: docs sync 結果の追記（pr-docs-sync-result.md があれば body 末尾に追加）
 Step 5: git push
 Step 6: gh pr create（ready for review）
-Step 7: 結果報告
-Step 8: 作成した PR 番号を取得して /pr-review を自動実行
+Step 7: 結果報告（PR URL。ここでフロー完結）
 ```
 
-根拠: `commands/git-pr.md:12-73`
+根拠: `commands/git-pr.md:12-64`
 
 ## 主要な判定ロジック
 
@@ -51,13 +50,11 @@ temp の PR body がない場合は `${TEMPLATES_DIR}/pr.md` を fallback とし
 
 根拠: `commands/git-pr.md:7-9`, `commands/git-pr.md:33-38`
 
-### review handoff
+### フローの終端
 
-Step 6 の PR 作成に成功した場合だけ、`gh pr view --json number` で PR 番号を取得して `/pr-review #<number>` を自動実行する。番号取得や review に失敗しても、作成済み PR は close・merge・削除しない。
+Step 7 の結果報告（PR URL）でこのコマンドの責務は完結する。作成後の review・merge は自動実行せず、人間（または `/review-resolve`・`/codex-review` を手動起動するユーザー）が行う。
 
-この接続を PR 作成後の Step 8 に分離することで、Step 1〜7 の title/body 準備、push、PR 作成、URL 報告の振る舞いを維持している。
-
-根拠: `commands/git-pr.md:62-73`
+根拠: `commands/git-pr.md:62-65`
 
 ## 重要な設計判断
 
@@ -74,7 +71,7 @@ Step 6 の PR 作成に成功した場合だけ、`gh pr view --json number` で
 ## 統合ポイント
 
 - 呼び出し元: `commands/task.md`（Phase 2 Step 1 から `/docs-sync` 完了後に自動呼び出し）、ユーザーの手動呼び出し
-- 呼び出すもの: `/pr-review`（PR 作成成功後）、`git push`・`gh pr create`
+- 呼び出すもの: `git push`・`gh pr create`（このコマンドは他の command/skill を呼び出さない）
 - fallback PR template: `${TEMPLATES_DIR}/pr.md`
 - 依存 temp ファイル（任意）:
     - `SESSION_TMP_DIR/pr-title.txt`（`/task` が書き出す）
@@ -84,12 +81,12 @@ Step 6 の PR 作成に成功した場合だけ、`gh pr view --json number` で
 ## 注意事項
 
 - PR は ready for review として作成する（draft では作成しない）
-- PR 作成後は `/pr-review` が最新 HEAD を別 agent で review するが、merge は人間が行う
-- `/pr-review` が APPROVED 以外で終了しても、作成済み PR の状態を巻き戻さない
+- PR 作成・URL 報告でフローは完結し、review・merge は行わない（人間、または `/review-resolve`・`/codex-review` の手動起動に委ねる）
 - SESSION_TMP_DIR が特定できない場合は temp ファイルなしとして動作する（エラーにしない）
 - 手動呼び出し時に temp ファイルがなければ diff からタイトル・本文を生成するため、単独でも動作する
 
 ## 変更履歴（git log より自動生成）
 
+- 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - d94812c feat(#185): add autonomous cross-agent PR review workflow
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync

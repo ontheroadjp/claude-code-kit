@@ -87,7 +87,9 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 ユーザーに「追加の変更はありますか？」と確認し、なければ `/docs-sync` を自動実行する。`/docs-sync` 完了後、ユーザー確認なしに即座に `/git-pr` を実行する（push → PR 作成まで完結）。
 
-根拠: `commands/task.md:139-163`
+`/git-pr` による ready PR 作成が task フローのゴールである。作成後の review・merge は自動実行しない（人間、または `/review-resolve`・`/codex-review` を手動起動するユーザーが行う）。
+
+根拠: `commands/task.md:139-163`, `commands/task.md:178-186`
 
 ## 設計上の決断
 
@@ -125,6 +127,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
 - 7f30935 feat(#161): defer issue creation to after plan approval in task flow

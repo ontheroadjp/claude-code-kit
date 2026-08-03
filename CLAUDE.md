@@ -12,11 +12,10 @@
 
 ## Custom / Command の使い分け（AI向けルール）
 
-**重要: PR レビューコメントへの対話対応は `/review-resolve`、PR 作成後の別 agent による自律レビューは `/pr-review`、それ以外の全作業は直ちに `/work` を呼ぶこと。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。**
+**重要: PR レビューコメントへの対話対応は `/review-resolve`、それ以外の全作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。**
 
 - **review-resolve.md**: PR レビューコメント対応専用のエントリポイント。`/work` を経由せず自己完結（checkout → 実装 → commit → push → 返信）。ユーザーが `/review-resolve #N` で直接呼び出す。
-- **pr-review.md**: PR 作成後のレビュー専用エントリポイント。実装元とは別の agent がレビューし、元 agent が承認済みスコープ内の指摘を PR ブランチ上で修正・commit・push・再レビューする。merge は行わず人間判断に残す。
-- **work.md**: review-resolve / pr-review 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
+- **work.md**: review-resolve 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
   - `report` label の issue → report-review.md を Read し、実装・branch 作成を行わず評価して終了
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）
   - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → ドラフト PR 作成 → /docs-sync へ引き継ぎ）
@@ -51,10 +50,9 @@
 このリポジトリに影響する操作を行う際は、以下のルールに従うこと。
 
 ### ファイル編集・追加・削除の操作
-**ファイルを編集・追加・削除する際は、`/review-resolve` または `/pr-review` フロー内を除き、必ず `/work` を実行すること。**
+**ファイルを編集・追加・削除する際は、`/review-resolve` フロー内を除き、必ず `/work` を実行すること。**
 直接編集は禁止。`/work` 経由でルーティング判定・ブランチ作成・コミットを行う。
 `/review-resolve` フロー内での実装は、PR ブランチ上で直接行い commit・push まで完結させる。
-`/pr-review` フロー内での実装は、PR ブランチ上で承認済みスコープ内の指摘だけを修正し、commit・必要な docs-sync・push・再レビューまで行う。PR の merge は人間が行う。
 
 ### npm 関連の操作
 site は `site/` 配下で npm を使う。npm を利用する際は最初に `node --version` を実行して node をロードする。

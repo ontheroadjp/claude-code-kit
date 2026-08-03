@@ -26,4 +26,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
+- c25b25a docs(#126): add pr-review to catalogs
+- 27660a1 docs(#126): document report review catalogs
 - 3656e6e docs(#175): add README.md to each module directory

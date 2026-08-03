@@ -2,7 +2,7 @@
 
 ## 通常作業フロー
 
-`/review-resolve` と `/pr-review` 以外の作業は `/work` から開始する。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、それ以外は現状調査後に task または patch へ進む。
+`/review-resolve` 以外の作業は `/work` から開始する。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、以降の review・merge は自動実行しない。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、それ以外は現状調査後に task または patch へ進む。
 
 根拠: `commands/work.md:7-143`
 
@@ -62,12 +62,6 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 根拠: `commands/codex-review.md:1-155`
 
-## pr-review flow
-
-`pr-review.md` は ready PR を実装元とは別の AI agent と GitHub account で review する。Claude 実装の reviewer には、専用 review subcommand ではなく `codex exec --sandbox read-only --ephemeral` を使い、`--output-last-message` で保存した最終回答を機械判定する。`codex-review.md` の standalone flow は引き続き専用 review subcommand を使用する。各 round の HEAD SHA を固定し、blocking finding は承認済み scope 内だけで元 agent が修正する。最大3 round で終了し、merge、branch 削除、main checkout/pull は人間に残す。
-
-根拠: `commands/pr-review.md:1-15`, `commands/pr-review.md:77-190`
-
 ## triage-issues flow
 
 `triage-issues.md` は open issue を取得し、repo profile と仕様サマリに照らして stale / inconsistent / duplicated / unclear / ready に分類する。close / comment / edit / label などの issue 操作はユーザー承認後のみ実行する。
@@ -85,7 +79,6 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 | `cd site && npm run docs:build` | VitePress build。CI でも実行 | `site/package.json:4-8`, `.github/workflows/deploy.yml:35-37` |
 | `cd site && npm run docs:preview` | built site preview | `site/package.json:4-8` |
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
-| `bash tests/commands/test-pr-review.sh` | pr-review workflow contract | `tests/commands/test-pr-review.sh` |
 | `bash tests/commands/test-report-review.sh` | report-review workflow contract | `tests/commands/test-report-review.sh` |
 | `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract | `tests/install/test-install.sh` |
 
