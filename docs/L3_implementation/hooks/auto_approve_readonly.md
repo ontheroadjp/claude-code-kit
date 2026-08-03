@@ -282,6 +282,7 @@ variable expansion の除外については、`node --check $ARGS` 型の報告�
 
 ## 変更履歴（git log より自動生成）
 
+- d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
 - 40ea58a fix(#196): track single quotes at depth=0 in subshell content helpers
 - ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
 - 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
@@ -291,4 +292,3 @@ variable expansion の除外については、`node --check $ARGS` 型の報告�
 - 6c041c6 fix(#194): close gh api/journalctl/node --check allowlist bypasses
 - 3655fd5 feat(#194): extend read-only allowlist and fix multibyte log truncation
 - 9d1d78f fix(#156): harden auto-approval boundary checks
-- 975df69 feat(#183): allow $() subshells when content is read-only
