@@ -14,6 +14,7 @@
 - `dedupe_last_per_session()` が `s1` について**後の行（値が大きい方）のみ**を残すこと（`test_dedupe_keeps_last_row_per_session`）— これが本スクリプトの中核となる正しさの担保
 - `aggregate()` の `total_cost_usd` が dedupe 後の値の合計であり、全行単純合算（水増しされた値）と一致しないこと
 - `low_cache_sessions`（`turns > 2` かつ `cache_ratio < 50%`）・`high_density_sessions`（`total/turns > 20000`）が正しいセッションのみを抽出すること
+- `avg_cache_ratio`（3セッションの cache_ratio 単純平均）、`low_cache_sessions_ratio` / `high_density_sessions_ratio`（該当セッション数 ÷ `session_count`）が正しく算出されること
 - `main()` を `sys.argv` 差し替えで直接実行し、標準出力が妥当な JSON であること
 
 根拠: `tests/scripts/test_analyze_token_usage.py:15-100`
@@ -21,6 +22,8 @@
 ## 重要な設計判断
 
 `test_aggregate_uses_deduped_totals` のコメントで「1.0+3.0+9.5+2.5 ではなく 3.0+9.5+2.5」であることを明示し、累積値ログを誤って単純合算する退行を防ぐ回帰テストとして機能させている。
+
+`avg_cache_ratio` / `low_cache_sessions_ratio` / `high_density_sessions_ratio` の期待値は、既存の3セッション固定フィクスチャ（`s1`: cache_ratio 90.0・turns 3、`s2`: cache_ratio 10.0・turns 5、`s3`: cache_ratio 95.0・turns 1）からの手計算値で固定している（issue #216）。
 
 ## 統合ポイント
 

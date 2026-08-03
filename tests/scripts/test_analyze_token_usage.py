@@ -67,6 +67,9 @@ def test_aggregate_uses_deduped_totals(tmp_path: Path, monkeypatch: pytest.Monke
     assert result["high_density_sessions"] == [
         {"session": "s3", "model": "claude-opus-5", "turns": 1, "tokens_per_turn": 30500}
     ]
+    assert result["avg_cache_ratio"] == 65.0
+    assert result["low_cache_sessions_ratio"] == 0.333
+    assert result["high_density_sessions_ratio"] == 0.333
 
 
 def test_main_prints_valid_json(

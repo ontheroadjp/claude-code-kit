@@ -38,8 +38,6 @@ SECTION_RE = re.compile(
 )
 DUPLICATE_RE = re.compile(r"^\s*-\s*(.+?)\s*\((\d+)回\)\s*$", re.MULTILINE)
 TOTAL_ACCESSES_RE = re.compile(r"総アクセス数:\s*(\d+)")
-PHASE_HEADER_RE = re.compile(r"^\[(.+?)\]\s*(\d+)件\s*$")
-ACCESS_ENTRY_RE = re.compile(r"^\s*#\d+\s+(\S+)\s+(.+)$")
 MODIFIED_FILE_RE = re.compile(r"^\s*-\s*(.+)$", re.MULTILINE)
 TOKEN_FIELD_RE = {
     "input": re.compile(r"input:\s*(\d+)"),
@@ -65,8 +63,6 @@ class Session(TypedDict):
     user_instruction: str
     total_accesses: int
     duplicates: list[dict[str, object]]
-    phase_counts: dict[str, int]
-    tool_counts: dict[str, int]
     modified_files: list[str]
     token_usage: TokenUsage | None
 
@@ -90,21 +86,6 @@ def parse_summary(text: str) -> tuple[int, list[dict[str, object]]]:
     total = int(total_match.group(1)) if total_match else 0
     duplicates = [{"path": path, "count": int(count)} for path, count in DUPLICATE_RE.findall(text)]
     return total, duplicates
-
-
-def parse_phases(text: str) -> tuple[dict[str, int], dict[str, int]]:
-    phase_counts: dict[str, int] = {}
-    tool_counts: dict[str, int] = {}
-    for line in text.splitlines():
-        header_match = PHASE_HEADER_RE.match(line)
-        if header_match:
-            phase_counts[header_match.group(1)] = int(header_match.group(2))
-            continue
-        entry_match = ACCESS_ENTRY_RE.match(line)
-        if entry_match:
-            tool = entry_match.group(1)
-            tool_counts[tool] = tool_counts.get(tool, 0) + 1
-    return phase_counts, tool_counts
 
 
 def parse_modified_files(text: str) -> list[str]:
@@ -136,14 +117,11 @@ def parse_session(sections: dict[str, str]) -> Session | None:
     if "日時" not in sections:
         return None
     total, duplicates = parse_summary(sections.get("アクセスサマリ", ""))
-    phase_counts, tool_counts = parse_phases(sections.get("フェーズ別アクセス順序", ""))
     return {
         "timestamp": sections.get("日時", "").strip(),
         "user_instruction": sections.get("ユーザーからの指示内容", "").strip(),
         "total_accesses": total,
         "duplicates": duplicates,
-        "phase_counts": phase_counts,
-        "tool_counts": tool_counts,
         "modified_files": parse_modified_files(sections.get("修正したファイル", "")),
         "token_usage": parse_token_usage(sections.get("トークン使用量", "")),
     }
@@ -180,9 +158,45 @@ def top_redundant_sessions(sessions: list[Session], n: int) -> list[dict[str, ob
             "user_instruction": session["user_instruction"],
             "redundant_accesses": count,
             "duplicate_files": session["duplicates"],
+            "modified": bool(session["modified_files"]),
         }
         for count, session in ranked
     ]
+
+
+def redundant_access_waste(sessions: list[Session]) -> dict[str, object]:
+    """Estimate the tokens/cost spent on re-reading a file already read this session.
+
+    Approximates each session's per-access cost as its total tokens/cost divided by
+    its total accesses, then multiplies that by the session's redundant (count - 1)
+    reads. This is the only place that ties `duplicates` directly to a loss figure —
+    every other Fact in this module only reports frequency, not impact.
+    """
+    wasted_tokens = 0.0
+    wasted_cost = 0.0
+    total_tokens_with_data = 0
+    sessions_with_data = 0
+
+    for session in sessions:
+        token_usage = session["token_usage"]
+        if not session["duplicates"] or token_usage is None or session["total_accesses"] <= 0:
+            continue
+        redundant_count = sum(int(d["count"]) - 1 for d in session["duplicates"])
+        per_access_tokens = token_usage["total"] / session["total_accesses"]
+        per_access_cost = token_usage["cost_usd"] / session["total_accesses"]
+        wasted_tokens += redundant_count * per_access_tokens
+        wasted_cost += redundant_count * per_access_cost
+        total_tokens_with_data += token_usage["total"]
+        sessions_with_data += 1
+
+    return {
+        "sessions_with_data": sessions_with_data,
+        "estimated_wasted_tokens": round(wasted_tokens),
+        "estimated_wasted_cost_usd": round(wasted_cost, 4),
+        "estimated_waste_ratio_pct": (
+            round(wasted_tokens / total_tokens_with_data * 100, 2) if total_tokens_with_data else 0
+        ),
+    }
 
 
 def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
@@ -190,13 +204,8 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
     total_accesses = sum(s["total_accesses"] for s in sessions)
 
     duplicate_totals: dict[str, int] = {}
-    modified_totals: dict[str, int] = {}
-    phase_totals: dict[str, int] = {}
-    tool_totals: dict[str, int] = {}
-    zero_modified_sessions = 0
     sessions_with_duplicates = 0
     redundant_accesses_total = 0
-    token_sessions: list[TokenUsage] = []
 
     for session in sessions:
         if session["duplicates"]:
@@ -205,18 +214,6 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
             path = str(duplicate["path"])
             duplicate_totals[path] = duplicate_totals.get(path, 0) + int(duplicate["count"])
             redundant_accesses_total += int(duplicate["count"]) - 1
-        for modified_file in session["modified_files"]:
-            modified_totals[modified_file] = modified_totals.get(modified_file, 0) + 1
-        if not session["modified_files"]:
-            zero_modified_sessions += 1
-        for phase, count in session["phase_counts"].items():
-            phase_totals[phase] = phase_totals.get(phase, 0) + count
-        for tool, count in session["tool_counts"].items():
-            tool_totals[tool] = tool_totals.get(tool, 0) + count
-        if session["token_usage"] is not None:
-            token_sessions.append(session["token_usage"])
-
-    total_cost = sum(t["cost_usd"] for t in token_sessions)
 
     return {
         "log_type": "access",
@@ -229,17 +226,7 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
         "sessions_with_duplicates": sessions_with_duplicates,
         "sessions_with_duplicates_ratio": round(sessions_with_duplicates / session_count, 3) if session_count else 0,
         "top_redundant_sessions": top_redundant_sessions(sessions, TOP_N),
-        "top_modified_files": top_n(modified_totals, TOP_N),
-        "phase_totals": phase_totals,
-        "tool_totals": tool_totals,
-        "zero_modified_sessions": zero_modified_sessions,
-        "zero_modified_ratio": round(zero_modified_sessions / session_count, 3) if session_count else 0,
-        "token_usage": {
-            "sessions_with_data": len(token_sessions),
-            "total_cost_usd": round(total_cost, 4),
-            "total_tokens": sum(t["total"] for t in token_sessions),
-            "avg_cost_usd_per_session": round(total_cost / len(token_sessions), 4) if token_sessions else 0,
-        },
+        "redundant_access_waste": redundant_access_waste(sessions),
     }
 
 

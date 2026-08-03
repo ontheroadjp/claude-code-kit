@@ -17,6 +17,7 @@ from typing import TypedDict
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.analyze_common import (  # noqa: E402
+    MONTH_PATTERN_LENGTH,
     build_arg_parser,
     emit_json,
     log_files_for_months,
@@ -25,6 +26,38 @@ from lib.analyze_common import (  # noqa: E402
 
 TOP_N = 10
 RECENT_N = 15
+
+# Mirrors hooks/auto-approve-readonly.sh's check_session_approved() categories
+# (tool:git_write / tool:gh_issue_write / tool:gh_pr_write) — the same Bash
+# command shapes that only auto-approve once a session has an approved plan.
+# Kept in the same match order as the hook so a pattern here maps 1:1 to the
+# regex branch that would need updating to auto-approve it unconditionally.
+ROUTINE_OP_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("git add", re.compile(r"^git\s+add(\s|$)")),
+    ("git commit", re.compile(r"^git\s+commit(\s|$)")),
+    ("git merge", re.compile(r"^git\s+merge(\s|$)")),
+    ("git fetch", re.compile(r"^git\s+fetch(\s|$)")),
+    ("git pull", re.compile(r"^git\s+pull(\s|$)")),
+    ("git stash", re.compile(r"^git\s+stash(\s|$)")),
+    ("git push", re.compile(r"^git\s+push(\s|$)")),
+    ("git checkout/switch", re.compile(r"^git\s+(checkout|switch)(\s|$)")),
+    ("git branch", re.compile(r"^git\s+branch(\s|$)")),
+    ("gh issue create", re.compile(r"^gh\s+issue\s+create(\s|$)")),
+    ("gh issue edit", re.compile(r"^gh\s+issue\s+edit(\s|$)")),
+    ("gh issue close", re.compile(r"^gh\s+issue\s+close(\s|$)")),
+    ("gh issue delete", re.compile(r"^gh\s+issue\s+delete(\s|$)")),
+    ("gh issue comment", re.compile(r"^gh\s+issue\s+comment(\s|$)")),
+    ("gh issue reopen", re.compile(r"^gh\s+issue\s+reopen(\s|$)")),
+    ("gh pr create", re.compile(r"^gh\s+pr\s+create(\s|$)")),
+    ("gh pr edit", re.compile(r"^gh\s+pr\s+edit(\s|$)")),
+    ("gh pr close", re.compile(r"^gh\s+pr\s+close(\s|$)")),
+    ("gh pr comment", re.compile(r"^gh\s+pr\s+comment(\s|$)")),
+    ("gh pr reopen", re.compile(r"^gh\s+pr\s+reopen(\s|$)")),
+    ("gh pr ready", re.compile(r"^gh\s+pr\s+ready(\s|$)")),
+    ("gh pr review", re.compile(r"^gh\s+pr\s+review(\s|$)")),
+    ("gh pr checkout", re.compile(r"^gh\s+pr\s+checkout(\s|$)")),
+    ("gh pr merge", re.compile(r"^gh\s+pr\s+merge(\s|$)")),
+]
 
 LINE_RE = re.compile(
     r"^\[(?P<timestamp>[^\]]+)\]\s+"
@@ -101,6 +134,78 @@ def top_detail_patterns(decisions: list[Decision], result: str, n: int) -> list[
     return [{"tool": tool, "detail": detail, "count": count} for (tool, detail), count in ranked]
 
 
+def classify_routine_op(tool: str, detail: str) -> str | None:
+    if tool != "Bash":
+        return None
+    stripped = detail.strip()
+    for label, pattern in ROUTINE_OP_PATTERNS:
+        if pattern.match(stripped):
+            return label
+    return None
+
+
+def monthly_trend(decisions: list[Decision]) -> list[dict[str, object]]:
+    grouped: dict[str, list[Decision]] = {}
+    for decision in decisions:
+        month = decision["timestamp"][:MONTH_PATTERN_LENGTH]
+        grouped.setdefault(month, []).append(decision)
+
+    trend = []
+    for month, group in sorted(grouped.items()):
+        counts = count_values(d["result"] for d in group)
+        trend.append(
+            {
+                "month": month,
+                "total_decisions": len(group),
+                "result_counts": counts,
+                "result_ratio_pct": ratio(counts, len(group)),
+            }
+        )
+    return trend
+
+
+def routine_ops_breakdown(decisions: list[Decision], n: int) -> dict[str, object]:
+    routine: list[tuple[str, Decision]] = []
+    for decision in decisions:
+        label = classify_routine_op(decision["tool"], decision["detail"])
+        if label is not None:
+            routine.append((label, decision))
+
+    total = len(routine)
+    result_counts = count_values(d["result"] for _, d in routine)
+
+    pattern_result_counts: dict[str, dict[str, int]] = {}
+    for label, decision in routine:
+        bucket = pattern_result_counts.setdefault(label, {})
+        bucket[decision["result"]] = bucket.get(decision["result"], 0) + 1
+
+    ranked_patterns = sorted(
+        (
+            (counts.get("user_prompt", 0), label, counts)
+            for label, counts in pattern_result_counts.items()
+            if counts.get("user_prompt", 0) > 0
+        ),
+        key=lambda item: item[0],
+        reverse=True,
+    )[:n]
+    patterns_needing_approval = [
+        {
+            "pattern": label,
+            "user_prompt_count": user_prompt_count,
+            "approved_count": counts.get("approved", 0),
+            "blocked_count": counts.get("blocked", 0),
+        }
+        for user_prompt_count, label, counts in ranked_patterns
+    ]
+
+    return {
+        "total_routine_decisions": total,
+        "result_counts": result_counts,
+        "result_ratio_pct": ratio(result_counts, total),
+        "patterns_needing_approval": patterns_needing_approval,
+    }
+
+
 def recent_samples(decisions: list[Decision], result: str, n: int) -> list[dict[str, str]]:
     matching = [d for d in decisions if d["result"] == result]
     return [
@@ -131,6 +236,8 @@ def aggregate(months: list[str], decisions: list[Decision]) -> dict[str, object]
         "top_user_prompt_patterns": top_detail_patterns(decisions, "user_prompt", TOP_N),
         "recent_blocked_samples": recent_samples(decisions, "blocked", RECENT_N),
         "recent_user_prompt_samples": recent_samples(decisions, "user_prompt", RECENT_N),
+        "monthly_trend": monthly_trend(decisions),
+        "routine_ops": routine_ops_breakdown(decisions, TOP_N),
     }
 
 

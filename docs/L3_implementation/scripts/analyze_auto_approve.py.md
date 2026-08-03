@@ -4,7 +4,7 @@
 
 `logs/auto-approve/*.log`（`hooks/auto-approve-readonly.sh` の `log_decision()` が記録する PreToolUse 判定ログ）をパースし、集計結果を JSON として標準出力へ出力する。HTML生成・分析文の作成は行わない（`commands/analyze-auto-approve.md` が担う）。
 
-根拠: `scripts/analyze_auto_approve.py:1-6`
+根拠: `scripts/analyze_auto_approve.py:1-7`
 
 ## 動作の概要
 
@@ -16,31 +16,43 @@
    - `top_sessions`（判定数上位セッション）
    - `top_blocked_patterns` / `top_user_prompt_patterns`（`(tool, detail)` の完全一致でグルーピングした上位パターン）
    - `recent_blocked_samples` / `recent_user_prompt_samples`（直近 `RECENT_N` 件のサンプル）
+   - `monthly_trend`（`timestamp` の年月ごとにグルーピングした判定数・result内訳・比率の時系列）
+   - `routine_ops`（`/work` パイプラインの定型処理として分類できた Bash コマンドの内訳）
 4. `main()` で `lib.analyze_common` の共通CLI・月解決処理を呼び、結果を JSON として出力する
 
-根拠: `scripts/analyze_auto_approve.py:35-146`
+根拠: `scripts/analyze_auto_approve.py:62-253`
 
 ## 主要な判定ロジック・フロー
 
 - `count_values()` は TypedDict のキーを文字列引数で動的に取り出す代わりに、呼び出し側で `(d["field"] for d in decisions)` というジェネレータを渡す設計にしている。これにより mypy strict 下で `# type: ignore` を使わずに型安全性を保っている
 - `top_detail_patterns()` は完全一致の `(tool, detail)` ペアでグルーピングする。`detail` は hook 側で120バイトに truncate 済みのため、長いコマンドの一部だけが一致してグルーピングされることは想定していない
+- `classify_routine_op(tool, detail)` は `ROUTINE_OP_PATTERNS` の正規表現リストを先頭一致で試し、Bash の `detail` 先頭が `hooks/auto-approve-readonly.sh` の `check_session_approved()` が認識する git/gh write系コマンド形状（`git add` / `git commit` / `git push` / ... / `gh pr merge` 等）に一致すればそのラベルを返す。一致しなければ `None`（定型処理として扱わない）。パターンの並び順・粒度は `check_session_approved()` の分岐と1:1対応させており、あるパターンを恒久的に自動承認へ追加したくなった場合、hook 側のどの正規表現分岐を編集すべきかがそのまま分かるようにしている
+- `routine_ops_breakdown()` は `classify_routine_op` で分類できた判定のみを対象に、パターンごとの result 内訳を集計し、`user_prompt_count > 0` のパターンを `user_prompt_count` 降順で `patterns_needing_approval` として抽出する
+- `monthly_trend()` は `timestamp` の先頭 `MONTH_PATTERN_LENGTH`（7文字 = `YYYY-MM`）を月キーとして `decisions` をグルーピングする
 
-根拠: `scripts/analyze_auto_approve.py:78-108`
+根拠: `scripts/analyze_auto_approve.py:35-60`, `scripts/analyze_auto_approve.py:126-206`
 
 ## 重要な設計判断とその理由
 
 `result_ratio_pct` の `user_prompt` 比率を摩擦指標として扱う設計は、hook 自体（`hooks/auto-approve-readonly.sh`）の許可ルールがどれだけカバレッジを持っているかを定量的に示すため。`blocked` は防御が機能した件数であり、`user_prompt` は自動判定できず人間の確認に落ちた件数という区別を JSON レベルで保持している。
 
+`/analyze-auto-approve` の目的は「安全性を保ちながら自動承認率を100%に近づける」ことであり、その一部として「`/work` パイプラインの定型処理（git/gh write系操作）がどれだけユーザー確認に落ちているか」を明示的な KPI として求められた（issue #216）。これを実データから機械的に判定するために、`hooks/auto-approve-readonly.sh` が既に持つ `check_session_approved()` の分類ロジックをそのまま踏襲した。独自の分類基準を新しく作ると hook の実際の動作とズレるおそれがあるため、既存の唯一の正の情報源（hook 自体の allowlist）をミラーする設計にした。ただし文字列一致の複製であるため、hook 側の allowlist が変わった場合はこのファイルの `ROUTINE_OP_PATTERNS` も追従して更新する必要がある（ドリフトの可能性は `docs/L3_implementation/commands/analyze-auto-approve.md` にも明記）。
+
+`monthly_trend` は、`--all` 実行時に過去のチューニング施策（hook の allowlist 拡張など）が自動承認率を実際に改善させたかどうかを時系列で確認できるようにするために追加した。
+
 ## 統合ポイント
 
 - 入力: `logs/auto-approve/<YYYY-MM>.log`（`hooks/auto-approve-readonly.sh` が生成）
-- 共通処理: `scripts/lib/analyze_common.py`
+- 分類ロジックの参照元: `hooks/auto-approve-readonly.sh` の `check_session_approved()`（`tool:git_write` / `tool:gh_issue_write` / `tool:gh_pr_write`）
+- 共通処理: `scripts/lib/analyze_common.py`（`MONTH_PATTERN_LENGTH` を月グルーピングに再利用）
 - 呼び出し元: `commands/analyze-auto-approve.md`
 - テスト: `tests/scripts/test_analyze_auto_approve.py`
 
 ## 注意事項・既知の制限
 
-- `top_blocked_patterns` / `top_user_prompt_patterns` / `top_sessions` は `TOP_N`（10件）、サンプルは `RECENT_N`（15件）に切り詰められる
+- `top_blocked_patterns` / `top_user_prompt_patterns` / `top_sessions` は `TOP_N`（10件）、サンプルは `RECENT_N`（15件）に切り詰められる。`routine_ops.patterns_needing_approval` も `TOP_N`（10件）に切り詰められる
+- `routine_ops` は Bash ツールの決定のみを対象とする（`classify_routine_op` は `tool != "Bash"` を即座に除外する）
+- `ROUTINE_OP_PATTERNS` は `hooks/auto-approve-readonly.sh` の `check_session_approved()` の手動ミラーであり、自動同期はされない。hook 側の allowlist が変わった場合、このファイルも合わせて更新しないと `routine_ops` の分類が古くなる
 
 ## 変更履歴（git log より自動生成）
 
