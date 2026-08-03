@@ -111,7 +111,7 @@ git rev-parse "origin/<baseRefName>" > "$SESSION_TMP_DIR/round-${ROUND}-base-sha
 git diff --find-renames "${PREV_REVIEWED_SHA}..HEAD" > "$SESSION_TMP_DIR/round-${ROUND}-incremental.diff"
 ```
 
-`PREV_REVIEWED_SHA` が取得できない場合（前ラウンドの出力が所定形式でない等）、または base branch が前ラウンド以降に進んでいる場合は、増分 diff を生成せず `round-${ROUND}.diff`（今回 fetch した最新 base に対する PR 全体の diff）を reviewer に渡す通常モードにフォールバックする。base drift 時に全体 diff へフォールバックするのは、増分 diff（自ブランチの新規コミットのみ）では base 側の変化による影響を reviewer が確認できないためである。両方の条件を満たした場合のみ、reviewer には `round-${ROUND}-incremental.diff` と直前ラウンドの `FINDINGS` 一覧を渡す（このモードの適用可否とプロンプトの分岐は 4.2 を参照）。
+`PREV_REVIEWED_SHA` が取得できない場合（前ラウンドの出力が所定形式でない等）、または base branch が前ラウンド以降に進んでいる場合は、増分 diff を生成しない。base drift 時に増分 diff を生成しないのは、増分 diff（自ブランチの新規コミットのみ）では base 側の変化による影響を reviewer が確認できないためである。`round-${ROUND}-incremental.diff` を生成できた場合でも、reviewer に実際に渡す diff（増分か全体か）とプロンプトの分岐（confirm-only か通常か）は 4.2 の条件でのみ決定する（4.1 はファイル生成のみを担当し、reviewer への提供内容は決定しない）。
 
 reviewer には以下を必ず要求する:
 
