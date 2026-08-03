@@ -114,6 +114,22 @@ is_session_tmp_file() {
     esac
 }
 
+# Like is_session_tmp_file, but also accepts the session tmp directory itself
+# (not only paths strictly beneath it) — used to approve `mkdir -p
+# "$SESSION_TMP_DIR"`, which targets the directory itself rather than a file
+# inside it.
+is_session_tmp_dir_or_descendant() {
+    local path="$1"
+    local norm_path norm_tmp
+    ensure_session_tmp_dir || return 1
+    norm_path=$(realpath -m "$path" 2>/dev/null || printf '%s' "$path")
+    norm_tmp=$(realpath -m "$SESSION_TMP_DIR" 2>/dev/null || printf '%s' "$SESSION_TMP_DIR")
+    case "$norm_path" in
+        "$norm_tmp"|"$norm_tmp"/*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 normalize_git_directory_prefix() {
     local seg="$1"
     local git_c_pattern
@@ -178,6 +194,55 @@ _has_variable_expansion() {
         # literal character inside the OTHER quote style: a ' inside "..."
         # (and a " inside '...', already handled by the early continue
         # above) has no special meaning in bash and must not toggle state.
+        case "$char" in
+            "'") [ -z "$quote" ] && quote="'" ;;
+            '"')
+                if [ "$quote" = '"' ]; then
+                    quote=""
+                elif [ -z "$quote" ]; then
+                    quote='"'
+                fi
+                ;;
+        esac
+    done
+    return 1
+}
+
+# Return 0 if $input contains a '>' that bash would actually interpret as a
+# file-write redirect: unquoted, and not immediately followed by '&' (fd
+# duplication, e.g. 2>&1, handled separately by split_shell_segments). Reuses
+# the same single/double-quote + backslash-escape grammar as
+# _has_variable_expansion so that a '>' used as a comparison operator inside
+# a quoted string (e.g. awk -F: '$1>130 && $1<200') is not misread as a
+# redirect. $(...) subshells are not tracked here — any '>' inside one is
+# still unquoted shell syntax at this scan's level and is correctly flagged;
+# the subshell's own content is independently validated later by
+# _subshells_are_safe.
+_has_unquoted_write_redirect() {
+    local input="$1"
+    local i char quote="" escaped=0
+    local n="${#input}"
+    for ((i = 0; i < n; i++)); do
+        char="${input:i:1}"
+
+        if [ "$quote" = "'" ]; then
+            [ "$char" = "'" ] && quote=""
+            continue
+        fi
+
+        if [ "$escaped" = "1" ]; then
+            escaped=0
+            continue
+        fi
+        if [ "$char" = "\\" ]; then
+            escaped=1
+            continue
+        fi
+
+        if [ "$char" = '>' ] && [ -z "$quote" ] && [ "${input:i+1:1}" != '&' ]; then
+            return 0
+        fi
+
         case "$char" in
             "'") [ -z "$quote" ] && quote="'" ;;
             '"')
@@ -415,11 +480,13 @@ is_safe_git_read_command() {
 }
 
 split_shell_segments() {
-    local input="$1" current="" quote="" char next
+    local input="$1" current="" quote="" char next prev
     local escaped=0 i
     for ((i = 0; i < ${#input}; i++)); do
         char="${input:i:1}"
         next="${input:i+1:1}"
+        prev=""
+        [ "$i" -gt 0 ] && prev="${input:i-1:1}"
 
         if [ "$quote" = "'" ]; then
             current+="$char"
@@ -454,7 +521,16 @@ split_shell_segments() {
                 [ "$next" = "$char" ] && i=$((i + 1))
                 ;;
             '&')
-                if [ "$next" = '&' ]; then
+                # fd-duplication redirect (e.g. 2>&1, >&2, >&-): the '&' directly
+                # follows a '>' and is followed by a bare fd number or '-', not a
+                # filename. Real bash treats `>&word` as a file-write redirect
+                # when word is NOT numeric/'-' (equivalent to `&>word`), so this
+                # must stay narrow — only the fd-duplication shape is exempted
+                # from background-operator treatment; `>&somefile` still falls
+                # through to the else branch below and is correctly rejected.
+                if [ "$prev" = '>' ] && [[ "${input:i+1}" =~ ^(-|[0-9]+)([[:space:]\;\&\|]|$) ]]; then
+                    current+="$char"
+                elif [ "$next" = '&' ]; then
                     printf '%s\n' "$current"
                     current=""
                     i=$((i + 1))
@@ -790,8 +866,10 @@ fi
 command_normalized=$(printf '%s' "$command" \
     | sed 's/\\|/__ESCAPED_PIPE__/g; s/[0-9]*>>\/dev\/null//g; s/[0-9]*>\/dev\/null//g; s/&>>\/dev\/null//g; s/&>\/dev\/null//g')
 
-# Reject if command writes to a file (> but not >&)
-if printf '%s' "$command_normalized" | grep -qE '>[^&]'; then
+# Reject if command writes to a file (unquoted > but not >&). Quote-aware so
+# a '>' used as a comparison operator inside a quoted string (e.g. awk -F:
+# '$1>130 && $1<200') is not misread as a redirect.
+if _has_unquoted_write_redirect "$command_normalized"; then
     log_decision "user_prompt" "Bash" "$command"
     exit 0
 fi
@@ -881,6 +959,15 @@ is_safe_segment() {
         _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE 'system[[:space:]]*\(' && return 1
         printf '%s' "$seg" | grep -qE '\|[[:space:]]*getline([[:space:](;}]|$)' && return 1
+        # awk's own print/printf output-redirect operator (e.g. print $1 >
+        # "file", printf "%s" >> "file") writes files independently of the
+        # shell-level write-redirect check above, which only sees the
+        # single-quoted script as opaque text. Reject the whole segment if a
+        # '>' appears anywhere after a print/printf keyword — deliberately
+        # coarse (it also catches a literal '>' inside a print argument
+        # string, e.g. print "a>b") since a false prompt-fallback here is
+        # harmless but a missed file write is not.
+        printf '%s' "$seg" | grep -qE '\b(print|printf)\b.*>' && return 1
         return 0
     fi
     printf '%s' "$seg" | grep -qE '^env[[:space:]]*$' && return 0
@@ -911,6 +998,7 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^go[[:space:]]+version[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(bash|zsh)[[:space:]]+--version[[:space:]]*$' && return 0
+    printf '%s' "$seg" | grep -qE '^codex[[:space:]]+(--version|--help|-h)[[:space:]]*$' && return 0
     # bash -n / node --check: an allowlist of exactly "<cmd> <flag> <file>" with
     # no other tokens, rather than a denylist of dangerous flags. node in
     # particular treats -/_ as interchangeable in long option names and can
@@ -926,6 +1014,46 @@ is_safe_segment() {
     if ! _has_variable_expansion "$seg"; then
         printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
         printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+        # command -v <name>: read-only path/function/alias lookup, equivalent
+        # to `type`. Same single-argument shape rationale as bash -n / node
+        # --check above — a variable reference could otherwise smuggle extra
+        # tokens or a leading-dash flag past a literal-text check.
+        printf '%s' "$seg" | grep -qE '^command[[:space:]]+-v[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+    fi
+
+    # kill -0 <pid...>: signal 0 sends no actual signal — it only tests
+    # whether the process exists and is signalable — so this is a read-only
+    # liveness check, not a mutation. Deliberately narrow: only digit-only
+    # PIDs (no leading '-', which would target a process GROUP instead) and
+    # no other signal/flag are accepted; any other `kill` invocation falls
+    # through to the normal prompt.
+    if printf '%s' "$seg" | grep -qE '^kill(\s|$)'; then
+        _has_variable_expansion "$seg" && return 1
+        printf '%s' "$seg" | grep -qE '^kill[[:space:]]+-0([[:space:]]+[0-9]+)+[[:space:]]*$' && return 0
+        return 1
+    fi
+
+    # mkdir -p restricted to the session tmp directory (or a descendant of
+    # it): this repo's own documented convention for AI-agent scratch files
+    # (see CLAUDE.md "一時ファイルの作成"). Only the exact `-p <single-path>`
+    # shape is accepted — no other flags, no multiple paths — and the target
+    # must resolve under SESSION_TMP_DIR, mirroring the Write/Edit tool's
+    # existing is_session_tmp_file check.
+    if printf '%s' "$seg" | grep -qE '^mkdir(\s|$)'; then
+        _has_variable_expansion "$seg" && return 1
+        if printf '%s' "$seg" | grep -qE '^mkdir[[:space:]]+-p[[:space:]]+[^[:space:]]+[[:space:]]*$'; then
+            local mk_path
+            mk_path=$(printf '%s' "$seg" | sed -E 's/^mkdir[[:space:]]+-p[[:space:]]+//; s/[[:space:]]*$//')
+            case "$mk_path" in
+                \"*\") mk_path="${mk_path#\"}"; mk_path="${mk_path%\"}" ;;
+                \'*\') mk_path="${mk_path#\'}"; mk_path="${mk_path%\'}" ;;
+            esac
+            case "$mk_path" in
+                *[\"\'\ ]*) return 1 ;;
+            esac
+            is_session_tmp_dir_or_descendant "$mk_path" && return 0
+        fi
+        return 1
     fi
 
     # curl — allow default GET/HEAD requests only; reject writes and custom methods

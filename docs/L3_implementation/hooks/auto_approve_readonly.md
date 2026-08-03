@@ -9,7 +9,7 @@
 
 この分類に確信を持てない操作は出力なしで終了し、クライアントの通常許可フローへ戻す。破壊的操作は allowlist より先に評価し、session-approved が存在しても block する。
 
-根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:704-1036`, `hooks/lib/approval-safety.sh`
+根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:709-1093`, `hooks/lib/approval-safety.sh`
 
 ## セッションと実行元の解決
 
@@ -41,11 +41,11 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 8. repo 内単一パスへの `rm -rf` は動的防御（WIP commit）後に承認する。
 9. 共有 destructive guard を評価し、該当する場合は block する。
 10. `/dev/null` redirect と escaped pipe を正規化する。
-11. ファイルへの write redirect を検出した場合は通常許可フローへ戻す。
-12. command を quote-aware に segment 分割する。
+11. quote-aware にファイルへの write redirect（unquoted かつ `>&` ではない `>`）を検出した場合は通常許可フローへ戻す。
+12. command を quote-aware に segment 分割する（`>&<fd番号|->` は fd 複製として background operator 扱いしない）。
 13. 全 segment が読み取り専用または session-approved の場合のみ承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:704-1036`
+根拠: `hooks/auto-approve-readonly.sh:709-1093`
 
 ## File tool の許可
 
@@ -64,7 +64,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 承認ファイル自身へのスコープ追加は block する。working repo 内の Write / Edit / apply_patch の場合は承認前に WIP commit を作成する。その他は通常許可フローへ戻す。
 
-根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:713-801`
+根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:718-821`
 
 ## Bash command の許可
 
@@ -81,7 +81,9 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | GitHub CLI | issue/PR/repository/release/run/workflow の list/view/status、`gh pr checks`、`gh auth status`、`gh api`（デフォルト GET） | write action、`gh api` の `-X/--method`, `-f/-F/--field`, `--raw-field`, `--input` |
 | Shell navigation / test | `cd`, `test`, `[ ... ]`, read-only `if` | command/process substitution、operatorを含む test |
 | Unix read tools | `ls`, `cat`, `head`, `tail`, grep 系、`rg`, `fd`, `wc`, `cut`, `tr`, `sed`, `awk`, `sort`, `jq`, `yq`, `nl`, `pgrep` など | 下記のwrite/execute mode |
-| Runtime | version 表示、`bash -n <file>`・`node --check`/`-c <file>`（他のフラグを含まない単一引数形のみ） | script / program 実行、`bash -n`・`node --check` へのフラグ追加や複数引数（denylist ではなく「厳密な単一引数形」の allowlist。node は long option のハイフン/アンダースコア表記が等価かつ `--experimental-config-file` 経由で preload 可能なため、危険フラグの列挙では網羅できない） |
+| Runtime | version 表示、`codex --version`/`--help`/`-h`、`bash -n <file>`・`node --check`/`-c <file>`・`command -v <name>`（他のフラグを含まない単一引数形のみ） | script / program 実行、`bash -n`・`node --check`・`command -v` へのフラグ追加や複数引数（denylist ではなく「厳密な単一引数形」の allowlist。node は long option のハイフン/アンダースコア表記が等価かつ `--experimental-config-file` 経由で preload 可能なため、危険フラグの列挙では網羅できない） |
+| プロセス確認 | `kill -0 <数値pid...>`（シグナル0=生存確認のみ、実際には何も送信しない） | 数値以外のpid、負のpid（プロセスグループ指定）、`-0`以外のシグナル/フラグ |
+| セッション一時ディレクトリ作成 | `mkdir -p <session tmp dir またはその配下、単一パスのみ>` | `-p`以外のフラグ、複数パス、session tmp dir 外 |
 | curl | default GET / HEAD 相当 | custom method、data/form、upload、config、file output |
 | npm | metadata照会、config取得、引数なしの `npm run` | script実行、publish、install、audit fix等 |
 | journalctl | ログ照会全般 | `--vacuum-size/--vacuum-time/--vacuum-files`, `--rotate`, `--flush`, `--sync`, `--relinquish-var`, `--smart-relinquish-var`, `--setup-keys`, `--update-catalog`, `--force` |
@@ -96,7 +98,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 - `sed -i/--in-place` および script 内の `e` / `w` command
 - `sort -o/--output`
 - `yq -i/--inplace`
-- `awk` の `system()` および外部 command を pipe する `getline`
+- `awk` の `system()`、外部 command を pipe する `getline`、`print`/`printf` の出力リダイレクト（`>` / `>>`）
 - command を伴う `env`
 - `date --set/-s`
 - 値を指定する `hostname`
@@ -104,7 +106,23 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 `curl` の短縮 option は単独形だけでなく結合形も検査する。`-so`、`-sO` のように file output や request body / upload / config を有効化する文字を含む option cluster は通常許可フローへ戻す。`-sSI` のような読み取り専用 cluster は引き続き承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:870-1021`
+根拠: `hooks/auto-approve-readonly.sh:877-1078`
+
+### write redirect 検出のクォート対応
+
+判定順序 11 の write redirect 検出（`_has_unquoted_write_redirect`）は、`_has_variable_expansion` と同じ single/double quote + backslash escape の文法を再利用し、quote 追跡した上で unquoted な `>`（かつ直後が `&` ではないもの）だけを file-write redirect とみなす。これにより `awk -F: '$1>130 && $1<200'` のようにシングルクォート内で比較演算子として使われる `>` を誤って redirect と判定しない。
+
+**副作用として閉じた抜け穴:** この quote-aware 化により、シングルクォート内の `>` を無条件に write redirect とみなしていた旧実装が偶発的に防いでいた `awk` 自身の `print`/`printf` 出力リダイレクト（例: `awk 'BEGIN { print 1 > "/tmp/unsafe" }'`）が、この修正だけでは auto-approve されてしまう状態が一時的に生じた。これは awk 固有 allowlist 側の `\b(print|printf)\b.*>` チェックで別途塞いでいる（上表「常時許可しない mode」参照）。`print`/`printf` キーワードの後にどこかで `>` が現れる segment は無条件に unsafe とする、意図的に粗い判定である（`print "a>b"` のような文字列リテラル内の `>` も誤検知するが、false prompt-fallback は無害であり、file write の見逃しの方が問題であるため）。
+
+根拠: `hooks/auto-approve-readonly.sh:221-258`, `hooks/auto-approve-readonly.sh:961-970`
+
+### `>&` の fd 複製認識
+
+`split_shell_segments` の `&` ハンドラは、直前の文字が `>` かつ直後が数値 fd または `-`（境界は空白・`;`・`&`・`|`・文字列末尾）である場合、その `&` を fd 複製（`2>&1`, `1>&2`, `>&-` 等）とみなし、background operator としての分割・`__UNSUPPORTED_BACKGROUND_OPERATOR__` 付与を行わない。
+
+**なぜ「数値 fd または `-`」に限定するか:** bash の `>&word` は word が数値または `-` の場合のみ fd 複製であり、それ以外（`>&somefile` 等）は `&>word` と同義のファイル書き込みリダイレクトである。このため判定は狭く保ち、`>&` に続く語が数値/`-` 以外の場合は引き続き background operator 分岐（結果として unsafe な `__UNSUPPORTED_BACKGROUND_OPERATOR__` segment を生成し、複合 command 全体を prompt fallback させる）に落ちる。
+
+根拠: `hooks/auto-approve-readonly.sh:482-497`
 
 ### variable expansion の除外
 
@@ -124,7 +142,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 クォート文字自体も、それが「他方のクォートの内側ではリテラル文字である」ケースを区別する。ダブルクォート内の `'`（例: `curl --user-agent "foo'bar" $OPTS ...`）はシングルクォート開始とはみなさない — bash はダブルクォート内で `'` に特別な意味を与えないため、無条件に `quote="'"` へ遷移すると、以降の実際の閉じダブルクォートを取りこぼしてクォート状態が誤って `'` のまま持ち越され、後続の unquoted `$OPTS` を見逃す。この遷移は現在 `quote` が空（unquoted 状態）のときのみ許可する。
 
-根拠: `hooks/auto-approve-readonly.sh:133-193`, `hooks/auto-approve-readonly.sh:443-457`, `hooks/auto-approve-readonly.sh:870-1021`
+根拠: `hooks/auto-approve-readonly.sh:166-209`, `hooks/auto-approve-readonly.sh:509-523`, `hooks/auto-approve-readonly.sh:877-1078`
 
 ### session-approved tool category
 
@@ -138,7 +156,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 destructive guard に該当する操作は category があっても block する。
 
-根拠: `hooks/auto-approve-readonly.sh:605-646`, `hooks/lib/approval-safety.sh`
+根拠: `hooks/auto-approve-readonly.sh:610-651`, `hooks/lib/approval-safety.sh`
 
 ## 複合 command
 
@@ -185,7 +203,7 @@ ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認�
 - 未対応のshell構文
 - 1つでも未許可のsegmentを含む複合command
 
-根拠: `hooks/auto-approve-readonly.sh:128-131`, `hooks/auto-approve-readonly.sh:209-362`, `hooks/auto-approve-readonly.sh:488-542`, `hooks/auto-approve-readonly.sh:1026-1036`
+根拠: `hooks/auto-approve-readonly.sh:144-147`, `hooks/auto-approve-readonly.sh:274-367`, `hooks/auto-approve-readonly.sh:553-607`, `hooks/auto-approve-readonly.sh:1083-1093`
 
 ## decision とログ
 
@@ -203,7 +221,7 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 
 `detail` は `cut -c1-120` で切り詰めてからログへ書き込む。`cut -c` は non-UTF-8-aware なロケール（`LC_ALL=C` 等）ではバイト単位に振る舞うため、日本語などマルチバイト文字を含む command を境界で切ると不正な UTF-8 バイト列を生成し、`grep` 等ロケール依存ツールがログをバイナリ扱いして検索に失敗する原因になっていた。`truncate_utf8_safe()` は `cut` の直後に `iconv -f UTF-8 -t UTF-8 -c` を通し、切り詰め境界に残った不完全なマルチバイトシーケンスを除去する（`iconv` 不在時は切り詰め結果をそのまま返すフォールバック）。
 
-根拠: `hooks/auto-approve-readonly.sh:64-75`, `hooks/auto-approve-readonly.sh:555-585`
+根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:560-590`
 
 ## 動的防御（Working Repo Dynamic Defense）
 
@@ -262,7 +280,7 @@ After:
   user_prompt
 ```
 
-根拠: `hooks/auto-approve-readonly.sh:713-1036`
+根拠: `hooks/auto-approve-readonly.sh:718-1093`
 
 ### session-approved fast path の安全性根拠
 
@@ -289,14 +307,18 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 variable expansion の除外については、`node --check $ARGS` 型の報告された bypass に加え、`bash -n`・`curl`・`gh api`・`git diff --output`・`sed`・`find`・`sort`・`date`・`journalctl`・`yq`・`awk` への同型 bypass を negative case として固定し、`cat $FILE`・`grep ... $FILE`・シングルクォート awk script 内の `$1` が引き続き auto-approve されることを positive case で固定する。加えて、`git -C $DIR` operand への変数隠蔽、double-quoted 変数の単一フラグ密輸、シングルクォート内バックスラッシュの誤エスケープ、ダブルクォート文字列内のシングルクォートによるクォート状態誤遷移、`_extract_subshell_contents`/`_strip_subshells` のエスケープ未対応（escaped `"` をクォート終了と誤認し後続の変数参照が silently drop される）、同2関数が depth=0 でシングルクォートを追跡しないため single-quoted literal 内の `$(` を実際の subshell 開始と誤認する問題（例: `curl '$(' $OPTS ...`）、同2関数が depth=0 でダブルクォートを追跡しないため double-quoted 文字列内のリテラルな `'` により後続の本物の `$(` を検出し損ねる問題（例: `cat "foo'$(touch ...)"`）、およびネストした `$(...)` でクォート状態を push/pop しないため外側の double-quoted 文字列の中の nested substitution が正しく閉じられない問題（例: `X=$(printf '%s' "$(touch ...)")`）という、レビューで発見された8件の追加 bypass を negative case として固定する。統一 tokenizer への再設計（issue #200）に伴い、`saw_dollar` look-ahead flag がエスケープ消費時にリセットされず depth が 0 に戻らなくなる問題（例: `cat $(printf "$\"(" $(touch /tmp/unsafe))`）と、ANSI-C クォート（`$'...'`）が通常の `'...'` として扱われエスケープされた `\'` を閉じクォートと誤認する問題（例: `cat $'foo\'bar'$(touch /tmp/unsafe)`）の2件を追加の negative case として固定する。
 
+issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複製誤判定については、`awk -F: '$1>130 && $1<200'` のようなシングルクォート内比較演算子と `cat ... 2>&1` / `cat ... 1>&2` を positive case、`awk 'BEGIN { print 1 > "/tmp/unsafe" }'` のような awk 自身の出力リダイレクトと `cmd >&somefile`（fd 複製ではなく実ファイル書き込み）を negative case として固定する。同時に追加した allowlist（`command -v <name>`、`codex --version`/`--help`、`kill -0 <数値pid...>`、session tmp dir 配下限定の `mkdir -p`）についても、それぞれ許可される最小形を positive case、スコープ外の形（複数引数の `command -v`、`codex` の他サブコマンド、`-0` 以外のシグナルや負のpid/プロセスグループ指定を伴う `kill`、`-p` なし・複数パス・session tmp dir 外を対象とする `mkdir`）を negative case として固定する。
+
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-635`
+根拠: `tests/hooks/test-approval-hooks.sh:1-725`
 
 ## 変更履歴（git log より自動生成）
 
+- 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
+- 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
 - d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
 - 40ea58a fix(#196): track single quotes at depth=0 in subshell content helpers
 - ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
@@ -305,5 +327,3 @@ variable expansion の除外については、`node --check $ARGS` 型の報告�
 - a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
 - e740c91 fix(#194): replace node/bash syntax-check denylist with strict single-arg allowlist
 - 6c041c6 fix(#194): close gh api/journalctl/node --check allowlist bypasses
-- 3655fd5 feat(#194): extend read-only allowlist and fix multibyte log truncation
-- 9d1d78f fix(#156): harden auto-approval boundary checks

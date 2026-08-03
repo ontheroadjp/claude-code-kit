@@ -237,6 +237,96 @@ for command in \
     assert_no_output "$output"
 done
 
+# Quote-aware write-redirect detection: a '>' used as a comparison operator
+# inside a single-quoted script (not a real file-write redirect) must not be
+# misread as one. cmd 2>&1 / cmd 1>&2 (fd duplication, not a background
+# operator) must also stay auto-approved when otherwise read-only.
+for command in \
+    'awk -F: '\''$1>130 && $1<200'\'' README.md' \
+    'grep -n foo README.md | awk -F: '\''$1>10 && $1<20'\''' \
+    'cat README.md 2>&1' \
+    'cat README.md 1>&2'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# awk's own print/printf output-redirect ('>' / '>>') writes a file
+# independently of the shell-level write-redirect check, which sees the
+# single-quoted script as opaque text. Must still prompt fallback.
+for command in \
+    'awk '\''BEGIN { print 1 > "/tmp/unsafe" }'\''' \
+    'awk '\''{ print $1 >> "out.txt" }'\'' README.md'; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
+# '>&word' where word is not a bare fd number/'-' is a real file-write
+# redirect in bash (equivalent to &>word), not fd duplication — must not be
+# exempted from write-redirect / background-operator rejection.
+for command in \
+    'cat README.md >&somefile' \
+    'echo value >&some-log.txt'; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
+# command -v <name>: read-only lookup equivalent to `type`.
+output=$(run_auto 'command -v codex')
+assert_json_decision "$output" "approve"
+
+# command -v with more than a single argument does not match the strict
+# single-argument shape and falls back to prompt.
+output=$(run_auto 'command -v codex extra-arg')
+assert_no_output "$output"
+
+# codex --version / --help: runtime version/help check.
+for command in 'codex --version' 'codex --help'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# codex subcommands are not version/help checks and must prompt fallback.
+output=$(run_auto 'codex exec "do something"')
+assert_no_output "$output"
+
+# kill -0 <pid...>: signal 0 sends nothing — a pure liveness check.
+for command in \
+    'kill -0 2475016' \
+    'kill -0 111 222 333'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# Any other kill invocation (real signal, negative/process-group pid, bare
+# pid with no signal flag, non-numeric target) must prompt fallback.
+for command in \
+    'kill -9 2475016' \
+    'kill -0 -2475016' \
+    'kill 2475016' \
+    'kill -0 not-a-pid'; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
+# mkdir -p restricted to the session tmp directory (or a descendant).
+for command in \
+    "mkdir -p \"${SESSION_TMP_DIR}\"" \
+    "mkdir -p \"${SESSION_TMP_DIR}/subdir\""; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# mkdir outside the session tmp dir, without -p, or with multiple paths must
+# prompt fallback.
+for command in \
+    'mkdir -p /etc/evil' \
+    "mkdir -p ${TMP_ROOT}/other-session" \
+    "mkdir \"${SESSION_TMP_DIR}\"" \
+    "mkdir -p \"${SESSION_TMP_DIR}\" \"${SESSION_TMP_DIR}/other\""; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
 # $() with read-only content → approve
 for command in \
     'PR_BODY=$(cat /tmp/file)' \
