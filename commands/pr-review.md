@@ -208,14 +208,15 @@ REQUEST_CHANGES の場合、元 agent が各 finding と該当ファイルを直
 修正した場合:
 
 1. 対象 repo の検証コマンドを実行する
-2. `/git-commit` を実行する。PR/commit から issue 番号を取得できれば使用し、取得できなければ `issue_number=none` とする
-3. 公開仕様や docs との整合性が変わる場合は `/docs-sync` を実行する
-4. `git push` を実行する（force push 禁止）
-5. このラウンドで適用した修正が全て次を満たす場合、trivial round と分類し `$SESSION_TMP_DIR/round-${ROUND}-trivial.flag` に `true` を書き込む。1件でも満たさない場合はこのファイルを作成しない（前ラウンドのフラグが残っていれば削除する）:
+2. `/git-commit` を実行する**前に**、working tree にステージされている修正の diff 行数を finding ごとに記録する: `git diff --numstat -- <該当ファイル>`（addition + deletion の合計。複数 finding が同一 hunk を指す場合はその hunk 全体を 1 件分として数える）。commit 後は working tree がクリーンになり `git diff` では計測できなくなるため、必ずこの時点で記録する
+3. `/git-commit` を実行する。PR/commit から issue 番号を取得できれば使用し、取得できなければ `issue_number=none` とする
+4. 公開仕様や docs との整合性が変わる場合は `/docs-sync` を実行する
+5. `git push` を実行する（force push 禁止）
+6. このラウンドで適用した修正が全て次を満たす場合、trivial round と分類し `$SESSION_TMP_DIR/round-${ROUND}-trivial.flag` に `true` を書き込む。1件でも満たさない場合はこのファイルを作成しない（前ラウンドのフラグが残っていれば削除する）:
     - 修正対象が session-approved 内のみ
-    - finding 1件あたりの diff 行数（追加+削除の合計。`git diff --numstat` の finding 該当ファイルの合計値。複数 finding が同一 hunk を指す場合はその hunk 全体を 1 件分として数える）が `TRIVIAL_FIX_MAX_LINES` 以下
+    - Step 2 で記録した finding 1件あたりの diff 行数が `TRIVIAL_FIX_MAX_LINES` 以下
     - typo・コメント・ドキュメント文言の修正など、実行コード・設定値・判定条件を変更しない機械的な修正である（実行コードやパラメータの値変更は対象外とする）
-6. workspace が clean であることを確認して次ラウンドへ進む
+7. workspace が clean であることを確認して次ラウンドへ進む
 
 ## Step 5: 終了状態
 

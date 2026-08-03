@@ -24,7 +24,7 @@
   → APPROVED / CHANGES_REQUESTED / FAILED で終了
 ```
 
-根拠: `commands/pr-review.md:18-34`, `commands/pr-review.md:82-217`
+根拠: `commands/pr-review.md:18-34`, `commands/pr-review.md:82-229`
 
 ## 主要な判定ロジック
 
@@ -50,21 +50,21 @@ GitHub review 投稿には `AI_REVIEW_TOKEN` を優先し、既存 `CODEX_REVIEW
 
 ### インクリメンタルレビュー（round 2+ のスコープ縮小）
 
-round 1 は `origin/<baseRefName>...HEAD` の全体 diff を reviewer に渡す。round 2 以降は直前ラウンドの `REVIEWED_HEAD_SHA`（`PREV_REVIEWED_SHA`）から現在 HEAD までの増分 diff（`round-${ROUND}-incremental.diff`）と直前ラウンドの `FINDINGS` を渡し、reviewer が承認済み範囲を毎回読み直さずに済むようにする。`PREV_REVIEWED_SHA` を前ラウンド出力から取得できない場合は全体 diff の通常モードにフォールバックする（fail-safe）。
+round 1 は `origin/<baseRefName>...HEAD` の全体 diff を reviewer に渡す。round 2 以降は、(1) 直前ラウンドの `REVIEWED_HEAD_SHA`（`PREV_REVIEWED_SHA`）を取得でき、かつ (2) 各ラウンドで記録する base SHA（`round-${ROUND}-base-sha.txt`）が前ラウンドと一致する（base drift なし）場合にのみ、`PREV_REVIEWED_SHA` から現在 HEAD までの増分 diff（`round-${ROUND}-incremental.diff`）と直前ラウンドの `FINDINGS` を渡す。いずれかの条件を満たさない場合は全体 diff の通常モードにフォールバックする（fail-safe）。base drift 時に増分 diff を使わないのは、増分 diff（自ブランチの新規コミットのみ）では base 側の変化を reviewer が確認できないため。
 
-根拠: `commands/pr-review.md:82-113`
+根拠: `commands/pr-review.md:96-116`
 
 ### trivial round と confirm-only モード
 
-Step 4.5 の修正適用後、修正が session-approved 内のみ・finding 1件あたりの diff 行数が `TRIVIAL_FIX_MAX_LINES=5` 以下・機械的な修正（typo・コメント・文言・単純な値修正等）のみを満たす場合、そのラウンドを trivial round として `round-${ROUND}-trivial.flag` に記録する。次ラウンドの reviewer 起動（Step 4.2）はこのフラグを見て、増分 diff と直前 findings の解消確認だけに絞った confirm-only モードのプロンプトを使う。confirm-only モードでも別 agent の起動・read-only 制約・機械判定契約は変更せず、APPROVE の可否は必ずこのラウンドの別 agent 起動結果に基づく（reviewer 起動自体を省略しない）。
+Step 4.5 の修正適用後、修正が session-approved 内のみ・（commit 前に記録した）finding 1件あたりの diff 行数が `TRIVIAL_FIX_MAX_LINES=5` 以下・typo やコメント・ドキュメント文言の修正など実行コード/設定値/判定条件を変更しない機械的な修正のみ（実行コードやパラメータの値変更は対象外）を満たす場合、そのラウンドを trivial round として `round-${ROUND}-trivial.flag` に記録する。次ラウンドの reviewer 起動（Step 4.2）は、このフラグに加えて `round-${ROUND}-incremental.diff` が実際に生成されている（`PREV_REVIEWED_SHA` を取得でき、かつ base drift がなかった）場合にのみ、増分 diff と直前 findings の解消確認だけに絞った confirm-only モードのプロンプトを使う。confirm-only モードでも別 agent の起動・read-only 制約・機械判定契約は変更せず、APPROVE の可否は必ずこのラウンドの別 agent 起動結果に基づく（reviewer 起動自体を省略しない）。
 
-根拠: `commands/pr-review.md:125-129`, `commands/pr-review.md:203-206`
+根拠: `commands/pr-review.md:133-141`, `commands/pr-review.md:208-219`
 
 ### bounded remediation
 
 review は `MAX_REVIEW_ROUNDS=3` に制限する。元 agent は finding の妥当性をコードと docs から再検証し、session-approved 内だけを修正する。最終ラウンドの変更要求、スコープ拡大、破壊的操作、秘密情報、権限追加が必要な finding は自動修正せず `CHANGES_REQUESTED` で人間へ返す。
 
-根拠: `commands/pr-review.md:11-16`, `commands/pr-review.md:187-207`
+根拠: `commands/pr-review.md:11-16`, `commands/pr-review.md:198-219`
 
 ## 重要な設計判断
 
@@ -78,7 +78,7 @@ base branch は初回 gate 後にも進む可能性がある。各ラウンド�
 
 各ラウンドで reviewer subprocess をコールドスタートし、PR 全体 diff をゼロから読み直す設計は round 数に比例して遅くなる。round 1 は依然として全体をレビューする必要があるが、round 2 以降は「直前ラウンドで指摘された finding が解消されたか」「新たな blocking finding がその増分に含まれるか」を確認できれば十分なケースが多い。増分 diff と直前 findings だけを渡すことで reviewer が読む範囲を絞り、trivial な修正が続く場合はさらにプロンプト自体を confirm-only に絞ってレビュー負荷を減らす。ただし APPROVED の最終判定を出す reviewer 起動そのものは省略しない — 「別 agent による客観レビュー」という設計原則を壊さないため。`PREV_REVIEWED_SHA` が取得できない場合は全体 diff にフォールバックし、fail-safe を優先する。
 
-根拠: `commands/pr-review.md:82-129`, `commands/pr-review.md:203-206`
+根拠: `commands/pr-review.md:82-140`, `commands/pr-review.md:214-217`
 
 ### reviewer subprocess を read-only にする理由
 
@@ -86,13 +86,13 @@ base branch は初回 gate 後にも進む可能性がある。各ラウンド�
 
 Codex の専用 review subcommand は固定の finding 形式を出力するため使用しない。汎用 exec に機械可読契約を明示し、`--output-last-message` で最終回答だけを保存することで、進行イベントを混ぜずに `VERDICT`、`REVIEWED_HEAD_SHA`、`FINDINGS` を検証できる。
 
-根拠: `commands/pr-review.md:131-154`
+根拠: `commands/pr-review.md:142-166`
 
 ### merge を行わない理由
 
 AI に review と修正の反復を任せつつ、main への統合は人間の明示操作として残すためである。review が失敗または収束しない場合も PR を保持し、現在状態から人間が判断できる。
 
-根拠: `commands/pr-review.md:3-7`, `commands/pr-review.md:209-217`
+根拠: `commands/pr-review.md:3-7`, `commands/pr-review.md:221-229`
 
 ## 統合ポイント
 
