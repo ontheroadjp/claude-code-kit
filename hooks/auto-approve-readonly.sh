@@ -193,21 +193,28 @@ _has_variable_expansion() {
 }
 
 # Extract the contents of each top-level $(...) group, one per line.
-# Handles nested parens and quoted strings inside the subshell.
+# Handles nested parens and quoted strings inside the subshell. Each
+# nesting level's quote state is pushed onto quote_stack when a new $(...)
+# opens and popped when it closes, so a quote opened inside one level
+# cannot leak into an enclosing or sibling level.
 _extract_subshell_contents() {
     local input="$1"
-    local i char depth=0 current="" quote="" saw_dollar=0 escaped=0
+    local i char depth=0 current="" quote="" saw_dollar=0 escaped=0 stack_top
+    local -a quote_stack=()
     local n="${#input}"
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
 
         if [ "$depth" -eq 0 ]; then
-            # Track single quotes even at depth=0: bash performs no expansion
-            # inside '...', so a literal $( there (e.g. curl '$(' $OPTS ...)
-            # must not be mistaken for the start of a real subshell. Without
-            # this, depth would open on a $( that has no matching ) anywhere
-            # in the string, and everything after it — including a variable
-            # reference — would never be reached by the caller's safety scan.
+            # Track single AND double quotes even at depth=0 (mirrors the
+            # depth>0 handling below): a literal $( inside '...' must not be
+            # mistaken for the start of a real subshell (there would be no
+            # matching ) anywhere, silently dropping everything after it —
+            # including a variable reference — from what the caller ever
+            # sees). Conversely, a stray same-style quote character that
+            # appears literally inside a "..." string (e.g. the ' in
+            # cat "foo'$(...)" ) must not be misread as opening a real quote
+            # that then swallows a genuine, following $( it should catch.
             if [ "$quote" = "'" ]; then
                 [ "$char" = "'" ] && quote=""
                 saw_dollar=0
@@ -219,13 +226,22 @@ _extract_subshell_contents() {
             if [ "$char" = "\\" ]; then
                 escaped=1; saw_dollar=0; continue
             fi
-            if [ "$char" = "'" ]; then
-                quote="'"; saw_dollar=0; continue
-            fi
             if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
+                quote_stack+=("$quote"); quote=""
                 depth=1; current=""; saw_dollar=0; continue
             fi
-            [ "$char" = '$' ] && saw_dollar=1 || saw_dollar=0
+            if [ "$char" = '$' ]; then
+                saw_dollar=1; continue
+            fi
+            saw_dollar=0
+            if [ "$quote" = '"' ]; then
+                [ "$char" = '"' ] && quote=""
+                continue
+            fi
+            case "$char" in
+                "'") quote="'" ;;
+                '"') quote='"' ;;
+            esac
             continue
         fi
 
@@ -248,9 +264,13 @@ _extract_subshell_contents() {
         # Inside $(...): handle nested $( using saw_dollar look-ahead.
         # $(...) command substitution is still recognized inside a
         # double-quoted string in real bash, so this runs before the
-        # quote='"' consume-check below.
+        # quote='"' consume-check below. The enclosing level's quote state
+        # is pushed so the nested level starts with its own independent
+        # tracking rather than inheriting (and later corrupting) it.
         if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
-            current+='('; depth=$((depth + 1)); saw_dollar=0; continue
+            current+='('
+            quote_stack+=("$quote"); quote=""
+            depth=$((depth + 1)); saw_dollar=0; continue
         fi
         if [ "$char" = '$' ]; then
             current+='$'; saw_dollar=1; continue
@@ -262,12 +282,19 @@ _extract_subshell_contents() {
         fi
 
         case "$char" in
-            "'") [ -z "$quote" ] && quote="'"; current+="$char" ;;
+            "'") quote="'"; current+="$char" ;;
             '"') quote='"'; current+="$char" ;;
-            '(') depth=$((depth + 1)); current+="$char" ;;
+            '(') quote_stack+=("$quote"); quote=""; depth=$((depth + 1)); current+="$char" ;;
             ')')
                 depth=$((depth - 1))
-                [ "$depth" -eq 0 ] && { printf '%s\n' "$current"; current=""; } || current+="$char"
+                stack_top=$((${#quote_stack[@]} - 1))
+                quote="${quote_stack[$stack_top]}"
+                unset "quote_stack[$stack_top]"
+                if [ "$depth" -eq 0 ]; then
+                    printf '%s\n' "$current"; current=""
+                else
+                    current+="$char"
+                fi
                 ;;
             *) current+="$char" ;;
         esac
@@ -278,18 +305,22 @@ _extract_subshell_contents() {
 # The caller must have already verified the subshell contents via _subshells_are_safe.
 _strip_subshells() {
     local input="$1"
-    local i char depth=0 result="" quote="" escaped=0
+    local i char depth=0 result="" quote="" escaped=0 stack_top
+    local -a quote_stack=()
     local n="${#input}"
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
 
         if [ "$depth" -eq 0 ]; then
-            # Track single quotes even at depth=0 (mirrors
+            # Track single AND double quotes even at depth=0 (mirrors
             # _extract_subshell_contents): a literal $( inside '...' must not
             # be mistaken for the start of a real subshell, or depth would
             # open with no matching ) anywhere in the string, silently
             # dropping everything after it (including a variable reference)
-            # from the result this function returns.
+            # from the result this function returns. Conversely, a stray
+            # same-style quote character appearing literally inside a "..."
+            # string must not be misread as opening a real quote that then
+            # swallows a genuine, following $( it should catch.
             if [ "$quote" = "'" ]; then
                 result+="$char"
                 [ "$char" = "'" ] && quote=""
@@ -301,13 +332,22 @@ _strip_subshells() {
             if [ "$char" = "\\" ]; then
                 result+="$char"; escaped=1; continue
             fi
-            if [ "$char" = "'" ]; then
-                quote="'"; result+="$char"; continue
-            fi
-            # Look-ahead: $( starts a subshell to replace
+            # Look-ahead: $( starts a subshell to replace. $(...) is still
+            # recognized inside a double-quoted string in real bash, so this
+            # runs before the quote='"' consume-check below.
             if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
+                quote_stack+=("$quote"); quote=""
                 result+='__SUBSHELL_SAFE__'; depth=1; i=$((i + 1)); continue
             fi
+            if [ "$quote" = '"' ]; then
+                result+="$char"
+                [ "$char" = '"' ] && quote=""
+                continue
+            fi
+            case "$char" in
+                "'") quote="'" ;;
+                '"') quote='"' ;;
+            esac
             result+="$char"; continue
         fi
 
@@ -328,8 +368,11 @@ _strip_subshells() {
         fi
 
         # Inside $(...): track nested $( (still recognized inside "...") and
-        # quotes to find the matching )
+        # quotes to find the matching ). The enclosing level's quote state is
+        # pushed so the nested level starts with its own independent
+        # tracking rather than inheriting (and later corrupting) it.
         if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
+            quote_stack+=("$quote"); quote=""
             depth=$((depth + 1)); i=$((i + 1)); continue
         fi
         if [ "$quote" = '"' ]; then
@@ -337,10 +380,15 @@ _strip_subshells() {
             continue
         fi
         case "$char" in
-            "'") [ -z "$quote" ] && quote="'" ;;
+            "'") quote="'" ;;
             '"') quote='"' ;;
-            '(') depth=$((depth + 1)) ;;
-            ')') depth=$((depth - 1)) ;;
+            '(') quote_stack+=("$quote"); quote=""; depth=$((depth + 1)) ;;
+            ')')
+                depth=$((depth - 1))
+                stack_top=$((${#quote_stack[@]} - 1))
+                quote="${quote_stack[$stack_top]}"
+                unset "quote_stack[$stack_top]"
+                ;;
         esac
     done
     printf '%s' "$result"

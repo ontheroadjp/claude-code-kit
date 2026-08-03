@@ -327,6 +327,26 @@ assert_no_output "$output"
 output=$(run_auto "OPTS='-o /tmp/evil'; curl '\$(' \$OPTS https://example.com")
 assert_no_output "$output"
 
+# Follow-up finding: the depth=0 fix above only tracked single quotes, not
+# double quotes, so a literal ' appearing inside a "..." string (not
+# starting a real quote in real bash) was misread as opening one, which then
+# swallowed a genuine following $( that should have been caught and
+# recursively validated. Must prompt fallback: cat "foo'$(touch ...)" really
+# does run touch in real bash.
+output=$(run_auto 'cat "foo'"'"'$(touch /tmp/unsafe)"')
+assert_no_output "$output"
+
+# Follow-up finding: nested $(...) did not save/restore the enclosing
+# quote state, so a nested substitution inside a double-quoted string one
+# level down (e.g. $(printf '%s' "$(touch ...)")) leaked the outer level's
+# quote='"' into the nested level, causing the nested closing ) to be
+# misread as a literal character inside a (stale) quote instead of closing
+# the nested subshell. Depth then never returns to 0, so extraction yields
+# no content and the pure-assignment segment is wrongly treated as safe.
+# Must prompt fallback: the nested touch really does run in real bash.
+output=$(run_auto "X=\$(printf '%s' \"\$(touch /tmp/unsafe)\")")
+assert_no_output "$output"
+
 mkdir -p "$(dirname "$SESSION_FILE")"
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
 output=$(run_auto 'git reset --hard')
