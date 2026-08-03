@@ -11,6 +11,7 @@
 ## 定数
 
 - `MAX_REVIEW_ROUNDS=3`
+- `TRIVIAL_FIX_MAX_LINES=5`（1 finding あたりの修正行数がこの値以下かつ機械的な修正のみの場合に trivial round と分類する）
 - reviewer の GitHub token は `AI_REVIEW_TOKEN` を優先し、未設定の場合のみ後方互換のため `CODEX_REVIEW_TOKEN` を使用する
 - 一時ファイルは `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/` 配下だけに作成する
 
@@ -93,12 +94,23 @@ git diff --find-renames "origin/<baseRefName>...HEAD" > "$SESSION_TMP_DIR/round-
 gh pr view <PR番号> --json title,body,comments,reviews > "$SESSION_TMP_DIR/round-${ROUND}-context.json"
 ```
 
+`ROUND == 1` の場合、reviewer には `round-${ROUND}.diff`（PR 全体の diff）をそのまま渡す。
+
+`ROUND >= 2` の場合、直前ラウンドの `$SESSION_TMP_DIR/round-$((ROUND-1))-review.txt` から `REVIEWED_HEAD_SHA:` の値を `PREV_REVIEWED_SHA` として取得し、追加で増分 diff を生成する:
+
+```bash
+git diff --find-renames "${PREV_REVIEWED_SHA}..HEAD" > "$SESSION_TMP_DIR/round-${ROUND}-incremental.diff"
+```
+
+`PREV_REVIEWED_SHA` が取得できない場合（前ラウンドの出力が所定形式でない等）は増分 diff を生成せず、`round-${ROUND}.diff`（PR 全体の diff）を reviewer に渡す通常モードにフォールバックする。取得できた場合、reviewer には `round-${ROUND}-incremental.diff` と直前ラウンドの `FINDINGS` 一覧を渡す（このモードの適用可否とプロンプトの分岐は 4.2 を参照）。
+
 reviewer には以下を必ず要求する:
 
 - repo の `AGENTS.md` / `CLAUDE.md` と diff を根拠にレビューする
 - ファイルを編集せず、read-only sandbox 内の読み取り操作だけを使用する
 - 日本語で回答する
 - blocking finding のみ `REQUEST_CHANGES` とする
+- `ROUND >= 2` かつ増分 diff モードの場合は、直前ラウンドで指摘した blocking finding が渡された増分 diff で解消されているかを判定基準に含める
 - 末尾に次の機械判定可能な形式を必ず出力する
 
 ```text
@@ -111,6 +123,10 @@ FINDINGS:
 finding がない場合は `FINDINGS: none` とする。
 
 ### 4.2 別 agent による review
+
+`$SESSION_TMP_DIR/round-$((ROUND-1))-trivial.flag` が存在し内容が `true` の場合、このラウンドは **confirm-only モード**とする。reviewer への指示（review instructions）を「直前ラウンドの blocking finding 一覧と 4.1 で生成した増分 diff（`round-${ROUND}-incremental.diff`）だけを根拠に、指摘が解消されたか・増分 diff 内に新たな blocking finding がないかだけを判定する」に限定し、PR 全体の設計方針の再評価は求めない。フラグが存在しない場合、または `ROUND == 1` の場合は通常モード（PR 全体 diff に基づくフルレビュー）とする。
+
+confirm-only モードでも別 agent の起動・書き込み権限の禁止（read-only sandbox / `Read` ツール限定）・機械判定契約（`VERDICT` / `REVIEWED_HEAD_SHA` / `FINDINGS`）は通常モードと同一とする。**APPROVE の可否は必ずこのラウンドの別 agent 起動結果に基づく — confirm-only モードであっても別 agent の起動自体を省略しない。**
 
 実装元が Claude の場合は Codex を実行する:
 
@@ -184,7 +200,11 @@ REQUEST_CHANGES の場合、元 agent が各 finding と該当ファイルを直
 2. `/git-commit` を実行する。PR/commit から issue 番号を取得できれば使用し、取得できなければ `issue_number=none` とする
 3. 公開仕様や docs との整合性が変わる場合は `/docs-sync` を実行する
 4. `git push` を実行する（force push 禁止）
-5. workspace が clean であることを確認して次ラウンドへ進む
+5. このラウンドで適用した修正が全て次を満たす場合、trivial round と分類し `$SESSION_TMP_DIR/round-${ROUND}-trivial.flag` に `true` を書き込む。1件でも満たさない場合はこのファイルを作成しない（前ラウンドのフラグが残っていれば削除する）:
+    - 修正対象が session-approved 内のみ
+    - finding 1件あたりの diff 行数（追加+削除の合計）が `TRIVIAL_FIX_MAX_LINES` 以下
+    - typo・コメント・文言・単純な値修正など、ロジックを変更しない機械的な修正である
+6. workspace が clean であることを確認して次ラウンドへ進む
 
 ## Step 5: 終了状態
 

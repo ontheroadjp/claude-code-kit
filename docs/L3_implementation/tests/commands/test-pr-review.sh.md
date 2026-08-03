@@ -23,6 +23,8 @@
 - reviewer identity と Claude read-only tools
 - session-approved による修正範囲制限
 - 各 review round の先頭で current base branch を fetch し、失敗時は stale な review context を生成せず `FAILED` で停止すること
+- round 2+ が `PREV_REVIEWED_SHA` を起点に増分 diff を生成すること、および trivial round のフラグが次ラウンドの confirm-only モードを駆動すること
+- confirm-only モードでも別 agent の起動が APPROVE の必須要件として残ること
 - merge、main checkout/pull、branch deletion の禁止
 - `/git-pr` から `/pr-review` への handoff
 - skill の source-of-truth path
