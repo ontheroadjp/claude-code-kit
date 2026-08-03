@@ -46,3 +46,7 @@ Facts（決定的な集計）と Opinions/Proposals（AI の解釈）を明確�
 
 - 唯一の書き込みは `logs/reports/access/` 配下の新規 HTML ファイルのみ。既存ファイルの編集・削除、Git/GitHub の変更は行わない
 - レポートファイルは `.gitignore` 対象のため PR には含まれない
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

@@ -2,9 +2,9 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が3本ある。package.json に test script はなく、GitHub Actions も shell tests を実行しないため、現状はローカル検証である。
+このリポジトリには Bash で直接実行する shell tests が3本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はなく、GitHub Actions もこれらのテストを実行しないため、現状はローカル検証である。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`
 
 ## Hook safety test
 
@@ -37,6 +37,16 @@ bash tests/install/test-install.sh
 ```
 
 根拠: `tests/install/test-install.sh:1-71`, `tests/README.md`
+
+## Log analysis script tests
+
+`tests/scripts/` は `scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py` のパース・集計ロジックを合成ログ fixture で検証する pytest テストである。`tests/scripts/conftest.py` が `scripts/` を `sys.path` に追加する。
+
+```bash
+python3 -m pytest tests/scripts/
+```
+
+根拠: `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`, `tests/scripts/conftest.py`
 
 ## Site build verification
 

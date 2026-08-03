@@ -30,3 +30,7 @@
 ## 注意事項・既知の制限
 
 合成ログの `detail` はプレーンな文字列のみ。実際のログに含まれ得る `=` を含むコマンド断片（例: `SESSION_ID="..."`）のような複雑なケースは個別にはテストしていない。
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

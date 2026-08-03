@@ -31,3 +31,7 @@
 ## 注意事項・既知の制限
 
 合成ログは実ログのごく一部のパターン（重複あり/なし、トークン使用量あり/なし）のみをカバーする。フェーズが複数（`work`/`task`/`patch` 等）に渡るケースは明示的にはテストしていない。
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

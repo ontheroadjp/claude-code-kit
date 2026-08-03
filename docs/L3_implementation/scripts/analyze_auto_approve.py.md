@@ -41,3 +41,7 @@
 ## 注意事項・既知の制限
 
 - `top_blocked_patterns` / `top_user_prompt_patterns` / `top_sessions` は `TOP_N`（10件）、サンプルは `RECENT_N`（15件）に切り詰められる
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

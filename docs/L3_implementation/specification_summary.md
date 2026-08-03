@@ -24,6 +24,24 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 根拠: `commands/report-review.md:1-91`
 
+### `/analyze-access` (`commands/analyze-access.md`)
+
+`logs/access/*.log` を `scripts/analyze_access.py` で集計し、その JSON のみを Facts の根拠として Assessment/Opinions/Proposals/Risks and Unknowns を分離したレポートを提示する read-only workflow。生ログは直接 Read しない。唯一の書き込みは `logs/reports/access/` 配下への新規 HTML レポートである。
+
+根拠: `commands/analyze-access.md:1-73`
+
+### `/analyze-auto-approve` (`commands/analyze-auto-approve.md`)
+
+`logs/auto-approve/*.log` を `scripts/analyze_auto_approve.py` で集計し、result（approved/blocked/user_prompt）・tool・agent 別内訳と上位パターンを Facts として提示する read-only workflow。`hooks/auto-approve-readonly.sh` 自体は変更せず、改善案は Proposals として提示するに留める。唯一の書き込みは `logs/reports/auto-approve/` 配下への新規 HTML レポートである。
+
+根拠: `commands/analyze-auto-approve.md:1-74`
+
+### `/analyze-token-usage` (`commands/analyze-token-usage.md`)
+
+`logs/token-usage/*.log` を `scripts/analyze_token_usage.py` で集計し、コスト・トークン・モデル別/プロジェクト別内訳を Facts として提示する read-only workflow。同ログはセッションごとに累積値が毎ターン追記される形式のため、スクリプト側でセッションIDごとの最終行のみを集計に用いる。唯一の書き込みは `logs/reports/token-usage/` 配下への新規 HTML レポートである。
+
+根拠: `commands/analyze-token-usage.md:1-72`
+
 ### `/task` (`commands/task.md`)
 
 `/work` から呼ばれる docs 変更を伴う実装 flow。issue がなければプラン策定とユーザー許可を先に行い、承認後に `commands/new-issue.md` Step 4-5 を使ってユーザー確認なしで issue を自動作成する（Step 1-3 の対話はスキップし、確定済みプランの内容で各セクションを埋める）。Step 1 では変更対象ファイルが確定した後に対応する L3 per-file doc（`docs/L3_implementation/<source-path>.md`）が存在する場合は必ず Read する。Step 2 では L3 per-file doc のパスを session-approved に含める。実装後・`/git-commit` 前に変更した各ソースファイルの L3 per-file doc を作成または更新し（現状スナップショット + 設計意図、changelog ではない）、`/git-commit` で commit する。Phase 2 では PR 本文・タイトルを SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-body.md` / `pr-title.txt` に書き出し、`/docs-sync` → `/git-pr` を順に自動実行する（push・PR 作成は `/git-pr` が担う）。`docs/*` の変更は原則行わないが、L3 per-file doc（`docs/L3_implementation/<source-path>.md`）は実装フローの一部として例外的に task が管理する。
@@ -96,7 +114,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は16件で、commands と対応する。`report-review` skill は read-only 境界を保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は19件で、commands と対応する。`report-review` skill および `analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skill は read-only 境界を保持する。
 
 根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/` 実体一覧
 
@@ -189,6 +207,10 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 `setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、settings に `statusLine` を追加する。`scripts/statusline.sh` は stdin JSON から context / five-hour / seven-day rate limit を抽出して表示する。
 
 根拠: `install.sh:12-188`, `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`
+
+`scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py` は `logs/<type>/*.log` を月単位（`--month YYYY-MM` / `--all` / 省略時は最新月）でパースし、集計結果を JSON として標準出力へ出力する（対応する `/analyze-*` command から呼ばれる）。`scripts/lib/analyze_common.py` が対象月解決・ログ列挙・CLI引数定義を3スクリプト共通で提供する。`analyze_token_usage.py` は `logs/token-usage/*.log` がセッションごとの累積値である点を踏まえ、セッションIDごとの最終行のみを集計する。
+
+根拠: `scripts/analyze_access.py:1-6`, `scripts/analyze_auto_approve.py:1-6`, `scripts/analyze_token_usage.py:1-9`, `scripts/lib/analyze_common.py:1`
 
 ## VitePress Site and CI
 

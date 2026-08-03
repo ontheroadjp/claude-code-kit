@@ -44,3 +44,7 @@ Step 5: 標準出力へレポートパスと要約を提示
 
 - 唯一の書き込みは `logs/reports/token-usage/` 配下の新規 HTML ファイルのみ
 - `scripts/show-token-usage.sh` は `~/.claude/token-usage.log`（レガシーパス）を読む一方、`hooks/log-token-usage.sh` の現在の書き込み先は `logs/token-usage/<YYYY-MM>.log` であり、両者は異なるログを参照している
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

@@ -31,3 +31,7 @@
 ## 注意事項・既知の制限
 
 月をまたぐセッション（前月末開始・翌月初終了）の重複排除は、複数ログファイルを跨いだケースとしては明示的にテストしていない。
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

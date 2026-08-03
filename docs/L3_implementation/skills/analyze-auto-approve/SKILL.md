@@ -26,3 +26,7 @@ command と skill に別々の workflow を持たせず、Claude/Codex 間の仕
 ## 注意事項・既知の制限
 
 生ログを直接読まず、`scripts/analyze_auto_approve.py` が出力する JSON のみを分析の根拠とする。
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

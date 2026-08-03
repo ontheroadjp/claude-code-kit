@@ -42,3 +42,7 @@
 
 - `--all` で複数月を跨ぐ場合、同一セッションが月をまたいで存在する（セッション開始が前月末、終了が翌月初）ケースでは、ファイル読み込み順（月の昇順）が時系列と一致する前提で最後の行を採用している
 - `model_breakdown` / `cwd_breakdown` / `top_expensive_sessions` は `TOP_N`（10件、`cwd_breakdown`・`top_expensive_sessions` のみ）に切り詰められる
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

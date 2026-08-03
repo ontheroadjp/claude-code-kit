@@ -40,3 +40,7 @@ Facts の再現性を担保するため、集計はすべて決定的な正規�
 
 - `[修正したファイル]` セクションが空（変更なし）の場合、`parse_modified_files()` は空リストを返す
 - `top_duplicate_files` / `top_modified_files` は `TOP_N`（10件）に切り詰められる
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

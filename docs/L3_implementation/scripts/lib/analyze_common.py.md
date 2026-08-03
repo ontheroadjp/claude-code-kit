@@ -32,3 +32,7 @@
 
 - 型アノテーションは `commands/coding-py.md` の規約に従い全関数に付与している
 - `MONTH_PATTERN_LENGTH` は `"YYYY-MM"` の長さ（7）を表す名前付き定数であり、マジックナンバーを避けている
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

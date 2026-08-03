@@ -45,3 +45,7 @@ hook の許可ルールを直接変更すると read-only 分析の境界を越�
 
 - 唯一の書き込みは `logs/reports/auto-approve/` 配下の新規 HTML ファイルのみ
 - `detail` フィールドは hook 側で 120 バイトに truncate 済みのため、長いコマンド全文はログに残っていない
+
+## 変更履歴（git log より自動生成）
+
+- d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands
