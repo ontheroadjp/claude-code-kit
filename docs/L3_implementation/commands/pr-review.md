@@ -40,13 +40,15 @@ GitHub review 投稿には `AI_REVIEW_TOKEN` を優先し、既存 `CODEX_REVIEW
 
 ### reviewer subprocess の実行と sandbox/権限設計
 
-Codex reviewer は `commands/pr-review-exec.md` をリポジトリ外の scratch ディレクトリ（`--cd`）で実行する。`--sandbox workspace-write` かつ `sandbox_workspace_write.network_access=true` を指定することで、cwd（scratch ディレクトリ）配下だけを書き込み可能にしたまま `gh` の GitHub API 呼び出し（ネットワーク）を許可する。`--sandbox read-only` はネットワークも塞ぐため使わない。
+Codex reviewer は `commands/pr-review-exec.md` をリポジトリ外の scratch ディレクトリ（`--cd`）で `--dangerously-bypass-approvals-and-sandbox` を用いて実行する。当初は `--sandbox workspace-write` + `sandbox_workspace_write.network_access=true` で cwd 配下だけ書き込み可能にしたまま `gh` のネットワーク呼び出しを許可する設計だったが、bubblewrap によるサンドボックス初期化がホスト環境（ネストした user namespace を作れない環境等）によっては `Permission denied` で失敗し、`gh` を含む全てのコマンドが実行できなくなることが実地確認で判明した。そのため OS レベルの sandbox には依存せず、scratch cwd（相対パスの誤書き込み防止）と `pr-review-exec.md` に明記された「ファイル編集・他コマンド呼び出しをしない」という指示だけを安全境界とする設計に変更した。
+
+reviewer は working tree の外で実行されるため `gh` が対象リポジトリを推測できない。orchestrator は `GH_REPO_FULL_NAME`（`gh repo view --json nameWithOwner`）を Step 1 で取得し、reviewer subprocess に `GH_REPO` として渡す。`pr-review-exec.md` はこれを必須の前提とし、全ての `gh pr` コマンドに `--repo "$GH_REPO"` を明示する。同様に `REPO_ROOT` を渡し、scratch cwd から `CLAUDE.md` / `AGENTS.md` を正しい絶対パスで読めるようにする。
 
 Claude reviewer は OS レベルの sandbox を持たないため、`--tools "Read,Bash"` と `--allowedTools` で `Bash` を `gh pr diff` / `gh pr view` / `gh pr review` / `gh api user` の各サブコマンドだけに制限し、`Edit`/`Write` を与えないことで同等の書き込み境界を作る。
 
-いずれの reviewer にも `commands/pr-review.md` 自身への書き込み権限や、`/work`・`/task`・`/patch`・`/pr-review` 等の他コマンドを実行する経路を与えない。
+いずれの reviewer にも `commands/pr-review.md` 自身への書き込み権限や、`/work`・`/task`・`/patch`・`/pr-review` 等の他コマンドを実行する経路を与えない。実地検証で、sandbox が機能しない場合に Codex が自前の `codex_apps` GitHub 統合（reviewer とは別の、Codex に既にログイン済みのアカウントで認証されている）に読み取りだけフォールバックする挙動を確認した。書き込みには使われなかったが、`pr-review-exec.md` は `gh` CLI 以外の GitHub 統合ツールの使用を明示的に禁止することでこの経路を塞ぐ。
 
-根拠: `commands/pr-review.md:92-123`
+根拠: `commands/pr-review.md:38-39`, `commands/pr-review.md:93-124`
 
 ### 投稿結果の確認（新規投稿検出と commit 一致）
 

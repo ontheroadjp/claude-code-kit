@@ -36,6 +36,7 @@ fi
 
 ```bash
 gh pr view <PR番号> --json number,url,title,state,isDraft,author,headRefName,headRefOid,baseRefName
+GH_REPO_FULL_NAME=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
 ```
 
 以下を満たさなければ何も変更せず FAILED で終了する:
@@ -46,7 +47,7 @@ gh pr view <PR番号> --json number,url,title,state,isDraft,author,headRefName,h
 - detached HEAD ではない
 - `git status --porcelain` が空である
 
-PR branch にいない場合は `gh pr checkout <PR番号>` で切り替える。このチェックアウトは Step 4.5 の修正作業のためであり、reviewer のレビュー自体はローカルの working tree を使わない（Step 4.2 参照）。
+PR branch にいない場合は `gh pr checkout <PR番号>` で切り替える。このチェックアウトは Step 4.5 の修正作業のためであり、reviewer のレビュー自体はローカルの working tree を使わない（Step 4.2 参照）。`GH_REPO_FULL_NAME`（`owner/repo`）は reviewer subprocess が working tree の外で実行される場合に `gh` が対象リポジトリを解決するために必要で、以降の全ラウンドで使い回す。
 
 ## Step 2: reviewer identity のゲート
 
@@ -91,35 +92,34 @@ gh pr view <PR番号> --json reviews \
 
 ### 4.2 別 agent による review 実行
 
-実装元が Claude の場合、reviewer（Codex）をリポジトリ外の scratch ディレクトリで実行する。Codex の `workspace-write` サンドボックスは cwd 配下だけを書き込み可能にするため、scratch ディレクトリを cwd にすることでリポジトリへの書き込み経路を作らずに `gh` のネットワークアクセスだけを許可する:
+実装元が Claude の場合、reviewer（Codex）をリポジトリ外の scratch ディレクトリで実行する。scratch ディレクトリを cwd にすることで、相対パスによる意図しないリポジトリへの書き込みを避ける。Codex の OS レベル sandbox（`--sandbox`）は bubblewrap 初期化がホスト環境によっては失敗し `gh` のネットワーク呼び出し自体ができなくなることがあるため使用せず、`--dangerously-bypass-approvals-and-sandbox` で実行する。この場合の安全境界は OS レベルの隔離ではなく、`pr-review-exec.md` に明記された「ファイル編集・他コマンド呼び出しを行わない」という指示と、`REVIEW_TOKEN` が持つ権限の範囲に依存する:
 
 ```bash
 SCRATCH_DIR="$SESSION_TMP_DIR/round-${ROUND}-scratch"
 mkdir -p "$SCRATCH_DIR"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-REVIEW_TOKEN="$REVIEW_TOKEN" codex exec \
-  --sandbox workspace-write \
-  -c sandbox_workspace_write.network_access=true \
+REVIEW_TOKEN="$REVIEW_TOKEN" GH_REPO="$GH_REPO_FULL_NAME" REPO_ROOT="$REPO_ROOT" codex exec \
+  --dangerously-bypass-approvals-and-sandbox \
   --ephemeral \
   --skip-git-repo-check \
   --cd "$SCRATCH_DIR" \
   --output-last-message "$SESSION_TMP_DIR/round-${ROUND}-review.txt" \
-  "${REPO_ROOT}/commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。REVIEW_TOKEN は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。"
+  "${REPO_ROOT}/commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。REVIEW_TOKEN・GH_REPO・REPO_ROOT は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。"
 ```
 
 実装元が Codex の場合、reviewer（Claude）をこのリポジトリ内で、ツール権限を絞って実行する。Claude には OS レベルの sandbox がないため、`Edit`/`Write` を与えず `Bash` を `gh` の特定サブコマンドだけに制限することで同じ安全境界を作る:
 
 ```bash
-REVIEW_TOKEN="$REVIEW_TOKEN" claude -p \
+REVIEW_TOKEN="$REVIEW_TOKEN" GH_REPO="$GH_REPO_FULL_NAME" claude -p \
   --permission-mode dontAsk \
   --tools "Read,Bash" \
   --allowedTools "Read,Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr review *),Bash(gh api user *)" \
-  "commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。REVIEW_TOKEN は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。" \
+  "commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。REVIEW_TOKEN・GH_REPO は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。" \
   > "$SESSION_TMP_DIR/round-${ROUND}-review.txt"
 ```
 
-reviewer subprocess に Edit、Write、ファイル書き込み経路を与えない。GitHub への書き込みは `pr-review-exec.md` の指示に従い reviewer 自身が行う（`REVIEW_TOKEN` を用いた `gh pr review` の実行）。
+reviewer subprocess に Edit、Write、ファイル書き込み経路を与えない。GitHub への書き込みは `pr-review-exec.md` の指示に従い reviewer 自身が行う（`REVIEW_TOKEN` を用いた `gh pr review` の実行）。`pr-review-exec.md` は `gh` CLI 以外の GitHub 統合ツール（`codex_apps` 等、別アカウントで認証済みの可能性があるもの）を使わないことも指示する。
 
 ### 4.3 投稿結果の確認
 

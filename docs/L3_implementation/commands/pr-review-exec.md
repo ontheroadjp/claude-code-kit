@@ -12,10 +12,10 @@
 
 ```
 引数チェック（PR番号）
-  → REVIEW_TOKEN の存在確認
-  → PR の状態確認（存在し OPEN であること）
+  → REVIEW_TOKEN / GH_REPO の存在確認
+  → PR の状態確認（--repo "$GH_REPO" 付きで存在し OPEN であること）
   → gh pr diff / gh pr view でレビュー材料を取得（ローカル working tree は使わない）
-  → CLAUDE.md / AGENTS.md と diff を根拠にレビュー（read-only）
+  → REPO_ROOT（未設定ならカレントディレクトリ）起点で CLAUDE.md / AGENTS.md と diff を根拠にレビュー（read-only、gh CLI 以外の GitHub 統合は使わない）
   → blocking finding の有無で APPROVE / REQUEST_CHANGES を判定
   → gh pr review --approve / --request-changes で直接投稿
   → 投稿結果を報告
@@ -29,13 +29,19 @@
 
 このコマンドは呼び出し元（通常 `commands/pr-review.md`）が reviewer と PR author のアカウント分離を確認済みである前提で動作し、自らはその検証を行わない。責務を「diff 取得・レビュー・投稿」だけに絞るための意図的な設計であり、直接呼び出す場合はアカウント分離を呼び出し側が保証する必要がある。
 
-根拠: `commands/pr-review-exec.md:11-13`
+根拠: `commands/pr-review-exec.md:17`
 
 ### ローカル working tree に触れない
 
-diff・PR 本文・過去の review/comment はすべて `gh pr diff` / `gh pr view` で GitHub から直接取得する。`git fetch` や `git checkout` を行わないため、reviewer subprocess をリポジトリの working tree と切り離して（別ディレクトリ・別サンドボックスで）実行できる。
+diff・PR 本文・過去の review/comment はすべて `gh pr diff` / `gh pr view` で GitHub から直接取得する。`git fetch` や `git checkout` を行わないため、reviewer subprocess をリポジトリの working tree と切り離して（別ディレクトリ・別サンドボックスで）実行できる。working tree の外では `gh` が対象リポジトリを推測できないため、`GH_REPO`（`owner/repo`）を必須の前提とし、全ての `gh pr` コマンドに `--repo "$GH_REPO"` を明示する。`CLAUDE.md` / `AGENTS.md` の参照も同じ理由で `REPO_ROOT`（未設定時はカレントディレクトリ）を起点にする。
 
-根拠: `commands/pr-review-exec.md:29-38`
+根拠: `commands/pr-review-exec.md:11-15`, `commands/pr-review-exec.md:29-38`
+
+### gh CLI 以外の GitHub 統合を使わない
+
+Codex の `codex_apps` のような GitHub 統合ツール（MCP 等）は、reviewer 用に渡した `REVIEW_TOKEN` とは無関係に、別アカウントで既に認証済みの場合がある。これを使うと reviewer と PR author のアカウント分離が意図せず崩れる（誤ったアカウントでの読み取り・投稿）ため、GitHub への読み取り・書き込みは必ず `REVIEW_TOKEN` を `GH_TOKEN` として渡した `gh` CLI 経由で行うことを明示している。
+
+根拠: `commands/pr-review-exec.md:16`
 
 ### 過去の review を context として使う
 
@@ -61,16 +67,17 @@ diff・PR 本文・過去の review/comment はすべて `gh pr diff` / `gh pr v
 
 ## 統合ポイント
 
-- 呼び出し元: `commands/pr-review.md` Step 4.2（`codex exec` / `claude -p` から実行される）
-- 手動呼び出し: `/pr-review-exec #<PR番号>`（`REVIEW_TOKEN` を呼び出し側で用意する必要がある）
-- GitHub: `gh pr view`、`gh pr diff`、`gh pr review`
+- 呼び出し元: `commands/pr-review.md` Step 4.2（`codex exec --dangerously-bypass-approvals-and-sandbox` / `claude -p` から実行される）
+- 手動呼び出し: `/pr-review-exec #<PR番号>`（`REVIEW_TOKEN`・`GH_REPO` を呼び出し側で用意する必要がある。working tree の外で実行する場合は `REPO_ROOT` も必要）
+- GitHub: `gh pr view`、`gh pr diff`、`gh pr review`（いずれも `--repo "$GH_REPO"` 付き）
 
 ## 注意事項・既知の制限
 
-- `REVIEW_TOKEN` が未設定の場合は何もせず終了する
+- `REVIEW_TOKEN` または `GH_REPO` が未設定の場合は何もせず終了する
 - reviewer と PR author のアカウント分離はこのコマンド自身では検証しない
 - PR が存在しない、または `OPEN` でない場合は review を投稿しない
 - 投稿失敗時はエラーを報告するのみで、リトライやフォールバック投稿は行わない
+- Codex の OS レベル sandbox（`workspace-write` 等）は bubblewrap 初期化がホスト環境によっては失敗するため、呼び出し元は `--dangerously-bypass-approvals-and-sandbox` を使う。その場合の安全境界はこのコマンドに明記された指示（ファイル編集・他コマンド呼び出し・gh CLI 以外の GitHub 統合を行わない）に依存する
 
 ## 変更履歴（git log より自動生成）
 

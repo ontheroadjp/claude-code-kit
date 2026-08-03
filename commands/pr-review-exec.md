@@ -11,6 +11,9 @@
 ## 前提
 
 - 環境変数 `REVIEW_TOKEN` に GitHub token が設定されていること。未設定または空の場合は「REVIEW_TOKEN が設定されていません」と報告して終了する
+- 環境変数 `GH_REPO`（`owner/repo` 形式）が設定されていること。このコマンドはリポジトリの working tree の外（sandbox 制約回避のための scratch ディレクトリ等）で実行される場合があり、その場合 `gh` は cwd から対象リポジトリを推測できない。未設定または空の場合は「GH_REPO が設定されていません」と報告して終了する
+- 環境変数 `REPO_ROOT`（このリポジトリのローカル絶対パス）が設定されている場合、Step 3 の `CLAUDE.md` / `AGENTS.md` はそこを起点に読む。未設定の場合はカレントディレクトリを起点に読む
+- GitHub への読み取り・書き込みは必ず `gh` CLI（`REVIEW_TOKEN` を `GH_TOKEN` として渡す）経由で行う。Codex の `codex_apps` など、別アカウントで認証済みの可能性がある GitHub 統合ツール（MCP等）は使用しない — 誤ったアカウントでの読み取り・投稿を避けるため
 - reviewer と PR author のアカウント分離確認は呼び出し元（通常 `/pr-review`）の責務であり、このコマンドはそれを検証しない。呼び出し元が確認済みの前提で動作する
 - token の値は表示・ファイル保存・ログ出力しない
 
@@ -23,7 +26,7 @@
 ## Step 1: PR の状態確認
 
 ```bash
-GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --json number,url,title,body,state,headRefName,baseRefName
+GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --repo "$GH_REPO" --json number,url,title,body,state,headRefName,baseRefName
 ```
 
 - PR が存在しない、または `state` が `OPEN` でない場合: その旨を報告して終了する（review を投稿しない）
@@ -33,15 +36,15 @@ GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --json number,url,title,body,stat
 このコマンドはローカルの git working tree に触れない。全て `gh` 経由でリモートから取得する。
 
 ```bash
-GH_TOKEN="$REVIEW_TOKEN" gh pr diff <PR番号>
-GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --json title,body,comments,reviews
+GH_TOKEN="$REVIEW_TOKEN" gh pr diff <PR番号> --repo "$GH_REPO"
+GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --repo "$GH_REPO" --json title,body,comments,reviews
 ```
 
 - 過去の review・comment には、これまでのラウンドで指摘した blocking finding が含まれ得る。今回の diff でそれが解消されているかどうかの判断材料として使う
 
 ## Step 3: レビュー
 
-- repo の `CLAUDE.md` / `AGENTS.md` と Step 2 の diff を根拠にレビューする
+- `${REPO_ROOT:-.}/CLAUDE.md` / `${REPO_ROOT:-.}/AGENTS.md` と Step 2 の diff を根拠にレビューする
 - ファイルの Edit・Write は行わない。read-only な調査操作（`Read`、`gh`・`git` の読み取り系コマンド）のみを使う
 - 日本語で回答する
 - blocking な指摘が 1 件でもあれば `REQUEST_CHANGES`、なければ `APPROVE` と判定する
@@ -54,13 +57,13 @@ review 本文には、判定結果の要約と finding の一覧（blocking / su
 APPROVE の場合:
 
 ```bash
-GH_TOKEN="$REVIEW_TOKEN" gh pr review <PR番号> --approve --body "<review本文>"
+GH_TOKEN="$REVIEW_TOKEN" gh pr review <PR番号> --repo "$GH_REPO" --approve --body "<review本文>"
 ```
 
 REQUEST_CHANGES の場合:
 
 ```bash
-GH_TOKEN="$REVIEW_TOKEN" gh pr review <PR番号> --request-changes --body "<review本文>"
+GH_TOKEN="$REVIEW_TOKEN" gh pr review <PR番号> --repo "$GH_REPO" --request-changes --body "<review本文>"
 ```
 
 投稿に失敗した場合はエラー内容を報告して終了する。
