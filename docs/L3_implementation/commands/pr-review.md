@@ -50,7 +50,9 @@ GitHub review 投稿には `AI_REVIEW_TOKEN` を優先し、既存 `CODEX_REVIEW
 
 ### インクリメンタルレビュー（round 2+ のスコープ縮小）
 
-round 1 は `origin/<baseRefName>...HEAD` の全体 diff を reviewer に渡す。round 2 以降は、(1) 直前ラウンドの `REVIEWED_HEAD_SHA`（`PREV_REVIEWED_SHA`）を取得でき、かつ (2) 各ラウンドで記録する base SHA（`round-${ROUND}-base-sha.txt`）が前ラウンドと一致する（base drift なし）場合にのみ、`PREV_REVIEWED_SHA` から現在 HEAD までの増分 diff（`round-${ROUND}-incremental.diff`）と直前ラウンドの `FINDINGS` を渡す。いずれかの条件を満たさない場合は全体 diff の通常モードにフォールバックする（fail-safe）。base drift 時に増分 diff を使わないのは、増分 diff（自ブランチの新規コミットのみ）では base 側の変化を reviewer が確認できないため。
+round 2 以降は、(1) 直前ラウンドの `REVIEWED_HEAD_SHA`（`PREV_REVIEWED_SHA`）を取得でき、かつ (2) 各ラウンドで記録する base SHA（`round-${ROUND}-base-sha.txt`）が前ラウンドと一致する（base drift なし）場合にのみ、増分 diff（`round-${ROUND}-incremental.diff`）を生成する（Step 4.1）。いずれかの条件を満たさない場合、または base drift があった場合は増分 diff を生成しない（base 側の変化を増分 diff だけでは reviewer が確認できないため）。
+
+生成した増分 diff を実際に reviewer へ渡すか、round 1 と同様に `origin/<baseRefName>...HEAD` の全体 diff を渡すかは Step 4.2 の trivial flag 判定でのみ決定する（4.1 は diff ファイルの生成だけを担当し、reviewer への提供内容を決定しない）。
 
 根拠: `commands/pr-review.md:96-116`
 
@@ -117,6 +119,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 ## 変更履歴（git log より自動生成）
 
+- 2dcec34 fix(#201): decouple incremental-diff generation from what the reviewer actually receives
 - b128570 fix(#201): measure trivial-fix line counts before commit and align L3 doc with source of truth
 - 9d2d38f fix(#201): guard incremental pr-review diff against base drift and mode-selection ambiguity
 - ad8e042 feat(#201): scope pr-review rounds to incremental diff and add trivial-fix confirm-only mode
