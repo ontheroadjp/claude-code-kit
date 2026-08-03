@@ -131,6 +131,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
@@ -139,6 +140,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - aeb0dc4 docs: remove environment-specific cli notes
 - 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
-- dd29feb feat(#129): store session approvals per session
-- 4e742c9 fix(#118): guard session-approved against mid-session scope expansion
-- 83374dc feat(#108): add session-based approval to eliminate double-confirmation prompts

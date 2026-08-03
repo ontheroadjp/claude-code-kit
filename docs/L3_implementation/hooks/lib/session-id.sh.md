@@ -43,3 +43,7 @@
 
 - `payload` 引数を省略した場合、hook 専用の優先順位（3・4）はスキップされる
 - `process-<PPID>` フォールバックは hook プロセスとコマンド実行シェルで PPID が異なるため、両者で一致しない。呼び出し側はこのケースを「未解決」として扱い、`session-approved`/`SESSION_TMP_DIR` の読み書きをスキップする設計になっている
+
+## 変更履歴（git log より自動生成）
+
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file

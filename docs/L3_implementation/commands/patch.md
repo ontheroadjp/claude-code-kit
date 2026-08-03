@@ -117,3 +117,16 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 - session-approved への追記は hook がブロックするため、Step 2 で全スコープを確定させてから 1 度だけ書き込む
 - patch フローに issue・PR は不要。ユーザーが手動で ff-merge する設計（軽量さを保つため）
 - session ID は `${STATE_ROOT}/current-session-approved-path`（共有ポインタファイル）を経由せず、`$CLAUDE_CODE_SESSION_ID` から直接導出する（issue #210。複数セッション同時実行時の混線を防ぐため）
+
+## 変更履歴（git log より自動生成）
+
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
+- 27f1861 feat(#76): install templates for claude and codex
+- 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
+- 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
+- 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
+- 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
+- dd29feb feat(#129): store session approvals per session
+- 4e742c9 fix(#118): guard session-approved against mid-session scope expansion
+- 83374dc feat(#108): add session-based approval to eliminate double-confirmation prompts
+- 6b6ddeb feat(#96): add coding skill usage instruction to task.md and patch.md
