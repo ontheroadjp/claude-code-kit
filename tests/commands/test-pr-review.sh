@@ -4,8 +4,10 @@ set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 PR_REVIEW="$REPO_DIR/commands/pr-review.md"
+PR_REVIEW_EXEC="$REPO_DIR/commands/pr-review-exec.md"
 GIT_PR="$REPO_DIR/commands/git-pr.md"
 SKILL="$REPO_DIR/skills/pr-review/SKILL.md"
+SKILL_EXEC="$REPO_DIR/skills/pr-review-exec/SKILL.md"
 
 failures=0
 
@@ -35,39 +37,58 @@ assert_absent() {
   fi
 }
 
+# --- commands/pr-review.md: thin orchestrator contract ---
+
 assert_contains "$PR_REVIEW" 'MAX_REVIEW_ROUNDS=3' 'review loop is bounded'
-assert_contains "$PR_REVIEW" 'codex exec' 'Claude implementation routes review to generic Codex exec'
-assert_contains "$PR_REVIEW" '--sandbox read-only' 'the Codex reviewer runs in a read-only sandbox'
-assert_contains "$PR_REVIEW" '--ephemeral' 'the Codex reviewer does not persist a session'
-assert_contains "$PR_REVIEW" '--output-last-message' 'only the final Codex response is saved for parsing'
-assert_absent "$PR_REVIEW" 'codex review' 'the workflow does not use the fixed-format Codex review subcommand'
-assert_contains "$PR_REVIEW" 'claude -p' 'Codex implementation routes review to Claude'
-assert_contains "$PR_REVIEW" 'REVIEWED_HEAD_SHA' 'review result is bound to a head SHA'
-assert_contains "$PR_REVIEW" '--approve' 'approved reviews are posted to GitHub'
-assert_contains "$PR_REVIEW" '--request-changes' 'change requests are posted to GitHub'
+assert_contains "$PR_REVIEW" 'AI_REVIEW_TOKEN' 'reviewer token prefers AI_REVIEW_TOKEN'
+assert_contains "$PR_REVIEW" 'CODEX_REVIEW_TOKEN' 'reviewer token falls back to CODEX_REVIEW_TOKEN'
 assert_contains "$PR_REVIEW" 'REVIEWER_LOGIN' 'reviewer identity is validated'
-assert_contains "$PR_REVIEW" '--tools "Read"' 'the Claude reviewer receives read-only tools'
+assert_contains "$PR_REVIEW" 'codex exec' 'Claude implementation routes review to Codex exec'
+assert_contains "$PR_REVIEW" '--sandbox workspace-write' 'the Codex reviewer runs with a workspace-write sandbox'
+assert_contains "$PR_REVIEW" 'sandbox_workspace_write.network_access=true' 'the Codex reviewer sandbox explicitly enables network access'
+assert_contains "$PR_REVIEW" '--skip-git-repo-check' 'the Codex reviewer runs outside a git repository (scratch cwd)'
+assert_contains "$PR_REVIEW" 'claude -p' 'Codex implementation routes review to Claude'
+assert_contains "$PR_REVIEW" '--tools "Read,Bash"' 'the Claude reviewer is limited to Read and scoped Bash tools'
+assert_contains "$PR_REVIEW" 'Bash(gh pr review *)' 'the Claude reviewer is only allowed to run gh pr review, not arbitrary Bash'
+assert_absent "$PR_REVIEW" '"Edit"' 'the Claude reviewer is not granted the Edit tool'
+assert_absent "$PR_REVIEW" '"Write"' 'the Claude reviewer is not granted the Write tool'
+assert_contains "$PR_REVIEW" 'pr-review-exec.md' 'the orchestrator delegates review execution to pr-review-exec'
+assert_contains "$PR_REVIEW" 'PREV_REVIEW_ID' 'the orchestrator detects whether the reviewer actually posted a new review'
+assert_contains "$PR_REVIEW" 'commitId' 'the orchestrator checks the posted review is bound to the current head commit'
+assert_contains "$PR_REVIEW" 'headRefOid' 'the orchestrator compares the review commit against the current PR head'
 assert_contains "$PR_REVIEW" 'session-approved 外' 'fixes are limited to the approved scope'
 assert_contains "$PR_REVIEW" 'ROUND == MAX_REVIEW_ROUNDS' 'the final round does not start an unreviewed fix'
-assert_contains "$PR_REVIEW" '各ラウンド開始時に最初に base branch を更新する' 'every review round refreshes the base branch first'
-assert_contains "$PR_REVIEW" 'git fetch origin "<baseRefName>"' 'the per-round refresh fetches the current base branch'
-assert_contains "$PR_REVIEW" 'stale な base から review context を生成・投稿せず、`FAILED` で終了する' 'a failed base refresh stops review context generation'
-assert_contains "$PR_REVIEW" 'TRIVIAL_FIX_MAX_LINES=5' 'trivial fixes are classified by a bounded line-count threshold'
-assert_contains "$PR_REVIEW" 'PREV_REVIEWED_SHA' 'round 2+ scoping is based on the previously reviewed head SHA'
-assert_contains "$PR_REVIEW" 'round-${ROUND}-incremental.diff' 'round 2+ generates an incremental diff since the previous review'
-assert_contains "$PR_REVIEW" '上記条件を満たさない場合（`ROUND == 1`、`round-${ROUND}-incremental.diff` が未生成、または trivial flag が存在しない）は **通常モード**とする' 'round 1, a missing incremental diff, or a non-trivial previous round still gets a full review'
-assert_contains "$PR_REVIEW" 'round-$((ROUND-1))-trivial.flag' 'confirm-only mode is driven by the previous round trivial flag'
-assert_contains "$PR_REVIEW" 'confirm-only モード' 'trivial-only rounds narrow the reviewer prompt to confirm-only'
-assert_contains "$PR_REVIEW" 'APPROVE の可否は必ずこのラウンドの別 agent 起動結果に基づく' 'confirm-only mode still requires an independent reviewer invocation for approval'
-assert_contains "$PR_REVIEW" 'round-${ROUND}-base-sha.txt' 'each round records the current base SHA to detect drift'
-assert_contains "$PR_REVIEW" 'base branch が前ラウンド以降に進んでいる場合' 'base drift since the previous round forces a fallback to the full diff'
-assert_contains "$PR_REVIEW" '4.1 で `round-${ROUND}-incremental.diff` が生成されている' 'confirm-only mode requires the incremental diff to actually exist, not just the trivial flag'
 assert_absent "$PR_REVIEW" 'gh pr merge ' 'the workflow contains no merge command'
 assert_absent "$PR_REVIEW" 'git checkout main' 'the workflow does not check out main'
 assert_absent "$PR_REVIEW" 'git pull ' 'the workflow does not pull main'
 assert_absent "$PR_REVIEW" '--delete-branch' 'the workflow does not delete branches'
+
+# The orchestrator no longer pre-computes diffs, pins SHAs, or classifies trivial rounds --
+# that machinery was replaced by the reviewer fetching its own diff and posting directly.
+assert_absent "$PR_REVIEW" 'TRIVIAL_FIX_MAX_LINES' 'trivial-round classification was removed from the orchestrator'
+assert_absent "$PR_REVIEW" 'trivial.flag' 'trivial-round flag files were removed'
+assert_absent "$PR_REVIEW" 'confirm-only' 'confirm-only review mode was removed'
+assert_absent "$PR_REVIEW" 'incremental.diff' 'incremental diff generation was removed'
+assert_absent "$PR_REVIEW" 'PREV_REVIEWED_SHA' 'reviewer-reported head SHA pinning was removed'
+assert_absent "$PR_REVIEW" 'REVIEWED_HEAD_SHA' 'the reviewer text output contract was removed'
+assert_absent "$PR_REVIEW" 'base-sha.txt' 'per-round base SHA drift files were removed'
+
+# --- commands/pr-review-exec.md: reviewer-only self-contained contract ---
+
+assert_contains "$PR_REVIEW_EXEC" 'REVIEW_TOKEN' 'pr-review-exec requires a review token'
+assert_contains "$PR_REVIEW_EXEC" 'gh pr diff' 'pr-review-exec fetches its own diff'
+assert_contains "$PR_REVIEW_EXEC" '--approve' 'pr-review-exec can post an approval'
+assert_contains "$PR_REVIEW_EXEC" '--request-changes' 'pr-review-exec can post a change request'
+assert_contains "$PR_REVIEW_EXEC" '他のコマンドは実行しない' 'pr-review-exec does not invoke other commands'
+assert_absent "$PR_REVIEW_EXEC" 'gh pr merge' 'pr-review-exec cannot merge'
+assert_absent "$PR_REVIEW_EXEC" 'git commit' 'pr-review-exec does not commit'
+assert_absent "$PR_REVIEW_EXEC" 'git push' 'pr-review-exec does not push'
+
+# --- integration points ---
+
 assert_contains "$GIT_PR" '/pr-review #${PR_NUMBER}' 'git-pr hands a created PR to pr-review'
-assert_contains "$SKILL" 'commands/pr-review.md' 'the skill points to the command source of truth'
+assert_contains "$SKILL" 'commands/pr-review.md' 'the pr-review skill points to the command source of truth'
+assert_contains "$SKILL_EXEC" 'commands/pr-review-exec.md' 'the pr-review-exec skill points to the command source of truth'
 
 if ((failures > 0)); then
   printf '\n%d contract test(s) failed.\n' "$failures"

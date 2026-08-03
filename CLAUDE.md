@@ -12,10 +12,11 @@
 
 ## Custom / Command の使い分け（AI向けルール）
 
-**重要: PR レビューコメントへの対話対応は `/review-resolve`、PR 作成後の別 agent による自律レビューは `/pr-review`、それ以外の全作業は直ちに `/work` を呼ぶこと。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。**
+**重要: PR レビューコメントへの対話対応は `/review-resolve`、PR 作成後の別 agent による自律レビューは `/pr-review`、それ以外の全作業は直ちに `/work` を呼ぶこと。`/pr-review` が起動する reviewer subprocess は `/pr-review-exec` を実行する（指定 PR の diff 取得から GitHub への review 投稿までを reviewer 自身が完結させる単発コマンド）。reviewer 役割として PR をレビューする場合は `/pr-review` ではなく `/pr-review-exec` を使うこと。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。**
 
 - **review-resolve.md**: PR レビューコメント対応専用のエントリポイント。`/work` を経由せず自己完結（checkout → 実装 → commit → push → 返信）。ユーザーが `/review-resolve #N` で直接呼び出す。
 - **pr-review.md**: PR 作成後のレビュー専用エントリポイント。実装元とは別の agent がレビューし、元 agent が承認済みスコープ内の指摘を PR ブランチ上で修正・commit・push・再レビューする。merge は行わず人間判断に残す。
+- **pr-review-exec.md**: `/pr-review` が起動する reviewer 専用の自己完結エントリポイント。`/work` を経由せず、指定 PR の diff を自分で取得し、レビュー結果を GitHub review として直接投稿するだけで完結する。ファイル編集や他コマンドの呼び出しは行わない。
 - **work.md**: review-resolve / pr-review 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
   - `report` label の issue → report-review.md を Read し、実装・branch 作成を行わず評価して終了
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）

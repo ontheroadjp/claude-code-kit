@@ -20,6 +20,10 @@ template の実体は repository の `templates/` に保持する。Claude Code 
 
 根拠: `CLAUDE.md:32-47`
 
+`/pr-review` が起動する reviewer subprocess の実行先は `/pr-review-exec` であると明記している。reviewer subprocess はこの repository 内で実行されるため `CLAUDE.md` を project instructions として自動的に読むが、ルーティング表に `pr-review-exec.md` を `review-resolve.md`・`pr-review.md` と並ぶ自己完結フローとして明記することで、reviewer が `/pr-review` へ誤って迷い込むことを防ぐ。
+
+根拠: `CLAUDE.md:15-18`
+
 ## 重要な設計判断
 
 `~/.claude/` と `~/.codex/` を symlink-only とすることで、agent ごとの installed path を提供しながら repository を唯一の編集対象として維持する。
