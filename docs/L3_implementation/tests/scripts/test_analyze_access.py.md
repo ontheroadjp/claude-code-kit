@@ -36,5 +36,5 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 8d0793a feat(#214): track per-session redundant file reads in /analyze-access
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands
-- feat(#214): add SESSION_3 fixture (2 duplicated files) and assertions for redundant-read metrics (`redundant_accesses_total` / `sessions_with_duplicates` / `sessions_with_duplicates_ratio` / `top_redundant_sessions`)
