@@ -9,6 +9,10 @@
 logs/
 !logs/.gitkeep
 
+# Python
+__pycache__/
+*.pyc
+
 # VitePress
 site/node_modules/
 site/.vitepress/dist/
