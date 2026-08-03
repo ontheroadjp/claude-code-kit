@@ -317,6 +317,16 @@ done
 output=$(run_auto 'OPTS='"'"'-o /tmp/evil'"'"'; curl $(printf https://example.com "\"(") $OPTS')
 assert_no_output "$output"
 
+# Follow-up finding: neither helper tracked single quotes at depth=0 (before
+# entering any $(...)), so a literal $( inside a single-quoted argument (e.g.
+# curl '$(' ...) was mistaken for a real subshell start. No matching )
+# exists anywhere in the string, so depth never returns to 0 and everything
+# after it — including a variable reference — is silently dropped from what
+# gets validated. Must prompt fallback; single quotes suppress all expansion
+# in real bash, so '$(' is just two literal characters.
+output=$(run_auto "OPTS='-o /tmp/evil'; curl '\$(' \$OPTS https://example.com")
+assert_no_output "$output"
+
 mkdir -p "$(dirname "$SESSION_FILE")"
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
 output=$(run_auto 'git reset --hard')

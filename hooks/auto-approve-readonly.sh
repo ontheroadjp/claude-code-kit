@@ -194,9 +194,6 @@ _has_variable_expansion() {
 
 # Extract the contents of each top-level $(...) group, one per line.
 # Handles nested parens and quoted strings inside the subshell.
-# Known limitation: single quotes at depth=0 are not tracked, so $() inside
-# a single-quoted literal at the outer level may be incorrectly extracted.
-# This is conservative (may over-block) rather than permissive.
 _extract_subshell_contents() {
     local input="$1"
     local i char depth=0 current="" quote="" saw_dollar=0 escaped=0
@@ -205,6 +202,26 @@ _extract_subshell_contents() {
         char="${input:i:1}"
 
         if [ "$depth" -eq 0 ]; then
+            # Track single quotes even at depth=0: bash performs no expansion
+            # inside '...', so a literal $( there (e.g. curl '$(' $OPTS ...)
+            # must not be mistaken for the start of a real subshell. Without
+            # this, depth would open on a $( that has no matching ) anywhere
+            # in the string, and everything after it — including a variable
+            # reference — would never be reached by the caller's safety scan.
+            if [ "$quote" = "'" ]; then
+                [ "$char" = "'" ] && quote=""
+                saw_dollar=0
+                continue
+            fi
+            if [ "$escaped" = "1" ]; then
+                escaped=0; saw_dollar=0; continue
+            fi
+            if [ "$char" = "\\" ]; then
+                escaped=1; saw_dollar=0; continue
+            fi
+            if [ "$char" = "'" ]; then
+                quote="'"; saw_dollar=0; continue
+            fi
             if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
                 depth=1; current=""; saw_dollar=0; continue
             fi
@@ -267,6 +284,26 @@ _strip_subshells() {
         char="${input:i:1}"
 
         if [ "$depth" -eq 0 ]; then
+            # Track single quotes even at depth=0 (mirrors
+            # _extract_subshell_contents): a literal $( inside '...' must not
+            # be mistaken for the start of a real subshell, or depth would
+            # open with no matching ) anywhere in the string, silently
+            # dropping everything after it (including a variable reference)
+            # from the result this function returns.
+            if [ "$quote" = "'" ]; then
+                result+="$char"
+                [ "$char" = "'" ] && quote=""
+                continue
+            fi
+            if [ "$escaped" = "1" ]; then
+                result+="$char"; escaped=0; continue
+            fi
+            if [ "$char" = "\\" ]; then
+                result+="$char"; escaped=1; continue
+            fi
+            if [ "$char" = "'" ]; then
+                quote="'"; result+="$char"; continue
+            fi
             # Look-ahead: $( starts a subshell to replace
             if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
                 result+='__SUBSHELL_SAFE__'; depth=1; i=$((i + 1)); continue
