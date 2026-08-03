@@ -317,6 +317,8 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 ## 変更履歴（git log より自動生成）
 
+- 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
+- 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
 - d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
 - 40ea58a fix(#196): track single quotes at depth=0 in subshell content helpers
 - ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
@@ -325,5 +327,3 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 - a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
 - e740c91 fix(#194): replace node/bash syntax-check denylist with strict single-arg allowlist
 - 6c041c6 fix(#194): close gh api/journalctl/node --check allowlist bypasses
-- 3655fd5 feat(#194): extend read-only allowlist and fix multibyte log truncation
-- 9d1d78f fix(#156): harden auto-approval boundary checks
