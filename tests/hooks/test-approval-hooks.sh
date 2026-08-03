@@ -347,6 +347,27 @@ assert_no_output "$output"
 output=$(run_auto "X=\$(printf '%s' \"\$(touch /tmp/unsafe)\")")
 assert_no_output "$output"
 
+# Redesign (tokenizer unification) regression: the old saw_dollar look-ahead
+# flag used only inside _extract_subshell_contents was not reset when an
+# escaped character was consumed, so an escaped " could leave saw_dollar
+# stuck at 1 and cause a later ( to be misread as starting a nested $(,
+# corrupting depth tracking for the rest of the segment. The unified
+# tokenizer has no such flag to leak. Must prompt fallback: the nested touch
+# really does run in real bash.
+output=$(run_auto 'cat $(printf "$\"(" $(touch /tmp/unsafe))')
+assert_no_output "$output"
+
+# Redesign (tokenizer unification) regression: ANSI-C quoting ($'...') was
+# previously parsed as an ordinary single-quoted string (no escape
+# awareness), so an escaped quote inside it (\' — a real escape sequence in
+# $'...') was misread as the closing quote, causing the actual closing quote
+# and everything after it — including a genuine $(...) — to be misclassified
+# as still being inside the string (or, once mis-closed, letting a
+# subsequent read-only-looking allowlist match hide the trailing subshell).
+# Must prompt fallback: the trailing touch really does run in real bash.
+output=$(run_auto "cat \$'foo\\'bar'\$(touch /tmp/unsafe)")
+assert_no_output "$output"
+
 mkdir -p "$(dirname "$SESSION_FILE")"
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
 output=$(run_auto 'git reset --hard')

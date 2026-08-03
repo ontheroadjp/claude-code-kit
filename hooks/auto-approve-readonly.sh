@@ -192,205 +192,134 @@ _has_variable_expansion() {
     return 1
 }
 
-# Extract the contents of each top-level $(...) group, one per line.
-# Handles nested parens and quoted strings inside the subshell. Each
-# nesting level's quote state is pushed onto quote_stack when a new $(...)
-# opens and popped when it closes, so a quote opened inside one level
-# cannot leak into an enclosing or sibling level.
-_extract_subshell_contents() {
+# Single source of truth for bash's quoting/escaping grammar as it relates to
+# $(...) command substitution. Scans $input once, tracking single quotes (no
+# escapes), double quotes, ANSI-C $'...' quotes (escapes apply, but $(...) and
+# nested quoting are not recognized inside them), backslash escapes, and
+# $(...) nesting (recognized even inside "...", sharing one paren-depth
+# counter with any bare "(" / ")" once already inside a substitution) to find
+# the start/end index of every TOP-LEVEL $(...) span. _extract_subshell_contents
+# and _strip_subshells both build on this single pass instead of each
+# reimplementing the grammar, which is what let fixes land in one function
+# but not the other across past review rounds (see
+# docs/L3_implementation/hooks/auto_approve_readonly.md).
+#
+# Prints "<start> <end>" (0-based, end = index of the matching ')') one pair
+# per line, in the order each top-level span closes.
+_find_top_level_subshell_spans() {
     local input="$1"
-    local i char depth=0 current="" quote="" saw_dollar=0 escaped=0 stack_top
+    local i char n="${#input}"
+    local depth=0 quote="" escaped=0 start=0 stack_top
     local -a quote_stack=()
-    local n="${#input}"
+    local ansiq="ANSI_C_QUOTE"
+
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
 
-        if [ "$depth" -eq 0 ]; then
-            # Track single AND double quotes even at depth=0 (mirrors the
-            # depth>0 handling below): a literal $( inside '...' must not be
-            # mistaken for the start of a real subshell (there would be no
-            # matching ) anywhere, silently dropping everything after it —
-            # including a variable reference — from what the caller ever
-            # sees). Conversely, a stray same-style quote character that
-            # appears literally inside a "..." string (e.g. the ' in
-            # cat "foo'$(...)" ) must not be misread as opening a real quote
-            # that then swallows a genuine, following $( it should catch.
-            if [ "$quote" = "'" ]; then
-                [ "$char" = "'" ] && quote=""
-                saw_dollar=0
-                continue
-            fi
-            if [ "$escaped" = "1" ]; then
-                escaped=0; saw_dollar=0; continue
-            fi
-            if [ "$char" = "\\" ]; then
-                escaped=1; saw_dollar=0; continue
-            fi
-            if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
-                quote_stack+=("$quote"); quote=""
-                depth=1; current=""; saw_dollar=0; continue
-            fi
-            if [ "$char" = '$' ]; then
-                saw_dollar=1; continue
-            fi
-            saw_dollar=0
-            if [ "$quote" = '"' ]; then
-                [ "$char" = '"' ] && quote=""
-                continue
-            fi
-            case "$char" in
-                "'") quote="'" ;;
-                '"') quote='"' ;;
-            esac
-            continue
-        fi
-
-        # No escape mechanism inside single quotes (POSIX): check this first,
-        # mirroring _has_variable_expansion's precedence, so a literal
-        # backslash there cannot be misread as escaping the closing quote,
-        # and a literal $( inside a single-quoted string is not mistaken for
-        # a nested subshell (single quotes suppress all expansion).
-        if [ "$quote" = "'" ]; then
-            current+="$char"; [ "$char" = "'" ] && quote=""; continue
-        fi
-
-        if [ "$escaped" = "1" ]; then
-            current+="$char"; escaped=0; continue
-        fi
-        if [ "$char" = "\\" ]; then
-            current+="$char"; escaped=1; continue
-        fi
-
-        # Inside $(...): handle nested $( using saw_dollar look-ahead.
-        # $(...) command substitution is still recognized inside a
-        # double-quoted string in real bash, so this runs before the
-        # quote='"' consume-check below. The enclosing level's quote state
-        # is pushed so the nested level starts with its own independent
-        # tracking rather than inheriting (and later corrupting) it.
-        if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
-            current+='('
-            quote_stack+=("$quote"); quote=""
-            depth=$((depth + 1)); saw_dollar=0; continue
-        fi
-        if [ "$char" = '$' ]; then
-            current+='$'; saw_dollar=1; continue
-        fi
-        saw_dollar=0
-
-        if [ "$quote" = '"' ]; then
-            current+="$char"; [ "$char" = '"' ] && quote=""; continue
-        fi
-
-        case "$char" in
-            "'") quote="'"; current+="$char" ;;
-            '"') quote='"'; current+="$char" ;;
-            '(') quote_stack+=("$quote"); quote=""; depth=$((depth + 1)); current+="$char" ;;
-            ')')
-                depth=$((depth - 1))
-                stack_top=$((${#quote_stack[@]} - 1))
-                quote="${quote_stack[$stack_top]}"
-                unset "quote_stack[$stack_top]"
-                if [ "$depth" -eq 0 ]; then
-                    printf '%s\n' "$current"; current=""
-                else
-                    current+="$char"
-                fi
-                ;;
-            *) current+="$char" ;;
-        esac
-    done
-}
-
-# Replace each top-level $(...) with __SUBSHELL_SAFE__ placeholder.
-# The caller must have already verified the subshell contents via _subshells_are_safe.
-_strip_subshells() {
-    local input="$1"
-    local i char depth=0 result="" quote="" escaped=0 stack_top
-    local -a quote_stack=()
-    local n="${#input}"
-    for ((i = 0; i < n; i++)); do
-        char="${input:i:1}"
-
-        if [ "$depth" -eq 0 ]; then
-            # Track single AND double quotes even at depth=0 (mirrors
-            # _extract_subshell_contents): a literal $( inside '...' must not
-            # be mistaken for the start of a real subshell, or depth would
-            # open with no matching ) anywhere in the string, silently
-            # dropping everything after it (including a variable reference)
-            # from the result this function returns. Conversely, a stray
-            # same-style quote character appearing literally inside a "..."
-            # string must not be misread as opening a real quote that then
-            # swallows a genuine, following $( it should catch.
-            if [ "$quote" = "'" ]; then
-                result+="$char"
-                [ "$char" = "'" ] && quote=""
-                continue
-            fi
-            if [ "$escaped" = "1" ]; then
-                result+="$char"; escaped=0; continue
-            fi
-            if [ "$char" = "\\" ]; then
-                result+="$char"; escaped=1; continue
-            fi
-            # Look-ahead: $( starts a subshell to replace. $(...) is still
-            # recognized inside a double-quoted string in real bash, so this
-            # runs before the quote='"' consume-check below.
-            if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
-                quote_stack+=("$quote"); quote=""
-                result+='__SUBSHELL_SAFE__'; depth=1; i=$((i + 1)); continue
-            fi
-            if [ "$quote" = '"' ]; then
-                result+="$char"
-                [ "$char" = '"' ] && quote=""
-                continue
-            fi
-            case "$char" in
-                "'") quote="'" ;;
-                '"') quote='"' ;;
-            esac
-            result+="$char"; continue
-        fi
-
-        # No escape mechanism inside single quotes: check this first, so a
-        # literal backslash there cannot be misread as escaping the closing
-        # quote, and a literal $( inside a single-quoted string is not
-        # mistaken for a nested subshell (mirrors _extract_subshell_contents).
+        # Single quotes: POSIX defines no escape mechanism inside them, so
+        # this must be checked before the generic escape handling below —
+        # otherwise a literal backslash immediately before the closing quote
+        # (e.g. the trailing \ in 'foo\') would be misread as escaping it,
+        # leaving the quote incorrectly open for the rest of the input.
         if [ "$quote" = "'" ]; then
             [ "$char" = "'" ] && quote=""
             continue
         fi
 
+        # Generic backslash-escape handling, shared by double quotes, ANSI-C
+        # quotes, and unquoted text. Real bash's double-quote escape set
+        # (\$, \`, \", \\) is a subset of "escape consumes the next character
+        # verbatim" — the extra characters this over-approximates never carry
+        # special meaning to this tokenizer anyway (they are not one of
+        # $ ' " ( )), so the wider rule is a safe simplification for the
+        # narrow job of finding matching quotes/parens, not a behavior change.
         if [ "$escaped" = "1" ]; then
-            escaped=0; continue
+            escaped=0
+            continue
         fi
         if [ "$char" = "\\" ]; then
-            escaped=1; continue
+            escaped=1
+            continue
         fi
 
-        # Inside $(...): track nested $( (still recognized inside "...") and
-        # quotes to find the matching ). The enclosing level's quote state is
-        # pushed so the nested level starts with its own independent
-        # tracking rather than inheriting (and later corrupting) it.
+        # ANSI-C quoting ($'...'): escapes apply (handled above), but unlike
+        # "..." real bash does not recognize $(...) or nested quoting inside
+        # it, so this closes on the next unescaped ' without looking for
+        # anything else.
+        if [ "$quote" = "$ansiq" ]; then
+            [ "$char" = "'" ] && quote=""
+            continue
+        fi
+
+        # $(...) command substitution is recognized even inside "..." in real
+        # bash, so this runs before the quote='"' consume-check below. A
+        # top-level open (depth 0 -> 1) records the span start; nested opens
+        # push the enclosing quote state so it cannot leak into (and later
+        # desync) the nested level's own tracking.
         if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
+            [ "$depth" -eq 0 ] && start=$i
             quote_stack+=("$quote"); quote=""
             depth=$((depth + 1)); i=$((i + 1)); continue
         fi
+
+        # $'...' is a lexical token recognized only when not already inside
+        # another quote at this nesting level — real bash gives $' no special
+        # meaning inside "..." or '...'.
+        if [ "$char" = '$' ] && [ "${input:i+1:1}" = "'" ] && [ -z "$quote" ]; then
+            quote="$ansiq"; i=$((i + 1)); continue
+        fi
+
         if [ "$quote" = '"' ]; then
             [ "$char" = '"' ] && quote=""
             continue
         fi
+
         case "$char" in
             "'") quote="'" ;;
             '"') quote='"' ;;
-            '(') quote_stack+=("$quote"); quote=""; depth=$((depth + 1)) ;;
+            '(')
+                if [ "$depth" -gt 0 ]; then
+                    quote_stack+=("$quote"); quote=""
+                    depth=$((depth + 1))
+                fi
+                ;;
             ')')
-                depth=$((depth - 1))
-                stack_top=$((${#quote_stack[@]} - 1))
-                quote="${quote_stack[$stack_top]}"
-                unset "quote_stack[$stack_top]"
+                if [ "$depth" -gt 0 ]; then
+                    depth=$((depth - 1))
+                    stack_top=$((${#quote_stack[@]} - 1))
+                    quote="${quote_stack[$stack_top]}"
+                    unset "quote_stack[$stack_top]"
+                    [ "$depth" -eq 0 ] && printf '%s %s\n' "$start" "$i"
+                fi
                 ;;
         esac
     done
+}
+
+# Extract the contents of each top-level $(...) group, one per line, for
+# recursive safety validation. Thin wrapper over _find_top_level_subshell_spans
+# — content is sliced directly from the span indices rather than
+# re-accumulated character by character.
+_extract_subshell_contents() {
+    local input="$1"
+    local start end
+    while read -r start end; do
+        printf '%s\n' "${input:start+2:end-start-2}"
+    done < <(_find_top_level_subshell_spans "$input")
+}
+
+# Replace each top-level $(...) with the __SUBSHELL_SAFE__ placeholder.
+# The caller must have already verified the subshell contents via
+# _subshells_are_safe. Thin wrapper over _find_top_level_subshell_spans.
+_strip_subshells() {
+    local input="$1"
+    local result="" pos=0
+    local start end
+    while read -r start end; do
+        result+="${input:pos:start-pos}__SUBSHELL_SAFE__"
+        pos=$((end + 1))
+    done < <(_find_top_level_subshell_spans "$input")
+    result+="${input:pos}"
     printf '%s' "$result"
 }
 
