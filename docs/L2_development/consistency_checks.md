@@ -6,8 +6,8 @@
 
 ### Command / skill paths
 
-- `commands/` には README を除いて16個の command specification が存在する。
-- `skills/` には16個の `SKILL.md` が存在し、`report-review` を含め command と1:1で対応する。
+- `commands/` には README を除いて19個の command specification が存在する。
+- `skills/` には19個の `SKILL.md` が存在し、`report-review` を含め command と1:1で対応する。
 - `/work` が参照する `commands/report-review.md`、`commands/task.md`、`commands/patch.md` はすべて存在する。
 
 根拠: `rg --files commands -g '*.md'`、`rg --files skills -g 'SKILL.md'`、`commands/work.md:53-115`
@@ -71,7 +71,6 @@ CI の事実は `.github/workflows/deploy.yml` を優先した。Node.js 24、np
 - shell tests の coverage collection / threshold は定義されていない。確認先: `tests/`、`.github/workflows/`。
 - shell tests は CI で実行されない。確認先: `.github/workflows/deploy.yml`。
 - npm audit findings の解消 version は一部未提供である。確認先: `site/package-lock.json` と再実行時の `npm audit --json`。
-- `install.sh` が生成する `skills/report-review/report-review` の self-referential symlink は `.gitignore` に個別 entry がない。installer 実行後の working tree 影響は `.gitignore` と `install.sh:61-66` を確認する。
 
 ## Done Criteria
 

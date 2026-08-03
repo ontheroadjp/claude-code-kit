@@ -9,6 +9,10 @@
 logs/
 !logs/.gitkeep
 
+# Python
+__pycache__/
+*.pyc
+
 # VitePress
 site/node_modules/
 site/.vitepress/dist/
@@ -16,6 +20,9 @@ site/.vitepress/cache/
 
 # Self-referential skill entry-point symlinks created by install.sh
 # Each skills/<name>/<name> symlink is generated at install time; intentionally not tracked.
+skills/analyze-access/analyze-access
+skills/analyze-auto-approve/analyze-auto-approve
+skills/analyze-token-usage/analyze-token-usage
 skills/coding-general/coding-general
 skills/coding-js/coding-js
 skills/coding-py/coding-py
@@ -25,6 +32,7 @@ skills/docs-sync/docs-sync
 skills/init-docs/init-docs
 skills/new-issue/new-issue
 skills/patch/patch
+skills/report-review/report-review
 skills/review-resolve/review-resolve
 skills/task/task
 skills/git-commit/git-commit

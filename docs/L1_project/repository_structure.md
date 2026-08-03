@@ -14,7 +14,7 @@ core-toolkit-for-claude/
 ├── docs/                        # /init-docs が管理する L0-L3 設計 docs
 ├── hooks/                       # Claude Code / Codex hook scripts（README.md あり）
 ├── logs/                        # access / auto-approval / token usage の月次ログ
-├── scripts/                     # status line / token usage 表示 scripts（README.md あり）
+├── scripts/                     # status line / token usage 表示、ログ解析 scripts（README.md あり）
 ├── site/                        # VitePress documentation site
 ├── skills/                      # Codex skill wrappers（README.md あり）
 ├── tests/                       # hook などの検証 scripts（README.md あり）
@@ -69,9 +69,9 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 
 ### `scripts/` と `setup_statusline.sh`
 
-`setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/statusline.sh` は `jq` と `bc` を使って context / rate limit 情報を表示する。
+`setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/statusline.sh` は `jq` と `bc` を使って context / rate limit 情報を表示する。`scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py`（および共通処理 `scripts/lib/analyze_common.py`）は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する Python script で、対応する `/analyze-*` command から呼ばれる。
 
-根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/README.md`
+根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/analyze_access.py:1-6`, `scripts/README.md`
 
 ### `logs/`
 
