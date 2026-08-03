@@ -94,12 +94,13 @@ gh pr view <PR番号> --json reviews \
 
 ```bash
 REVIEW_TOKEN="$REVIEW_TOKEN" GH_REPO="$GH_REPO_FULL_NAME" claude -p \
-  --permission-mode dontAsk \
-  --tools "Read,Bash" \
-  --allowedTools "Read,Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr review *),Bash(gh api user *)" \
   "commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。REVIEW_TOKEN・GH_REPO は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。" \
+  --permission-mode dontAsk \
+  --allowedTools "Read,Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr review *),Bash(gh api user *)" \
   > "$SESSION_TMP_DIR/round-${ROUND}-review.txt"
 ```
+
+`--allowedTools` は可変長引数（`<tools...>`）を取るため、プロンプト文字列より後ろに置くとプロンプトをその値として飲み込んでしまい `-p` がプロンプト無しとして扱われる（実地確認で判明）。プロンプトは必ず `claude -p` の直後、他の options より前に置く。存在しない `--tools` フラグ（旧設計から引き継いだ未検証の記述）も削除した。ツール制限は `--allowedTools` のみで行う（allowlist に無い操作は `--permission-mode dontAsk` により確認を求めず拒否される）。
 
 `CURRENT_AGENT` が Codex の場合、reviewer を `codex exec` の新規プロセスとして、リポジトリ外の scratch ディレクトリで実行する。`--sandbox workspace-write` かつ `sandbox_workspace_write.network_access=true` を指定し、cwd（scratch ディレクトリ）配下だけを書き込み可能にしたまま `gh` のネットワーク呼び出しを許可する:
 

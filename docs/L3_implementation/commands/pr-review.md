@@ -40,7 +40,9 @@ GitHub review 投稿には `AI_REVIEW_TOKEN` を優先し、既存 `CODEX_REVIEW
 
 ### reviewer subprocess の実行と sandbox/権限設計
 
-Claude が `CURRENT_AGENT` の場合、reviewer をこのリポジトリ内で `claude -p` の新規プロセスとして実行する。Claude には OS レベルの sandbox がないため、`--tools "Read,Bash"` と `--allowedTools` で `Bash` を `gh pr diff` / `gh pr view` / `gh pr review` / `gh api user` の各サブコマンドだけに制限し、`Edit`/`Write` を与えないことで書き込み境界を作る。
+Claude が `CURRENT_AGENT` の場合、reviewer をこのリポジトリ内で `claude -p` の新規プロセスとして実行する。Claude には OS レベルの sandbox がないため、`--allowedTools` で `Bash` を `gh pr diff` / `gh pr view` / `gh pr review` / `gh api user` の各サブコマンドだけに制限し、`Edit`/`Write` を与えないことで書き込み境界を作る（`--permission-mode dontAsk` により、allowlist にない操作は確認を求めず拒否される）。プロンプト文字列は `claude -p` の直後、`--allowedTools` 等のオプションより前に置く必要がある。`--allowedTools` は可変長引数（`<tools...>`）を取るため、プロンプトより後ろに置くとプロンプト文字列をその値として飲み込んでしまい、`-p` がプロンプト無しとして扱われてエラーになることを実地確認で発見した。存在しない `--tools` フラグ（旧設計から引き継がれ、これまで実行検証されていなかった）も削除した。
+
+根拠: `commands/pr-review.md:95-101`
 
 Codex が `CURRENT_AGENT` の場合、reviewer を `commands/pr-review-exec.md` を読む `codex exec` の新規プロセスとして、リポジトリ外の scratch ディレクトリ（`--cd`）で実行する。`--sandbox workspace-write` かつ `sandbox_workspace_write.network_access=true` を指定し、cwd（scratch ディレクトリ）配下だけを書き込み可能にしたまま `gh` の GitHub API 呼び出し（ネットワーク）を許可する。
 
