@@ -148,16 +148,31 @@ newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 
 
 `is_safe_segment` は `$()` を含む segment を次の手順で評価する。
 
-1. `_extract_subshell_contents` で各トップレベル `$(...)` の中身を抽出する（文字単位でパース、ネスト・クォート追跡あり）
+1. `_extract_subshell_contents` で各トップレベル `$(...)` の中身を抽出する
 2. `_subshells_are_safe` で各中身を `is_safe_segment` に再帰的に渡し、全て read-only であることを確認する
 3. 全て safe であれば `_strip_subshells` で `$(...)` を `__SUBSHELL_SAFE__` プレースホルダーに置換し、外側のコマンドをさらに評価する
 4. 外側コマンドが純粋な変数代入（`VAR=value` 形式で unquoted space を含まない）であれば safe と判定する
 
 結果として `PR_BODY=$(cat file)` や `SESSION_ID=$(basename "$(dirname "$P")")` は自動承認される。
 
-`_extract_subshell_contents`/`_strip_subshells` は depth=0（トップレベル、まだどの `$(...)` にも入っていない位置）でもシングルクォート・ダブルクォートの両方を追跡する。単に「保守的（過剰ブロック）」な誤検出に留まらず、`curl '$(' $OPTS https://example.com` のように single-quoted literal 内の `$(` を実際の subshell 開始と誤認すると、対応する閉じ `)` がどこにも存在しないため depth が 0 に戻らず、それ以降のテキスト（変数参照を含む）が結果から silently drop され、誤って auto-approve される深刻な bypass になり得る。逆に `cat "foo'$(touch ...)"` のように、ダブルクォート内に現れるリテラルな `'` を実際のクォート開始と誤認すると、その後に続く本物の `$(` を検出し損ねてしまう（同じ理由で depth=0 でダブルクォートも対称に追跡する）。シングルクォート内では bash が一切展開を行わないため、`$(` はただの2文字のリテラルとして扱われる。
+#### 統一 tokenizer（`_find_top_level_subshell_spans`）
 
-ネストした `$(...)` を検出した際は、各 nesting level ごとに独立した `quote_stack`（配列、`${arr[-1]}` の negative index は bash 4.3+ 限定のため `${#arr[@]}` ベースのインデックスで push/pop する）でクォート状態を push/pop する。これを怠ると、外側の double-quoted 文字列の中でネストした `$(...)` を評価する際（例: `X=$(printf '%s' "$(touch ...)")`）に、外側の `quote='"'` がネストしたレベルへ漏れ込み、ネストした閉じ `)` がダブルクォート内のリテラル文字と誤認されて depth が正しく戻らず、`_subshells_are_safe` が抽出内容ゼロ件のまま safe と判定してしまう。
+`_extract_subshell_contents`/`_strip_subshells` は、以前はそれぞれ独立した文字単位 state machine（かつ depth=0 用・depth>0 用に処理が二重化された実装）を持っていた。この二重化構造が、レビューのたびに一方の関数だけに bypass 修正が入り、もう一方に反映されないというドリフトを繰り返す根本原因だった。現在は両関数とも `_find_top_level_subshell_spans` という単一の tokenizer 関数の薄いラッパーであり、grammar の定義箇所は 1 箇所のみになっている。
+
+`_find_top_level_subshell_spans` は入力全体を 1 パスで走査し、bash の実際の quoting/escaping 文法をそのままモデル化する:
+
+- シングルクォート（`'...'`）: エスケープ機構自体が存在しない。他のどのチェックよりも先に判定する（閉じクォート直前の `\` を誤ってエスケープと解釈するのを防ぐため）。
+- バックスラッシュエスケープ: ダブルクォート・ANSI-C クォート・unquoted テキストで共通の汎用処理。実際の bash のダブルクォートエスケープ対象（`\$`, `` \` ``, `\"`, `\\`）はこの「次の1文字を無条件にエスケープする」というルールの部分集合であり、このチェック対象外の文字（`$ ' " ( )` 以外）に広げても quote/paren 追跡の状態遷移には影響しないため、安全な単純化として扱う。
+- ANSI-C クォート（`$'...'`）: エスケープは適用されるが、`"..."` と異なり `$(...)` や入れ子クォートは認識しない（実際の bash と同じ）。次の unescaped `'` で閉じる。`$'` は現在のネストレベルで quote が空のときのみ認識する（`"..."` や `'...'` の中では特別な意味を持たない）。
+- `$(...)`: `"..."` の中でも認識する（実際の bash の挙動）。トップレベル（depth 0→1）で開始時に span の開始位置を記録し、ネストする場合は enclosing level の quote 状態を `quote_stack`（配列、`${#arr[@]}` ベースの index で push/pop）へ退避してからネストレベルを独立した quote="" で開始する。
+
+トップレベル `$(...)` の開始・終了 index のペアを1行ずつ出力し、`_extract_subshell_contents` はそのインデックスで直接 substring を切り出し、`_strip_subshells` はそのインデックスの範囲を `__SUBSHELL_SAFE__` に置換する。いずれも文字単位の再構築（`current+=char` 相当の蓄積）を行わない。
+
+統一 tokenizer は、単に depth=0/depth>0 の重複を消したこと自体が bypass を閉じたわけではない。旧実装では depth>0 のエスケープ消費パス（`escaped==1` 分岐・`char=='\\'` 分岐）が `saw_dollar` look-ahead flag をリセットしておらず（`saw_dollar` は depth=0 側の分岐でのみリセットされていた）、`cat $(printf "$\"(" $(touch /tmp/unsafe))` のようにエスケープされた `"` を挟んだ直後の `(` がネストした `$(` の開始と誤認され、depth が 2 のまま最後まで 0 に戻らなかった（実測で確認済み）。depth が 0 に戻らないと `_extract_subshell_contents`（旧実装）は1行も出力せず、`_subshells_are_safe` は検証対象がないまま vacuous に safe を返し、`_strip_subshells`（旧実装）も desync した時点以降の文字を `result` に一切追加しないため、外側コマンドは `cat __SUBSHELL_SAFE__` のように縮退し、本物の `touch /tmp/unsafe` が auto-approve をすり抜けていた。統一 tokenizer にはそもそも `saw_dollar` に相当する状態がなく、`$` の直後の文字を `${input:i+1:1}` で直接参照して判定するため、この種の状態リークが構造的に発生せず、depth は正しく 0 まで戻り、ネストした `$(touch ...)` は top-level span の内容に正しく含まれた状態で `_subshells_are_safe` に渡され、再帰評価で unsafe と判定される。
+
+ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認識であり、以前は `$'...'` が単なる `'...'` として扱われ、その中の `\'`（ANSI-C クォート内では実際にエスケープされた `'` だが、通常のシングルクォートには存在しない）が閉じクォートと誤認され、以降の本物の `$(...)` が誤ったクォート状態の下で見過ごされていた。統一 tokenizer は `$'` を独立したクォート種別として認識し、エスケープを適用しつつ `$(...)` や入れ子クォートを認識しないという ANSI-C 固有の規則を正しく適用する。
+
+`_find_top_level_subshell_spans` は depth が 0 に戻った時点でのみ span を出力するため、万一まだ未知のクォート/エスケープ相互作用で depth desync が再発した場合も、誤った境界の内容を出力するのではなく該当 span を出力しないという性質は変わらない。ただしこれは今回の2件の bypass を閉じる直接の修正ではなく、`_subshells_are_safe` が抽出0件のまま vacuous に safe を返す既存の弱点（issue #200 で defense-in-depth backstop 案として言及）自体を解消するものではない — 今回のスコープでは2件の既知 bypass の解消と回帰テストの追加に限定し、backstop の追加は見送った。
 
 ### 常時ブロックする構文
 
@@ -170,7 +185,7 @@ newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 
 - 未対応のshell構文
 - 1つでも未許可のsegmentを含む複合command
 
-根拠: `hooks/auto-approve-readonly.sh:128-131`, `hooks/auto-approve-readonly.sh:200-434`, `hooks/auto-approve-readonly.sh:488-542`, `hooks/auto-approve-readonly.sh:1026-1036`
+根拠: `hooks/auto-approve-readonly.sh:128-131`, `hooks/auto-approve-readonly.sh:209-362`, `hooks/auto-approve-readonly.sh:488-542`, `hooks/auto-approve-readonly.sh:1026-1036`
 
 ## decision とログ
 
@@ -272,13 +287,13 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 `tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作、`git merge-base`、`pgrep`、`gh api`（GET-only）、`gsettings get`系、`journalctl`、`gnome-extensions info/list`、`bash -n`、`node --check`/`-c` を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants、`git merge-base --output`、`gsettings set/reset`、`journalctl --vacuum-*/--rotate/--flush/--update-catalog/--smart-relinquish-var`、`gh api -X/-XPOST/-f/-fkey=value/--input`（区切り文字なしの結合形も含む）、`gnome-extensions enable/disable`、`bash -n` へのフラグ追加・複数引数、`node --check` へのフラグ追加・複数引数（アンダースコア表記や `--experimental-config-file` 経由の preload を含む）を negative case として固定する。
 
-variable expansion の除外については、`node --check $ARGS` 型の報告された bypass に加え、`bash -n`・`curl`・`gh api`・`git diff --output`・`sed`・`find`・`sort`・`date`・`journalctl`・`yq`・`awk` への同型 bypass を negative case として固定し、`cat $FILE`・`grep ... $FILE`・シングルクォート awk script 内の `$1` が引き続き auto-approve されることを positive case で固定する。加えて、`git -C $DIR` operand への変数隠蔽、double-quoted 変数の単一フラグ密輸、シングルクォート内バックスラッシュの誤エスケープ、ダブルクォート文字列内のシングルクォートによるクォート状態誤遷移、`_extract_subshell_contents`/`_strip_subshells` のエスケープ未対応（escaped `"` をクォート終了と誤認し後続の変数参照が silently drop される）、同2関数が depth=0 でシングルクォートを追跡しないため single-quoted literal 内の `$(` を実際の subshell 開始と誤認する問題（例: `curl '$(' $OPTS ...`）、同2関数が depth=0 でダブルクォートを追跡しないため double-quoted 文字列内のリテラルな `'` により後続の本物の `$(` を検出し損ねる問題（例: `cat "foo'$(touch ...)"`）、およびネストした `$(...)` でクォート状態を push/pop しないため外側の double-quoted 文字列の中の nested substitution が正しく閉じられない問題（例: `X=$(printf '%s' "$(touch ...)")`）という、レビューで発見された8件の追加 bypass を negative case として固定する。
+variable expansion の除外については、`node --check $ARGS` 型の報告された bypass に加え、`bash -n`・`curl`・`gh api`・`git diff --output`・`sed`・`find`・`sort`・`date`・`journalctl`・`yq`・`awk` への同型 bypass を negative case として固定し、`cat $FILE`・`grep ... $FILE`・シングルクォート awk script 内の `$1` が引き続き auto-approve されることを positive case で固定する。加えて、`git -C $DIR` operand への変数隠蔽、double-quoted 変数の単一フラグ密輸、シングルクォート内バックスラッシュの誤エスケープ、ダブルクォート文字列内のシングルクォートによるクォート状態誤遷移、`_extract_subshell_contents`/`_strip_subshells` のエスケープ未対応（escaped `"` をクォート終了と誤認し後続の変数参照が silently drop される）、同2関数が depth=0 でシングルクォートを追跡しないため single-quoted literal 内の `$(` を実際の subshell 開始と誤認する問題（例: `curl '$(' $OPTS ...`）、同2関数が depth=0 でダブルクォートを追跡しないため double-quoted 文字列内のリテラルな `'` により後続の本物の `$(` を検出し損ねる問題（例: `cat "foo'$(touch ...)"`）、およびネストした `$(...)` でクォート状態を push/pop しないため外側の double-quoted 文字列の中の nested substitution が正しく閉じられない問題（例: `X=$(printf '%s' "$(touch ...)")`）という、レビューで発見された8件の追加 bypass を negative case として固定する。統一 tokenizer への再設計（issue #200）に伴い、`saw_dollar` look-ahead flag がエスケープ消費時にリセットされず depth が 0 に戻らなくなる問題（例: `cat $(printf "$\"(" $(touch /tmp/unsafe))`）と、ANSI-C クォート（`$'...'`）が通常の `'...'` として扱われエスケープされた `\'` を閉じクォートと誤認する問題（例: `cat $'foo\'bar'$(touch /tmp/unsafe)`）の2件を追加の negative case として固定する。
 
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-614`
+根拠: `tests/hooks/test-approval-hooks.sh:1-635`
 
 ## 変更履歴（git log より自動生成）
 
