@@ -130,38 +130,153 @@ has_unsupported_expansion() {
     printf '%s' "$1" | grep -qE '`|[<>]\('
 }
 
+# Return 0 if the segment contains a $ variable/parameter reference that bash
+# will actually evaluate (i.e. outside single quotes). Callers use this to
+# guard allowlist branches whose safety determination scans the literal text
+# for the absence of a dangerous flag, or requires an exact single-token
+# shape. Two distinct hazards make any such reference unsafe to auto-approve:
+#   1. Unquoted: bash word-splits (and can glob-expand) the value at
+#      execution time, turning what looks like one literal token into an
+#      arbitrary number of argv entries / hidden flags.
+#   2. Double-quoted: word-splitting does not apply, but the resolved value
+#      is still opaque to this literal-text scan and can itself BE a single
+#      dangerous flag (e.g. OUT='--output=/tmp/x'; git diff "$OUT"), which
+#      defeats an exclusion scan just as effectively.
+# Only single-quoted $ is exempt: bash performs no expansion at all inside
+# single quotes, so e.g. an awk/sed script's own '$1' field syntax is inert
+# and safe regardless of content. $(...) subshells are validated and
+# placeholder-stripped by the caller before this runs, so any remaining $
+# here is a plain variable/parameter reference, not a command substitution.
+_has_variable_expansion() {
+    local input="$1"
+    local i char quote="" escaped=0
+    local n="${#input}"
+    for ((i = 0; i < n; i++)); do
+        char="${input:i:1}"
+
+        # No escape mechanism inside single quotes (POSIX): a literal
+        # backslash there does not escape the closing quote, so this check
+        # must run before escape handling or a stray backslash just before
+        # the closing quote (e.g. 'foo\') is misread as escaping it.
+        if [ "$quote" = "'" ]; then
+            [ "$char" = "'" ] && quote=""
+            continue
+        fi
+
+        if [ "$escaped" = "1" ]; then
+            escaped=0
+            continue
+        fi
+        if [ "$char" = "\\" ]; then
+            escaped=1
+            continue
+        fi
+
+        [ "$char" = '$' ] && return 0
+
+        # A quote character only changes state when it is not itself a
+        # literal character inside the OTHER quote style: a ' inside "..."
+        # (and a " inside '...', already handled by the early continue
+        # above) has no special meaning in bash and must not toggle state.
+        case "$char" in
+            "'") [ -z "$quote" ] && quote="'" ;;
+            '"')
+                if [ "$quote" = '"' ]; then
+                    quote=""
+                elif [ -z "$quote" ]; then
+                    quote='"'
+                fi
+                ;;
+        esac
+    done
+    return 1
+}
+
 # Extract the contents of each top-level $(...) group, one per line.
-# Handles nested parens and quoted strings inside the subshell.
-# Known limitation: single quotes at depth=0 are not tracked, so $() inside
-# a single-quoted literal at the outer level may be incorrectly extracted.
-# This is conservative (may over-block) rather than permissive.
+# Handles nested parens and quoted strings inside the subshell. Each
+# nesting level's quote state is pushed onto quote_stack when a new $(...)
+# opens and popped when it closes, so a quote opened inside one level
+# cannot leak into an enclosing or sibling level.
 _extract_subshell_contents() {
     local input="$1"
-    local i char depth=0 current="" quote="" saw_dollar=0
+    local i char depth=0 current="" quote="" saw_dollar=0 escaped=0 stack_top
+    local -a quote_stack=()
     local n="${#input}"
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
 
         if [ "$depth" -eq 0 ]; then
+            # Track single AND double quotes even at depth=0 (mirrors the
+            # depth>0 handling below): a literal $( inside '...' must not be
+            # mistaken for the start of a real subshell (there would be no
+            # matching ) anywhere, silently dropping everything after it —
+            # including a variable reference — from what the caller ever
+            # sees). Conversely, a stray same-style quote character that
+            # appears literally inside a "..." string (e.g. the ' in
+            # cat "foo'$(...)" ) must not be misread as opening a real quote
+            # that then swallows a genuine, following $( it should catch.
+            if [ "$quote" = "'" ]; then
+                [ "$char" = "'" ] && quote=""
+                saw_dollar=0
+                continue
+            fi
+            if [ "$escaped" = "1" ]; then
+                escaped=0; saw_dollar=0; continue
+            fi
+            if [ "$char" = "\\" ]; then
+                escaped=1; saw_dollar=0; continue
+            fi
             if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
+                quote_stack+=("$quote"); quote=""
                 depth=1; current=""; saw_dollar=0; continue
             fi
-            [ "$char" = '$' ] && saw_dollar=1 || saw_dollar=0
+            if [ "$char" = '$' ]; then
+                saw_dollar=1; continue
+            fi
+            saw_dollar=0
+            if [ "$quote" = '"' ]; then
+                [ "$char" = '"' ] && quote=""
+                continue
+            fi
+            case "$char" in
+                "'") quote="'" ;;
+                '"') quote='"' ;;
+            esac
             continue
         fi
 
-        # Inside $(...): handle nested $( using saw_dollar look-ahead
+        # No escape mechanism inside single quotes (POSIX): check this first,
+        # mirroring _has_variable_expansion's precedence, so a literal
+        # backslash there cannot be misread as escaping the closing quote,
+        # and a literal $( inside a single-quoted string is not mistaken for
+        # a nested subshell (single quotes suppress all expansion).
+        if [ "$quote" = "'" ]; then
+            current+="$char"; [ "$char" = "'" ] && quote=""; continue
+        fi
+
+        if [ "$escaped" = "1" ]; then
+            current+="$char"; escaped=0; continue
+        fi
+        if [ "$char" = "\\" ]; then
+            current+="$char"; escaped=1; continue
+        fi
+
+        # Inside $(...): handle nested $( using saw_dollar look-ahead.
+        # $(...) command substitution is still recognized inside a
+        # double-quoted string in real bash, so this runs before the
+        # quote='"' consume-check below. The enclosing level's quote state
+        # is pushed so the nested level starts with its own independent
+        # tracking rather than inheriting (and later corrupting) it.
         if [ "$saw_dollar" = "1" ] && [ "$char" = '(' ]; then
-            current+='('; depth=$((depth + 1)); saw_dollar=0; continue
+            current+='('
+            quote_stack+=("$quote"); quote=""
+            depth=$((depth + 1)); saw_dollar=0; continue
         fi
         if [ "$char" = '$' ]; then
             current+='$'; saw_dollar=1; continue
         fi
         saw_dollar=0
 
-        if [ "$quote" = "'" ]; then
-            current+="$char"; [ "$char" = "'" ] && quote=""; continue
-        fi
         if [ "$quote" = '"' ]; then
             current+="$char"; [ "$char" = '"' ] && quote=""; continue
         fi
@@ -169,10 +284,17 @@ _extract_subshell_contents() {
         case "$char" in
             "'") quote="'"; current+="$char" ;;
             '"') quote='"'; current+="$char" ;;
-            '(') depth=$((depth + 1)); current+="$char" ;;
+            '(') quote_stack+=("$quote"); quote=""; depth=$((depth + 1)); current+="$char" ;;
             ')')
                 depth=$((depth - 1))
-                [ "$depth" -eq 0 ] && { printf '%s\n' "$current"; current=""; } || current+="$char"
+                stack_top=$((${#quote_stack[@]} - 1))
+                quote="${quote_stack[$stack_top]}"
+                unset "quote_stack[$stack_top]"
+                if [ "$depth" -eq 0 ]; then
+                    printf '%s\n' "$current"; current=""
+                else
+                    current+="$char"
+                fi
                 ;;
             *) current+="$char" ;;
         esac
@@ -183,34 +305,90 @@ _extract_subshell_contents() {
 # The caller must have already verified the subshell contents via _subshells_are_safe.
 _strip_subshells() {
     local input="$1"
-    local i char depth=0 result="" quote=""
+    local i char depth=0 result="" quote="" escaped=0 stack_top
+    local -a quote_stack=()
     local n="${#input}"
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
 
         if [ "$depth" -eq 0 ]; then
-            # Look-ahead: $( starts a subshell to replace
+            # Track single AND double quotes even at depth=0 (mirrors
+            # _extract_subshell_contents): a literal $( inside '...' must not
+            # be mistaken for the start of a real subshell, or depth would
+            # open with no matching ) anywhere in the string, silently
+            # dropping everything after it (including a variable reference)
+            # from the result this function returns. Conversely, a stray
+            # same-style quote character appearing literally inside a "..."
+            # string must not be misread as opening a real quote that then
+            # swallows a genuine, following $( it should catch.
+            if [ "$quote" = "'" ]; then
+                result+="$char"
+                [ "$char" = "'" ] && quote=""
+                continue
+            fi
+            if [ "$escaped" = "1" ]; then
+                result+="$char"; escaped=0; continue
+            fi
+            if [ "$char" = "\\" ]; then
+                result+="$char"; escaped=1; continue
+            fi
+            # Look-ahead: $( starts a subshell to replace. $(...) is still
+            # recognized inside a double-quoted string in real bash, so this
+            # runs before the quote='"' consume-check below.
             if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
+                quote_stack+=("$quote"); quote=""
                 result+='__SUBSHELL_SAFE__'; depth=1; i=$((i + 1)); continue
             fi
+            if [ "$quote" = '"' ]; then
+                result+="$char"
+                [ "$char" = '"' ] && quote=""
+                continue
+            fi
+            case "$char" in
+                "'") quote="'" ;;
+                '"') quote='"' ;;
+            esac
             result+="$char"; continue
         fi
 
-        # Inside $(...): track nested $( and quotes to find the matching )
+        # No escape mechanism inside single quotes: check this first, so a
+        # literal backslash there cannot be misread as escaping the closing
+        # quote, and a literal $( inside a single-quoted string is not
+        # mistaken for a nested subshell (mirrors _extract_subshell_contents).
+        if [ "$quote" = "'" ]; then
+            [ "$char" = "'" ] && quote=""
+            continue
+        fi
+
+        if [ "$escaped" = "1" ]; then
+            escaped=0; continue
+        fi
+        if [ "$char" = "\\" ]; then
+            escaped=1; continue
+        fi
+
+        # Inside $(...): track nested $( (still recognized inside "...") and
+        # quotes to find the matching ). The enclosing level's quote state is
+        # pushed so the nested level starts with its own independent
+        # tracking rather than inheriting (and later corrupting) it.
         if [ "$char" = '$' ] && [ "${input:i+1:1}" = '(' ]; then
+            quote_stack+=("$quote"); quote=""
             depth=$((depth + 1)); i=$((i + 1)); continue
         fi
-        if [ "$quote" = "'" ]; then
-            [ "$char" = "'" ] && quote=""; continue
-        fi
         if [ "$quote" = '"' ]; then
-            [ "$char" = '"' ] && quote=""; continue
+            [ "$char" = '"' ] && quote=""
+            continue
         fi
         case "$char" in
             "'") quote="'" ;;
             '"') quote='"' ;;
-            '(') depth=$((depth + 1)) ;;
-            ')') depth=$((depth - 1)) ;;
+            '(') quote_stack+=("$quote"); quote=""; depth=$((depth + 1)) ;;
+            ')')
+                depth=$((depth - 1))
+                stack_top=$((${#quote_stack[@]} - 1))
+                quote="${quote_stack[$stack_top]}"
+                unset "quote_stack[$stack_top]"
+                ;;
         esac
     done
     printf '%s' "$result"
@@ -264,9 +442,18 @@ is_safe_test_expression() {
 
 is_safe_git_read_command() {
     local seg
+    # Checked on the raw, pre-normalization argument: normalize_git_directory_prefix
+    # discards the "-C <dir>" operand entirely from its output, so a variable
+    # reference hidden there (e.g. DIR='repo branch -D victim'; git -C $DIR diff)
+    # would otherwise be invisible to this guard.
+    _has_variable_expansion "$1" && return 1
     seg=$(normalize_git_directory_prefix "$1")
 
     has_unsupported_expansion "$seg" && return 1
+    # --output exclusion (and the branch/tag exclusion-then-allow checks below)
+    # scan literal text for a dangerous flag; a variable reference can smuggle
+    # that flag past them at execution time, so refuse to classify any git
+    # segment referencing one as read-only.
     printf '%s' "$seg" | grep -qE '(^|[[:space:]])--output([=[:space:]]|$)' && return 1
 
     printf '%s' "$seg" | grep -qE '^git[[:space:]]+(status|log|diff|show|describe|rev-parse|ls-files|ls-tree|cat-file|blame|shortlog|merge-base)([[:space:]]|$)' && return 0
@@ -723,6 +910,8 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+checks(\s|$)' && return 0
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+auth[[:space:]]+status(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^gh[[:space:]]+api(\s|$)'; then
+        # A variable reference can smuggle -X/-f/-F/etc past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         # -X/-f/-F accept an attached value with no separator (e.g. -XPOST, -fkey=value)
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X[^[:space:]]*|-f[^[:space:]]*|-F[^[:space:]]*|--method([=[:space:]]|$)|--field([=[:space:]]|$)|--raw-field([=[:space:]]|$)|--input([=[:space:]]|$))' && return 1
         return 0
@@ -731,29 +920,44 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^cd(\s|$)' && return 0
     printf '%s' "$seg" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl)(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^find(\s|$)'; then
+        # A variable reference can smuggle -delete/-exec/etc past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(delete|exec|execdir|ok|okdir|fls|fprint|fprintf)([[:space:]]|$)' && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^sed(\s|$)'; then
+        # A variable reference can smuggle -i/e/w past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--in-place)([^[:space:]]*|$)' && return 1
         printf '%s' "$seg" | grep -qE "(^|[^[:alnum:]_-])([0-9,$]+)?[ew]([[:space:]]|['\"]|$)" && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^sort(\s|$)'; then
+        # A variable reference can smuggle -o/--output past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-o|--output)([=[:space:]]|$)' && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^yq(\s|$)'; then
+        # A variable reference can smuggle -i/--inplace past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--inplace)([=[:space:]]|$)' && return 1
         return 0
     fi
     if printf '%s' "$seg" | grep -qE '^awk(\s|$)'; then
+        # Quote-tracked, so an awk script's single-quoted $1-style field refs
+        # are not flagged — only a genuinely unquoted $ outside the script
+        # rejects. A variable reference could otherwise smuggle system()/
+        # getline past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE 'system[[:space:]]*\(' && return 1
         printf '%s' "$seg" | grep -qE '\|[[:space:]]*getline([[:space:](;}]|$)' && return 1
         return 0
     fi
     printf '%s' "$seg" | grep -qE '^env[[:space:]]*$' && return 0
     if printf '%s' "$seg" | grep -qE '^date(\s|$)'; then
+        # A variable reference can smuggle -s/--set past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-s|--set)([=[:space:]]|$)' && return 1
         return 0
     fi
@@ -761,6 +965,8 @@ is_safe_segment() {
 
     # journalctl — read-only log query; exclude maintenance/mutating operations
     if printf '%s' "$seg" | grep -qE '^journalctl(\s|$)'; then
+        # A variable reference can smuggle --vacuum-*/--rotate/etc past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--smart-relinquish-var|--setup-keys|--update-catalog|--force)([=[:space:]]|$)' && return 1
         return 0
     fi
@@ -782,11 +988,21 @@ is_safe_segment() {
     # preload modules via --experimental-config-file, so any denylist of
     # specific flag spellings is provably incomplete; only the single-argument
     # shape is safe to auto-approve.
-    printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
-    printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+    # A variable reference — quoted or not — is opaque here: unquoted, bash
+    # word-splits it into an arbitrary number of argv entries at execution
+    # time; quoted, its resolved value can still itself start with "-" and
+    # be parsed as a flag despite the leading-non-dash literal-text check
+    # below. Either way it can defeat the single-argument shape these two
+    # patterns require, so reject rather than trust the literal-text token.
+    if ! _has_variable_expansion "$seg"; then
+        printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+        printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
+    fi
 
     # curl — allow default GET/HEAD requests only; reject writes and custom methods
     if printf '%s' "$seg" | grep -qE '^curl(\s|$)'; then
+        # A variable reference can smuggle -o/-X/--data/etc past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-[^-[:space:]]*[oOXdFTK][^[:space:]]*|--output|--remote-name|--remote-name-all|--request|--data[^[:space:]]*|--form[^[:space:]]*|--upload-file|--json|--config)([=[:space:]]|$)' && return 1
         return 0
     fi

@@ -257,6 +257,96 @@ for command in \
     assert_no_output "$output"
 done
 
+# Unquoted variable expansion bypass: a pure-assignment segment stages a
+# dangerous flag string, and a later unquoted reference smuggles it past an
+# exclusion-based/single-token-shape allowlist check. All must prompt fallback.
+for command in \
+    'ARGS="--require=./side-effect.js target.js"; node --check $ARGS' \
+    "FILE='script.sh extra-arg'; bash -n \$FILE" \
+    "OPTS='-o /tmp/evil http://example.com'; curl \$OPTS" \
+    "OPTS='-XPOST'; gh api repos/octocat/hello-world \$OPTS" \
+    "GITOPT='--output=/tmp/evil'; git diff \$GITOPT" \
+    "SEDOPT='-i'; sed \$SEDOPT s/a/b/ README.md" \
+    "FINDOPT='-delete'; find . \$FINDOPT" \
+    "SORTOPT='-o /tmp/sorted'; sort \$SORTOPT README.md" \
+    "DATEOPT='--set tomorrow'; date \$DATEOPT" \
+    "JOPT='--rotate'; journalctl \$JOPT"; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
+# Unquoted variable expansion in flag-invariant plain tools remains safe and
+# stays auto-approved (no exclusion/single-token-shape check to bypass).
+for command in \
+    'FILE=README.md; cat $FILE' \
+    'FILE=README.md; grep -n foo $FILE'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# awk script field references ($1, $2, ...) inside a single-quoted script are
+# not flagged as unquoted variable expansion.
+output=$(run_auto 'awk '\''{ print $1 }'\'' README.md')
+assert_json_decision "$output" "approve"
+
+# Round-2 review findings: (1) normalize_git_directory_prefix discards the
+# "-C <dir>" operand before the variable guard ran, hiding a variable placed
+# there; (2) a double-quoted "$VAR" is not word-split but its resolved value
+# can still itself be a single dangerous flag, invisible to exclusion scans;
+# (3) escape handling ran before the single-quote check, so a literal
+# backslash immediately before a closing single quote (e.g. 'foo\') was
+# misread as escaping it, desyncing quote-tracking for the rest of the
+# segment. All must prompt fallback.
+for command in \
+    "DIR='repo branch -D victim'; git -C \$DIR diff" \
+    'OUT="--output=/tmp/evil"; git diff "$OUT"' \
+    "OPTS='-o /tmp/evil'; curl --user-agent 'foo\\' \$OPTS https://example.com" \
+    "YQOPT='-i'; yq \$YQOPT .key=value config.yml" \
+    "SCRIPT='{system(\"touch unsafe\")}'; awk \$SCRIPT README.md" \
+    "OPTS='-o /tmp/evil'; curl --user-agent \"foo'bar\" \$OPTS https://example.com"; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
+# Round-3 review finding: _extract_subshell_contents / _strip_subshells had
+# no escape handling, so an escaped double quote (\") inside a $(...)
+# argument was misread as closing the string, miscounting paren depth for
+# the rest of the segment. When depth never returns to 0, the trailing text
+# (including a variable reference) is silently dropped from what
+# _has_variable_expansion ever sees, so it auto-approves. Must prompt fallback.
+output=$(run_auto 'OPTS='"'"'-o /tmp/evil'"'"'; curl $(printf https://example.com "\"(") $OPTS')
+assert_no_output "$output"
+
+# Follow-up finding: neither helper tracked single quotes at depth=0 (before
+# entering any $(...)), so a literal $( inside a single-quoted argument (e.g.
+# curl '$(' ...) was mistaken for a real subshell start. No matching )
+# exists anywhere in the string, so depth never returns to 0 and everything
+# after it — including a variable reference — is silently dropped from what
+# gets validated. Must prompt fallback; single quotes suppress all expansion
+# in real bash, so '$(' is just two literal characters.
+output=$(run_auto "OPTS='-o /tmp/evil'; curl '\$(' \$OPTS https://example.com")
+assert_no_output "$output"
+
+# Follow-up finding: the depth=0 fix above only tracked single quotes, not
+# double quotes, so a literal ' appearing inside a "..." string (not
+# starting a real quote in real bash) was misread as opening one, which then
+# swallowed a genuine following $( that should have been caught and
+# recursively validated. Must prompt fallback: cat "foo'$(touch ...)" really
+# does run touch in real bash.
+output=$(run_auto 'cat "foo'"'"'$(touch /tmp/unsafe)"')
+assert_no_output "$output"
+
+# Follow-up finding: nested $(...) did not save/restore the enclosing
+# quote state, so a nested substitution inside a double-quoted string one
+# level down (e.g. $(printf '%s' "$(touch ...)")) leaked the outer level's
+# quote='"' into the nested level, causing the nested closing ) to be
+# misread as a literal character inside a (stale) quote instead of closing
+# the nested subshell. Depth then never returns to 0, so extraction yields
+# no content and the pure-assignment segment is wrongly treated as safe.
+# Must prompt fallback: the nested touch really does run in real bash.
+output=$(run_auto "X=\$(printf '%s' \"\$(touch /tmp/unsafe)\")")
+assert_no_output "$output"
+
 mkdir -p "$(dirname "$SESSION_FILE")"
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
 output=$(run_auto 'git reset --hard')
