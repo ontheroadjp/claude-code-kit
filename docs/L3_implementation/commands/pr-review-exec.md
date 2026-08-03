@@ -71,7 +71,7 @@ Step 1 で PR 状態を取得した際の `headRefOid` を `REVIEWED_HEAD_SHA` �
 
 ## 統合ポイント
 
-- 呼び出し元: `commands/pr-review.md` Step 4.2（`codex exec --dangerously-bypass-approvals-and-sandbox` / `claude -p` から実行される）
+- 呼び出し元: `commands/pr-review.md` Step 4.2（`CURRENT_AGENT` に応じて `codex exec --sandbox workspace-write` または `claude -p` の新規プロセスから実行される）
 - 手動呼び出し: `/pr-review-exec #<PR番号>`（`REVIEW_TOKEN`・`GH_REPO` を呼び出し側で用意する必要がある。working tree の外で実行する場合は `REPO_ROOT` も必要）
 - GitHub: `gh pr view`、`gh pr diff`、`gh pr review`（いずれも `--repo "$GH_REPO"` 付き）
 
@@ -81,7 +81,7 @@ Step 1 で PR 状態を取得した際の `headRefOid` を `REVIEWED_HEAD_SHA` �
 - reviewer と PR author のアカウント分離はこのコマンド自身では検証しない
 - PR が存在しない、または `OPEN` でない場合は review を投稿しない
 - 投稿失敗時はエラーを報告するのみで、リトライやフォールバック投稿は行わない
-- Codex の OS レベル sandbox（`workspace-write` 等）は bubblewrap 初期化がホスト環境によっては失敗するため、呼び出し元は `--dangerously-bypass-approvals-and-sandbox` を使う。その場合の安全境界はこのコマンドに明記された指示（ファイル編集・他コマンド呼び出し・gh CLI 以外の GitHub 統合を行わない）に依存する
+- Codex の OS レベル sandbox（`workspace-write` 等）は bubblewrap 初期化がネストしたサンドボックス環境では失敗することがある。失敗時に `--dangerously-bypass-approvals-and-sandbox` へフォールバックする場合、安全境界はこのコマンドに明記された指示（ファイル編集・他コマンド呼び出し・gh CLI 以外の GitHub 統合を行わない）への準拠のみに依存する。フォールバックの採否は呼び出し元（`commands/pr-review.md`）がユーザーに確認する
 
 ## 変更履歴（git log より自動生成）
 

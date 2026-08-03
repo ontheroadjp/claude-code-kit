@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`commands/pr-review.md` は、ready PR を実装元とは別の AI agent でレビューし、妥当な blocking finding を承認済みスコープ内で修正・再レビューして、最新 HEAD を `APPROVED` または `CHANGES_REQUESTED` に更新する。diff の取得とレビュー結果の GitHub 投稿自体は行わず、`commands/pr-review-exec.md` に委譲する薄いオーケストレーターである。
+`commands/pr-review.md` は、ready PR を、実装元と会話履歴を共有しない fresh な sub-agent（実装元と同じツールの新規プロセス）でレビューし、妥当な blocking finding を承認済みスコープ内で修正・再レビューして、最新 HEAD を `APPROVED` または `CHANGES_REQUESTED` に更新する。diff の取得とレビュー結果の GitHub 投稿自体は行わず、`commands/pr-review-exec.md` に委譲する薄いオーケストレーターである。
 
 責務は review 済み PR の作成までであり、merge、branch 削除、main checkout、main pull は人間の管理下に残す。
 
@@ -26,11 +26,11 @@
 
 ## 主要な判定ロジック
 
-### opposite-agent routing
+### fresh same-tool sub-agent routing
 
-`CODEX_THREAD_ID` または `CODEX_CI` がある場合は Codex を実装元、Claude を reviewer とする。それ以外は Claude を実装元、Codex を reviewer とする。環境判定ができない場合は現在の agent を明示的に実装元として確定し、同じ agent に自己レビューさせない。
+`CODEX_THREAD_ID` または `CODEX_CI` がある場合は `CURRENT_AGENT=codex`、それ以外は `CURRENT_AGENT=claude` とする。reviewer は `CURRENT_AGENT` と同じツールの新規プロセス（Claude なら `claude -p`、Codex なら `codex exec`）として起動する。以前は「実装元と反対のベンダーの agent」を reviewer とする opposite-agent 設計だったが、これを「同じツールの fresh sub-agent（会話履歴を共有しない新規プロセス）」に変更した。
 
-根拠: `commands/pr-review.md:17-33`
+根拠: `commands/pr-review.md:17-31`
 
 ### reviewer identity
 
@@ -40,15 +40,17 @@ GitHub review 投稿には `AI_REVIEW_TOKEN` を優先し、既存 `CODEX_REVIEW
 
 ### reviewer subprocess の実行と sandbox/権限設計
 
-Codex reviewer は `commands/pr-review-exec.md` をリポジトリ外の scratch ディレクトリ（`--cd`）で `--dangerously-bypass-approvals-and-sandbox` を用いて実行する。当初は `--sandbox workspace-write` + `sandbox_workspace_write.network_access=true` で cwd 配下だけ書き込み可能にしたまま `gh` のネットワーク呼び出しを許可する設計だったが、bubblewrap によるサンドボックス初期化がホスト環境（ネストした user namespace を作れない環境等）によっては `Permission denied` で失敗し、`gh` を含む全てのコマンドが実行できなくなることが実地確認で判明した。そのため OS レベルの sandbox には依存せず、scratch cwd（相対パスの誤書き込み防止）と `pr-review-exec.md` に明記された「ファイル編集・他コマンド呼び出しをしない」という指示だけを安全境界とする設計に変更した。
+Claude が `CURRENT_AGENT` の場合、reviewer をこのリポジトリ内で `claude -p` の新規プロセスとして実行する。Claude には OS レベルの sandbox がないため、`--tools "Read,Bash"` と `--allowedTools` で `Bash` を `gh pr diff` / `gh pr view` / `gh pr review` / `gh api user` の各サブコマンドだけに制限し、`Edit`/`Write` を与えないことで書き込み境界を作る。
 
-reviewer は working tree の外で実行されるため `gh` が対象リポジトリを推測できない。orchestrator は `GH_REPO_FULL_NAME`（`gh repo view --json nameWithOwner`）を Step 1 で取得し、reviewer subprocess に `GH_REPO` として渡す。`pr-review-exec.md` はこれを必須の前提とし、全ての `gh pr` コマンドに `--repo "$GH_REPO"` を明示する。同様に `REPO_ROOT` を渡し、scratch cwd から `CLAUDE.md` / `AGENTS.md` を正しい絶対パスで読めるようにする。
+Codex が `CURRENT_AGENT` の場合、reviewer を `commands/pr-review-exec.md` を読む `codex exec` の新規プロセスとして、リポジトリ外の scratch ディレクトリ（`--cd`）で実行する。`--sandbox workspace-write` かつ `sandbox_workspace_write.network_access=true` を指定し、cwd（scratch ディレクトリ）配下だけを書き込み可能にしたまま `gh` の GitHub API 呼び出し（ネットワーク）を許可する。
 
-Claude reviewer は OS レベルの sandbox を持たないため、`--tools "Read,Bash"` と `--allowedTools` で `Bash` を `gh pr diff` / `gh pr view` / `gh pr review` / `gh api user` の各サブコマンドだけに制限し、`Edit`/`Write` を与えないことで同等の書き込み境界を作る。
+過去の実地確認（本 PR #204 のレビューをこのリポジトリ自身に対して実行した際）で、bubblewrap によるサンドボックス初期化がネストしたサンドボックス環境（Claude Code 自身の sandboxed bash tool から `codex exec` を呼ぶ場合等）では `Permission denied` で失敗することを確認した。一時的に `--dangerously-bypass-approvals-and-sandbox`（OS レベルの隔離なし）で回避したが、reviewer 自身がこの回避策を「安全境界が指示遵守だけに依存し弱すぎる」と blocking finding として指摘した。Codex CLI を通常のトップレベルセッションとして使う環境（ネストしていない環境）ではこの bwrap 初期化は失敗しない想定のため、`--sandbox workspace-write` を採用する設計に戻した。ネストしたサンドボックス環境で実行する場合は、事前にこの制約とフォールバックの必要性をユーザーに確認すること。
+
+reviewer は working tree の外で実行される可能性があるため `gh` が対象リポジトリを推測できない場合がある。orchestrator は `GH_REPO_FULL_NAME`（`gh repo view --json nameWithOwner`）を Step 1 で取得し、reviewer subprocess に `GH_REPO` として渡す。`pr-review-exec.md` はこれを必須の前提とし、全ての `gh pr` コマンドに `--repo "$GH_REPO"` を明示する。同様に `REPO_ROOT` を渡し、scratch cwd から `CLAUDE.md` / `AGENTS.md` を正しい絶対パスで読めるようにする。
 
 いずれの reviewer にも `commands/pr-review.md` 自身への書き込み権限や、`/work`・`/task`・`/patch`・`/pr-review` 等の他コマンドを実行する経路を与えない。実地検証で、sandbox が機能しない場合に Codex が自前の `codex_apps` GitHub 統合（reviewer とは別の、Codex に既にログイン済みのアカウントで認証されている）に読み取りだけフォールバックする挙動を確認した。書き込みには使われなかったが、`pr-review-exec.md` は `gh` CLI 以外の GitHub 統合ツールの使用を明示的に禁止することでこの経路を塞ぐ。
 
-根拠: `commands/pr-review.md:38-39`, `commands/pr-review.md:93-124`
+根拠: `commands/pr-review.md:95-125`
 
 ### 投稿結果の確認（新規投稿検出と commit 一致）
 
@@ -90,7 +92,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 - 自動呼び出し元: `commands/git-pr.md` Step 8
 - 手動呼び出し: `/pr-review #<PR番号>`
-- reviewer 実行委譲先: `commands/pr-review-exec.md`（`codex exec --dangerously-bypass-approvals-and-sandbox` または `claude -p --tools "Read,Bash"` から実行される）
+- reviewer 実行委譲先: `commands/pr-review-exec.md`（`CURRENT_AGENT` に応じて `codex exec --sandbox workspace-write` または `claude -p --tools "Read,Bash"` の新規プロセスから実行される）
 - commit/docs: `/git-commit`、必要な場合は `/docs-sync`
 - GitHub: `gh pr view`、`gh pr checkout`、`gh api user`
 - 一時ファイル: `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/`（reviewer subprocess の scratch ディレクトリと起動ログのみ）
@@ -103,7 +105,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 - 投稿された review の `commitId` が現在の `headRefOid` と一致しない場合も `FAILED` で終了する
 - PR merge、close、branch 削除、main 同期は行わない
 - 3ラウンドで収束しない finding は人間判断へ返す
-- Codex reviewer は `--dangerously-bypass-approvals-and-sandbox` で実行されるため、OS レベルの隔離はない。安全境界は `pr-review-exec.md` に明記された指示（ファイル編集・他コマンド呼び出し・gh CLI 以外の GitHub 統合を行わない）への準拠のみに依存する。実地確認（PR #204 ラウンド2）で reviewer 自身がこの点を blocking finding として指摘しており、より強い隔離（OS sandbox・container・tool allowlist）が必要かはユーザー判断待ち
+- Codex reviewer の `--sandbox workspace-write` + `network_access=true` は、ネストしたサンドボックス環境（他 agent の sandboxed shell 内から `codex exec` を呼ぶ場合等）では bubblewrap 初期化が失敗する可能性がある。失敗した場合の対応（`--dangerously-bypass-approvals-and-sandbox` へのフォールバック等）は安全境界を弱める判断のため、実行前にユーザーへ確認すること
 - reviewer は diff 取得時の `headRefOid` を `REVIEWED_HEAD_SHA` として記録し、投稿直前に再取得した現在の `headRefOid` と比較する（`commands/pr-review-exec.md` Step 4）。一致しない場合は投稿せず終了する。この検証は `pr-review-exec.md` 内で完結し、orchestrator 側の `commitId == headRefOid` 確認（Step 4.3）とは独立した保護である
 
 ## 変更履歴（git log より自動生成）
