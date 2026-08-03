@@ -48,6 +48,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- ad8e042 feat(#201): scope pr-review rounds to incremental diff and add trivial-fix confirm-only mode
 - cbe90ba fix(#187): refresh pr base before each review round
 - b74d919 fix(#189): use codex exec for structured pr reviews
 - d94812c feat(#185): add autonomous cross-agent PR review workflow
