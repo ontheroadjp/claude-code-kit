@@ -28,7 +28,7 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 `logs/access/*.log` を `scripts/analyze_access.py` で集計し、その JSON のみを Facts の根拠として Assessment/Opinions/Proposals/Risks and Unknowns を分離したレポートを提示する read-only workflow。生ログは直接 Read しない。唯一の書き込みは `logs/reports/access/` 配下への新規 HTML レポートである。
 
-根拠: `commands/analyze-access.md:1-73`
+根拠: `commands/analyze-access.md:1-77`
 
 ### `/analyze-auto-approve` (`commands/analyze-auto-approve.md`)
 

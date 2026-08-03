@@ -12,10 +12,12 @@
 2. `split_blocks()` でブロックに分割し、`split_sections()` で各ブロックをセクション名 → 本文の辞書に変換する
 3. セクションごとに正規表現でパースする: `parse_summary()`（総アクセス数・重複ファイル）、`parse_phases()`（フェーズ別件数・ツール別件数）、`parse_modified_files()`、`parse_token_usage()`
 4. `load_sessions(months)` で対象月の全ログファイルを読み、セッションのリストを作る
-5. `aggregate(months, sessions)` でセッション横断の集計（重複・修正ファイルの上位N件、フェーズ/ツール別合計、修正ゼロセッション比率、トークン使用量合計）を行う
+5. `aggregate(months, sessions)` でセッション横断の集計（重複・修正ファイルの上位N件、フェーズ/ツール別合計、修正ゼロセッション比率、無駄な再読み込み集計、トークン使用量合計）を行う
 6. `main()` で `lib.analyze_common` の共通CLI・月解決処理を呼び、結果を JSON として出力する
 
-根拠: `scripts/analyze_access.py:66-104`, `scripts/analyze_access.py:161-243`
+`session["duplicates"]` は `hooks/log-access-stop.sh` 側で `group_by(.path)` によりセッション単位で既に重複検出済みのリストである。この性質を利用し、`aggregate()` は各セッションの `duplicates` から「同一セッション内で同じファイルを何度も読んで無駄になった回数」（`count - 1` の合計）を `redundant_accesses_total` として集計し、`top_redundant_sessions()` で無駄な再読み込みが多いセッション上位（日時・指示内容・無駄な再読み込み回数・重複ファイル一覧）を抽出する。既存の `top_duplicate_files`（全セッション横断で重複カウントを単純合算したもの）はセッション横断の傾向把握用として残し、redundant 系の指標はセッション内の無駄という異なる観点を補う。
+
+根拠: `scripts/analyze_access.py:66-104`, `scripts/analyze_access.py:165-243`
 
 ## 主要な判定ロジック・フロー
 
@@ -39,8 +41,10 @@ Facts の再現性を担保するため、集計はすべて決定的な正規�
 ## 注意事項・既知の制限
 
 - `[修正したファイル]` セクションが空（変更なし）の場合、`parse_modified_files()` は空リストを返す
-- `top_duplicate_files` / `top_modified_files` は `TOP_N`（10件）に切り詰められる
+- `top_duplicate_files` / `top_modified_files` / `top_redundant_sessions` は `TOP_N`（10件）に切り詰められる
+- `top_redundant_sessions` の `user_instruction` は切り詰めずそのまま出力する（Facts の再現性を優先し、要約はレポート生成側の Assessment に任せる）
 
 ## 変更履歴（git log より自動生成）
 
+- 8d0793a feat(#214): track per-session redundant file reads in /analyze-access
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

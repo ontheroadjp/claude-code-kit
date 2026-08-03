@@ -167,6 +167,24 @@ def top_n(counts: dict[str, int], n: int) -> list[dict[str, object]]:
     return [{"path": path, "count": count} for path, count in ranked]
 
 
+def top_redundant_sessions(sessions: list[Session], n: int) -> list[dict[str, object]]:
+    redundant: list[tuple[int, Session]] = [
+        (sum(int(d["count"]) - 1 for d in session["duplicates"]), session)
+        for session in sessions
+        if session["duplicates"]
+    ]
+    ranked = sorted(redundant, key=lambda item: item[0], reverse=True)[:n]
+    return [
+        {
+            "timestamp": session["timestamp"],
+            "user_instruction": session["user_instruction"],
+            "redundant_accesses": count,
+            "duplicate_files": session["duplicates"],
+        }
+        for count, session in ranked
+    ]
+
+
 def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
     session_count = len(sessions)
     total_accesses = sum(s["total_accesses"] for s in sessions)
@@ -176,12 +194,17 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
     phase_totals: dict[str, int] = {}
     tool_totals: dict[str, int] = {}
     zero_modified_sessions = 0
+    sessions_with_duplicates = 0
+    redundant_accesses_total = 0
     token_sessions: list[TokenUsage] = []
 
     for session in sessions:
+        if session["duplicates"]:
+            sessions_with_duplicates += 1
         for duplicate in session["duplicates"]:
             path = str(duplicate["path"])
             duplicate_totals[path] = duplicate_totals.get(path, 0) + int(duplicate["count"])
+            redundant_accesses_total += int(duplicate["count"]) - 1
         for modified_file in session["modified_files"]:
             modified_totals[modified_file] = modified_totals.get(modified_file, 0) + 1
         if not session["modified_files"]:
@@ -202,6 +225,10 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
         "total_accesses": total_accesses,
         "avg_accesses_per_session": round(total_accesses / session_count, 2) if session_count else 0,
         "top_duplicate_files": top_n(duplicate_totals, TOP_N),
+        "redundant_accesses_total": redundant_accesses_total,
+        "sessions_with_duplicates": sessions_with_duplicates,
+        "sessions_with_duplicates_ratio": round(sessions_with_duplicates / session_count, 3) if session_count else 0,
+        "top_redundant_sessions": top_redundant_sessions(sessions, TOP_N),
         "top_modified_files": top_n(modified_totals, TOP_N),
         "phase_totals": phase_totals,
         "tool_totals": tool_totals,

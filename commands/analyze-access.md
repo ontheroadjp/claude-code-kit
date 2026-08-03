@@ -38,7 +38,8 @@ python3 scripts/analyze_access.py <opt>
 JSON の値をそのまま転記する。数値の再計算・推測は行わない:
 
 - 対象月（`months`）、セッション数（`session_count`）、総アクセス数、セッションあたり平均アクセス数
-- 重複アクセス上位ファイル（`top_duplicate_files`）
+- 重複アクセス上位ファイル（`top_duplicate_files`、全セッション横断の合算）
+- セッション単位の無駄な再読み込み（同一セッション内で同じファイルを複数回読んだ分）: 全セッション合計の無駄な再読み込み回数（`redundant_accesses_total`）、重複読み込みが発生したセッション数・比率（`sessions_with_duplicates` / `sessions_with_duplicates_ratio`）、無駄な再読み込みが多いセッション上位（`top_redundant_sessions`。各要素は日時・指示内容・無駄な再読み込み回数・重複ファイル一覧を持つ）
 - 修正頻度上位ファイル（`top_modified_files`）
 - フェーズ別アクセス数（`phase_totals`）、ツール別アクセス数（`tool_totals`）
 - 修正ファイルゼロのセッション数・比率（`zero_modified_sessions` / `zero_modified_ratio`）— 調査のみで終わったセッションの割合
@@ -67,7 +68,7 @@ logs/reports/access/<target>_<YYYYMMDD-HHMMSS>.html
 HTML構成:
 
 1. タイトルと生成日時、対象月
-2. Facts（JSON の値を表・リストとして整形。数値は JSON の値をそのまま使う）
+2. Facts（JSON の値を表・リストとして整形。数値は JSON の値をそのまま使う）。`top_redundant_sessions` は「日時・指示内容・無駄な再読み込み回数・重複ファイル（ファイル名 + 回数）」を1行とする表で表示する
 3. Assessment / Opinions / Proposals / Risks and Unknowns（Step 3 の内容）
 4. 末尾に `<details><summary>Raw data (JSON)</summary><pre>...</pre></details>` として Step 1 の JSON 全体を埋め込む（監査用）
 
