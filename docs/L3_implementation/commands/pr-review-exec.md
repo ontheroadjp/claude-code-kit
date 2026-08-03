@@ -81,4 +81,5 @@ Codex の `codex_apps` のような GitHub 統合ツール（MCP 等）は、rev
 
 ## 変更履歴（git log より自動生成）
 
+- 3e11c77 fix(#203): resolve pr-review-exec repo/sandbox failures found in live PR review
 - 14b4255 refactor(#203): decouple pr-review reviewer execution into pr-review-exec

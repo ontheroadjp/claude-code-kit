@@ -107,6 +107,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 ## 変更履歴（git log より自動生成）
 
+- 3e11c77 fix(#203): resolve pr-review-exec repo/sandbox failures found in live PR review
 - 14b4255 refactor(#203): decouple pr-review reviewer execution into pr-review-exec
 - 2dcec34 fix(#201): decouple incremental-diff generation from what the reviewer actually receives
 - b128570 fix(#201): measure trivial-fix line counts before commit and align L3 doc with source of truth

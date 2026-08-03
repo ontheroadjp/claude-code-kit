@@ -82,7 +82,7 @@ PR 番号を受け取り、PR/workspace gate（Step 4.5 の修正作業用に PR
 
 各ラウンド開始時に `REVIEWER_LOGIN` による最新 review の ID を記録し（`PREV_REVIEW_ID`）、reviewer subprocess 実行後に同じ query を再実行して新規投稿の有無を確認する。新規投稿がなければ `FAILED`、投稿された review の `commitId` が現在の `headRefOid` と一致しなければ `FAILED` とする。`APPROVED` は investigator が確認した review の `state` が `APPROVED` かつ `commitId` が現在 head と一致する場合にのみ確定する。`REQUEST_CHANGES` の場合は元 agent が review 本文の blocking finding を検証・修正し、commit・必要な docs-sync・push を行って次ラウンドへ進む。
 
-Codex reviewer は `--sandbox workspace-write -c sandbox_workspace_write.network_access=true --cd <repo外の scratch ディレクトリ> --skip-git-repo-check` で実行し、cwd（scratch ディレクトリ）以外への書き込み経路を作らずに `gh` のネットワーク呼び出しを許可する。Claude reviewer は `--tools "Read,Bash"` と `--allowedTools` により `Bash` を `gh pr diff`/`gh pr view`/`gh pr review`/`gh api user` に限定し、`Edit`/`Write` を与えない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
+Codex reviewer は `--dangerously-bypass-approvals-and-sandbox --cd <repo外の scratch ディレクトリ> --skip-git-repo-check` で実行する（`--sandbox workspace-write` は bubblewrap 初期化がホスト環境によっては失敗するため使わない）。working tree の外で実行されるため、orchestrator が `gh repo view` で取得した `GH_REPO_FULL_NAME` を `GH_REPO` として、リポジトリの絶対パスを `REPO_ROOT` として渡す。Claude reviewer は `--tools "Read,Bash"` と `--allowedTools` により `Bash` を `gh pr diff`/`gh pr view`/`gh pr review`/`gh api user` に限定し、`Edit`/`Write` を与えない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
 
 根拠: `commands/pr-review.md:1-163`
 
@@ -182,7 +182,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/hooks/test-approval-hooks.sh:1-614`
 
-`tests/commands/test-pr-review.sh` は `/pr-review` と `/pr-review-exec` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、reviewer token の優先順位、最大3ラウンド、reviewer identity 検証、Codex reviewer の `workspace-write` + `network_access=true` + scratch cwd 実行、Claude reviewer の `Read`/scoped `Bash` 限定、orchestrator が `pr-review-exec` へレビュー実行を委譲すること、新規投稿検出（`PREV_REVIEW_ID`）と `commitId`/`headRefOid` 一致確認、session-approved 制限、merge・main 同期・branch 削除の禁止、旧設計（SHA固定・incremental diff・trivial round・confirm-onlyモード）が復活していないこと、`pr-review-exec` が自身で diff を取得し直接投稿し他コマンドを呼び出さないことを確認する。
+`tests/commands/test-pr-review.sh` は `/pr-review` と `/pr-review-exec` の declarative workflow contract を静的検証する。Claude/Codex の相互 routing、reviewer token の優先順位、最大3ラウンド、reviewer identity 検証、Codex reviewer が `--dangerously-bypass-approvals-and-sandbox` + scratch cwd で実行され `workspace-write` サンドボックスに依存しないこと、orchestrator が `GH_REPO_FULL_NAME` を解決すること、Claude reviewer の `Read`/scoped `Bash` 限定、orchestrator が `pr-review-exec` へレビュー実行を委譲すること、新規投稿検出（`PREV_REVIEW_ID`）と `commitId`/`headRefOid` 一致確認、`pr-review-exec` が `GH_REPO`/`REPO_ROOT` を必須とし全ての `gh pr` コマンドに `--repo` を明示すること、`gh` CLI 以外の GitHub 統合を禁止すること、session-approved 制限、merge・main 同期・branch 削除の禁止、旧設計（SHA固定・incremental diff・trivial round・confirm-onlyモード）が復活していないこと、`pr-review-exec` が自身で diff を取得し直接投稿し他コマンドを呼び出さないことを確認する。
 
 根拠: `tests/commands/test-pr-review.sh:1-98`
 

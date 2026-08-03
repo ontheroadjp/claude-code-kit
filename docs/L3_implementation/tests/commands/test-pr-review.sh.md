@@ -52,6 +52,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 3e11c77 fix(#203): resolve pr-review-exec repo/sandbox failures found in live PR review
 - 14b4255 refactor(#203): decouple pr-review reviewer execution into pr-review-exec
 - 9d2d38f fix(#201): guard incremental pr-review diff against base drift and mode-selection ambiguity
 - ad8e042 feat(#201): scope pr-review rounds to incremental diff and add trivial-fix confirm-only mode
