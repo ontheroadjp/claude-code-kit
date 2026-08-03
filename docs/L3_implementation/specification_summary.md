@@ -88,7 +88,7 @@ Codex reviewer は `--dangerously-bypass-approvals-and-sandbox --cd <repo外の 
 
 ### `/pr-review-exec` (`commands/pr-review-exec.md`)
 
-`/pr-review` の reviewer subprocess から実行される、reviewer 専用の自己完結コマンド。指定 PR の diff・過去の review/comment を `gh pr diff` / `gh pr view` だけで取得し（ローカル working tree には触れない）、`CLAUDE.md`/`AGENTS.md` と diff を根拠にレビューし、blocking finding の有無で `gh pr review --approve` または `--request-changes` を自身の `REVIEW_TOKEN` で直接投稿する。ファイル編集・git write 操作・他コマンドの呼び出し・PR の merge/close/branch 削除/main checkout は一切行わない。reviewer と PR author のアカウント分離は呼び出し元が確認済みの前提で動作し、自らは検証しない。
+`/pr-review` の reviewer subprocess から実行される、reviewer 専用の自己完結コマンド。指定 PR の diff・過去の review/comment を `gh pr diff` / `gh pr view` だけで取得し（ローカル working tree には触れない、`GH_REPO`/`REPO_ROOT` を必須とし全 `gh` 呼び出しに `--repo` を明示する）、`CLAUDE.md`/`AGENTS.md` と diff を根拠にレビューし、blocking finding の有無で `gh pr review --approve` または `--request-changes` を自身の `REVIEW_TOKEN` で直接投稿する。投稿直前に現在の `headRefOid` を再取得し、diff 取得時に記録した `REVIEWED_HEAD_SHA` と一致しない場合は投稿せず終了する。ファイル編集・git write 操作・他コマンドの呼び出し・`gh` CLI 以外の GitHub 統合・PR の merge/close/branch 削除/main checkout は一切行わない。reviewer と PR author のアカウント分離は呼び出し元が確認済みの前提で動作し、自らは検証しない。
 
 根拠: `commands/pr-review-exec.md:1-83`
 

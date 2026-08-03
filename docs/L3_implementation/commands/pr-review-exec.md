@@ -85,5 +85,6 @@ Step 1 で PR 状態を取得した際の `headRefOid` を `REVIEWED_HEAD_SHA` �
 
 ## 変更履歴（git log より自動生成）
 
+- 57c46a5 fix(#203): detect head drift between diff fetch and review post, sync stale sandbox docs
 - 3e11c77 fix(#203): resolve pr-review-exec repo/sandbox failures found in live PR review
 - 14b4255 refactor(#203): decouple pr-review reviewer execution into pr-review-exec
