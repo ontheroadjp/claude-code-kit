@@ -33,3 +33,16 @@
 ## 注意事項・既知の制限
 
 isolated `TMP_DIR` 上での直接実行による静的検証であり、実際の Claude Code / Codex CLI セッションを介した end-to-end 検証ではない。`hooks/auto-approve-readonly.sh` の判定ロジックを変更した場合は、対応する positive / negative case をこのファイルに追加してから `/git-commit` すること。
+
+## 変更履歴（git log より自動生成）
+
+- 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
+- d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
+- 40ea58a fix(#196): track single quotes at depth=0 in subshell content helpers
+- ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
+- 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
+- 32610ca fix(#196): fix variable-expansion guard gaps found in review
+- a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
+- e740c91 fix(#194): replace node/bash syntax-check denylist with strict single-arg allowlist
+- 6c041c6 fix(#194): close gh api/journalctl/node --check allowlist bypasses
+- 3655fd5 feat(#194): extend read-only allowlist and fix multibyte log truncation
