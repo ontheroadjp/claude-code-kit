@@ -11,10 +11,10 @@
 1. 1行1ターンの `key=value` 形式（固定幅パディングあり）を `LINE_RE` でパースし `Record` を作る
 2. `load_records(months)` で対象月の全行を読み込む
 3. `dedupe_last_per_session(records)` で **同一 `session` の最後の行のみ**を残す（重要: 詳細は下記）
-4. `aggregate(months, records)` は内部で dedupe した上で、`model_breakdown` / `cwd_breakdown` / `daily_cost_trend` / `top_expensive_sessions` / `low_cache_sessions` / `high_density_sessions` を計算する
+4. `aggregate(months, records)` は内部で dedupe した上で、`avg_cache_ratio`（セッション横断の cache_ratio 平均）、`model_breakdown` / `cwd_breakdown` / `daily_cost_trend` / `top_expensive_sessions` / `low_cache_sessions` / `high_density_sessions`、および `low_cache_sessions_ratio` / `high_density_sessions_ratio`（それぞれの該当セッション数 ÷ `session_count`）を計算する
 5. `main()` で `lib.analyze_common` の共通CLI・月解決処理を呼び、結果を JSON として出力する
 
-根拠: `scripts/analyze_token_usage.py:80-215`
+根拠: `scripts/analyze_token_usage.py:90-231`
 
 ## 主要な判定ロジック・フロー
 
@@ -22,9 +22,9 @@
 
 `raw_line_count`（生の行数）と `session_count`（重複排除後）を両方 JSON に含め、呼び出し元がどちらを見ているか誤認しないようにしている。
 
-`low_cache_sessions`（`turns > 2` かつ `cache_ratio < 50%`）と `high_density_sessions`（`total / turns > 20000`）の閾値は、既存の `scripts/show-token-usage.sh --anomaly` の閾値をそのまま踏襲した。
+`low_cache_sessions`（`turns > 2` かつ `cache_ratio < 50%`）と `high_density_sessions`（`total / turns > 20000`）の閾値は、既存の `scripts/show-token-usage.sh --anomaly` の閾値をそのまま踏襲した。`avg_cache_ratio` / `low_cache_sessions_ratio` / `high_density_sessions_ratio` は、`/analyze-token-usage` の KPI ダッシュボードが冒頭で示す単一の効率指標として issue #216 で追加した（それまでは絶対件数・絶対リストしかなく、レポート冒頭に置ける比率指標が無かった）。
 
-根拠: `scripts/analyze_token_usage.py:102-107`, `scripts/analyze_token_usage.py:26-30`
+根拠: `scripts/analyze_token_usage.py:102-107`, `scripts/analyze_token_usage.py:26-30`, `scripts/analyze_token_usage.py:204-232`
 
 ## 重要な設計判断とその理由
 
@@ -45,4 +45,5 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

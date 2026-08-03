@@ -207,6 +207,8 @@ def aggregate(months: list[str], records: list[Record]) -> dict[str, object]:
     total_cost = sum(s["cost_usd"] for s in sessions)
     total_tokens = sum(s["total"] for s in sessions)
     total_turns = sum(s["turns"] for s in sessions)
+    low_cache = low_cache_sessions(sessions)
+    high_density = high_density_sessions(sessions)
 
     return {
         "log_type": "token-usage",
@@ -218,12 +220,17 @@ def aggregate(months: list[str], records: list[Record]) -> dict[str, object]:
         "total_turns": total_turns,
         "avg_cost_usd_per_session": round(total_cost / session_count, 4) if session_count else 0,
         "avg_turns_per_session": round(total_turns / session_count, 2) if session_count else 0,
+        "avg_cache_ratio": (
+            round(sum(s["cache_ratio"] for s in sessions) / session_count, 2) if session_count else 0
+        ),
         "model_breakdown": model_breakdown(sessions),
         "cwd_breakdown": cwd_breakdown(sessions, TOP_N),
         "daily_cost_trend": daily_cost_trend(sessions),
         "top_expensive_sessions": top_expensive_sessions(sessions, TOP_N),
-        "low_cache_sessions": low_cache_sessions(sessions),
-        "high_density_sessions": high_density_sessions(sessions),
+        "low_cache_sessions": low_cache,
+        "low_cache_sessions_ratio": round(len(low_cache) / session_count, 3) if session_count else 0,
+        "high_density_sessions": high_density,
+        "high_density_sessions_ratio": round(len(high_density) / session_count, 3) if session_count else 0,
     }
 
 

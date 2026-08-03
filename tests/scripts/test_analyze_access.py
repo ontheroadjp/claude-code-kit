@@ -135,17 +135,16 @@ def test_aggregate_across_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     assert result["session_count"] == 3
     assert result["total_accesses"] == 10
-    assert result["zero_modified_sessions"] == 2
-    assert result["zero_modified_ratio"] == 0.667
     assert result["top_duplicate_files"] == [
         {"path": "/path/a", "count": 4},
         {"path": "/path/d", "count": 3},
     ]
-    assert result["top_modified_files"] == [{"path": "/path/a", "count": 1}]
-    assert result["phase_totals"] == {"work": 10}
-    assert result["tool_totals"] == {"Read": 9, "Bash": 1}
-    assert result["token_usage"]["sessions_with_data"] == 1
-    assert result["token_usage"]["total_cost_usd"] == 1.2345
+    assert result["redundant_access_waste"] == {
+        "sessions_with_data": 1,
+        "estimated_wasted_tokens": 100,
+        "estimated_wasted_cost_usd": 0.4115,
+        "estimated_waste_ratio_pct": 33.33,
+    }
 
 
 def test_aggregate_tracks_redundant_reads_per_session(
@@ -168,7 +167,9 @@ def test_aggregate_tracks_redundant_reads_per_session(
         {"path": "/path/d", "count": 3},
         {"path": "/path/a", "count": 2},
     ]
+    assert top_redundant_sessions[0]["modified"] is False
     assert top_redundant_sessions[1]["timestamp"] == "2026.08.01 18.49"
+    assert top_redundant_sessions[1]["modified"] is True
 
 
 def test_main_prints_valid_json(

@@ -8,9 +8,9 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 |---|---|
 | `/work` | Main entry point. Routes report-labeled issues to read-only review; otherwise gates, investigates, and routes to patch or task flow. |
 | `/report-review` | Evaluates a report-labeled issue read-only and prints evidence-based opinions and proposals without changing files or GitHub state. |
-| `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a Facts/Assessment/Opinions/Proposals report and writes an HTML report to `logs/reports/access/`. |
-| `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a Facts/Assessment/Opinions/Proposals report and writes an HTML report to `logs/reports/auto-approve/`. |
-| `/analyze-token-usage` | Aggregates `logs/token-usage/*.log` via a Python script (deduping per-session cumulative rows), then prints a Facts/Assessment/Opinions/Proposals report and writes an HTML report to `logs/reports/token-usage/`. |
+| `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
+| `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
+| `/analyze-token-usage` | Aggregates `logs/token-usage/*.log` via a Python script (deduping per-session cumulative rows), then prints a KPI dashboard (cache efficiency) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/token-usage/`. |
 | `/triage-issues` | Standalone entry point for reviewing and cleaning up open issues so they are ready for `/work #N`. |
 | `/new-issue` | Optional pre-`/work` entry point. Turns a rough idea into one or more GitHub issues. |
 | `/review-resolve` | Handles PR review comments interactively without going through `/work`. |

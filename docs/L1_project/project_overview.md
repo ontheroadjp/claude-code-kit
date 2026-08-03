@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 作業入口 | `commands/work.md` | main への checkout、workspace gate、report-review/task/patch ルーティング | `commands/work.md:7-143` |
 | report 評価 | `commands/report-review.md` | `report` label の issue を read-only で評価し、意見と提案を標準出力へ提示 | `commands/report-review.md:1-91` |
-| ログ分析 | `commands/analyze-access.md`, `analyze-auto-approve.md`, `analyze-token-usage.md` | `logs/access`・`logs/auto-approve`・`logs/token-usage` を `scripts/analyze_*.py` で集計し、Facts/Assessment/Opinions/Proposals レポートと HTML を `logs/reports/` へ出力する read-only workflow | `commands/analyze-access.md:1-73`, `scripts/analyze_access.py:1-6` |
+| ログ分析 | `commands/analyze-access.md`, `analyze-auto-approve.md`, `analyze-token-usage.md` | `logs/access`・`logs/auto-approve`・`logs/token-usage` を `scripts/analyze_*.py` で集計し、KPIダッシュボード→Key Findings & Proposals→Evidence の順で構成したレポートと HTML を `logs/reports/` へ出力する read-only workflow | `commands/analyze-access.md:1-85`, `scripts/analyze_access.py:1-6` |
 | docs あり実装 | `commands/task.md` | issue 確認/生成、プラン承認、実装、L3 per-file doc、`/docs-sync`・`/git-pr` 引き継ぎ | `commands/task.md:30-184` |
 | 軽微修正 | `commands/patch.md` | docs 変更不要な修正を branch + commit で完了し、必要時 task へエスカレーション | `commands/patch.md:1-111` |
 | docs 同期 | `commands/docs-sync.md` | `git diff main...HEAD` を事実として docs/README を最小更新・commit し、結果を session temp へ記録 | `commands/docs-sync.md:1-173` |
