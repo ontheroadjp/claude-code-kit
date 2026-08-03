@@ -53,6 +53,7 @@ assert_absent "$PR_REVIEW" '--dangerously-bypass-approvals-and-sandbox' 'the Cod
 assert_contains "$PR_REVIEW" '--skip-git-repo-check' 'the Codex reviewer runs outside a git repository (scratch cwd)'
 assert_contains "$PR_REVIEW" 'GH_REPO_FULL_NAME' 'the orchestrator resolves the repo full name for reviewers running outside the working tree'
 assert_contains "$PR_REVIEW" 'claude -p' 'a Claude current agent spawns a fresh claude -p review sub-agent'
+assert_contains "$PR_REVIEW" 'GH_TOKEN="$REVIEW_TOKEN"' 'the orchestrator passes the review token as GH_TOKEN on the reviewer process env (gh CLI auto-auths with it)'
 assert_absent "$PR_REVIEW" '--tools "Read,Bash"' 'the nonexistent --tools flag was removed (claude CLI has no --tools option)'
 assert_contains "$PR_REVIEW" 'Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr review *),Bash(gh api user *)' 'the Claude reviewer allowedTools list scopes Bash to specific gh subcommands'
 assert_contains "$PR_REVIEW" 'Bash(gh pr review *)' 'the Claude reviewer is only allowed to run gh pr review, not arbitrary Bash'
@@ -81,9 +82,8 @@ assert_absent "$PR_REVIEW" 'base-sha.txt' 'per-round base SHA drift files were r
 
 # --- commands/pr-review-exec.md: reviewer-only self-contained contract ---
 
-assert_contains "$PR_REVIEW_EXEC" 'REVIEW_TOKEN' 'pr-review-exec requires a review token'
-assert_contains "$PR_REVIEW_EXEC" 'export GH_TOKEN="$REVIEW_TOKEN"' 'pr-review-exec exports GH_TOKEN once instead of prefixing every gh call inline'
-assert_absent "$PR_REVIEW_EXEC" 'GH_TOKEN="$REVIEW_TOKEN" gh' 'inline GH_TOKEN prefixes on gh calls were removed (they break Bash allowlist pattern matching)'
+assert_contains "$PR_REVIEW_EXEC" 'GH_TOKEN' 'pr-review-exec requires GH_TOKEN to already be set as a process env var'
+assert_absent "$PR_REVIEW_EXEC" 'GH_TOKEN="$REVIEW_TOKEN" gh' 'inline GH_TOKEN prefixes on gh calls are not used (they break Bash allowlist pattern matching)'
 assert_contains "$PR_REVIEW_EXEC" 'GH_REPO' 'pr-review-exec requires an explicit target repo (cwd may not be inside the repo)'
 assert_contains "$PR_REVIEW_EXEC" '--repo "$GH_REPO"' 'pr-review-exec passes --repo explicitly on every gh pr command'
 assert_contains "$PR_REVIEW_EXEC" 'REPO_ROOT' 'pr-review-exec resolves CLAUDE.md/AGENTS.md relative to an explicit repo root'

@@ -43,11 +43,17 @@ Codex の `codex_apps` のような GitHub 統合ツール（MCP 等）は、rev
 
 根拠: `commands/pr-review-exec.md:16`
 
-### GH_TOKEN はインライン prefix ではなく export で渡す
+### GH_TOKEN は呼び出し元がプロセス起動時の環境変数として渡す
 
-`export GH_TOKEN="$REVIEW_TOKEN"` を最初に一度だけ実行し、以降の `gh` コマンドはプレフィックス無しの `gh ...` で呼び出す。Claude reviewer（`claude -p --allowedTools "Bash(gh pr view *)" ...`）で実地確認したところ、`GH_TOKEN="$REVIEW_TOKEN" gh pr view ...` のようにコマンド自体をインラインの環境変数代入で始めると、Claude CLI の Bash allowlist パターン（`Bash(gh pr view *)` 等、コマンドが `gh` で始まることを前提にマッチする）に一致せず、実行が拒否されて reviewer が review を投稿できなかった。
+`gh` コマンドは常にプレフィックス無しの `gh ...` で呼び出し、認証は `GH_TOKEN` 環境変数（`gh` が自動的に認証情報として使う）に一任する。この `GH_TOKEN` は `commands/pr-review.md` が reviewer subprocess（`claude -p` / `codex exec`）を起動する時点でプロセス環境変数として渡す（Step 4.2）。
 
-根拠: `commands/pr-review-exec.md:17`
+実地確認で2つの誤った代替案を検証し、いずれも動作しないことを確認した:
+1. `GH_TOKEN="$REVIEW_TOKEN" gh pr view ...` のようにコマンド自体をインラインの環境変数代入で始める方式: Claude CLI の Bash allowlist パターン（`Bash(gh pr view *)` 等、コマンドが `gh` で始まることを前提にマッチする）に一致せず、実行が拒否される
+2. reviewer 自身に `export GH_TOKEN=...` を実行させる方式: `export` コマンド自体も Bash allowlist に一致せず拒否される。仮に許可しても、Bash tool の呼び出しごとに新しいシェルが使われる実行環境では `export` の効果が後続の呼び出しに引き継がれない
+
+プロセス起動時の環境変数として渡すことだけが、reviewer 側で追加の手当てを一切必要とせず確実に動作する方法である。
+
+根拠: `commands/pr-review-exec.md:13`, `commands/pr-review-exec.md:17`
 
 ### 過去の review を context として使う
 

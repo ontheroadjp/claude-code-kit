@@ -93,14 +93,16 @@ gh pr view <PR番号> --json reviews \
 `CURRENT_AGENT` が Claude の場合、reviewer を `claude -p` の新規プロセスとして、このリポジトリ内でツール権限を絞って実行する。Claude には OS レベルの sandbox がないため、`Edit`/`Write` を与えず `Bash` を `gh` の特定サブコマンドだけに制限することで安全境界を作る:
 
 ```bash
-REVIEW_TOKEN="$REVIEW_TOKEN" GH_REPO="$GH_REPO_FULL_NAME" claude -p \
-  "commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。REVIEW_TOKEN・GH_REPO は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。" \
+GH_TOKEN="$REVIEW_TOKEN" GH_REPO="$GH_REPO_FULL_NAME" claude -p \
+  "commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。GH_TOKEN・GH_REPO は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。" \
   --permission-mode dontAsk \
   --allowedTools "Read,Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr review *),Bash(gh api user *)" \
   > "$SESSION_TMP_DIR/round-${ROUND}-review.txt"
 ```
 
 `--allowedTools` は可変長引数（`<tools...>`）を取るため、プロンプト文字列より後ろに置くとプロンプトをその値として飲み込んでしまい `-p` がプロンプト無しとして扱われる（実地確認で判明）。プロンプトは必ず `claude -p` の直後、他の options より前に置く。存在しない `--tools` フラグ（旧設計から引き継いだ未検証の記述）も削除した。ツール制限は `--allowedTools` のみで行う（allowlist に無い操作は `--permission-mode dontAsk` により確認を求めず拒否される）。
+
+token は `REVIEW_TOKEN` という名前ではなく `GH_TOKEN` として `claude -p` プロセスに渡す。`gh` CLI は `GH_TOKEN` 環境変数を自動的に認証情報として使うため、reviewer 内の各 `gh` 呼び出しは token を扱う必要が一切ない。`GH_TOKEN="$REVIEW_TOKEN" gh ...` のように個々の `gh` コマンドにインラインで環境変数を前置する方式や、reviewer 自身に `export GH_TOKEN=...` を実行させる方式は、いずれも Claude の Bash allowlist パターンマッチ（コマンド文字列が `gh` で始まることを前提とする）を壊すか、Bash tool 呼び出しごとに新しいシェルが使われるため export が永続しないかで動作しないことを実地確認で発見した。プロセス起動時の環境変数として渡すのが唯一確実な方法である。
 
 `CURRENT_AGENT` が Codex の場合、reviewer を `codex exec` の新規プロセスとして、リポジトリ外の scratch ディレクトリで実行する。`--sandbox workspace-write` かつ `sandbox_workspace_write.network_access=true` を指定し、cwd（scratch ディレクトリ）配下だけを書き込み可能にしたまま `gh` のネットワーク呼び出しを許可する:
 
@@ -109,14 +111,14 @@ SCRATCH_DIR="$SESSION_TMP_DIR/round-${ROUND}-scratch"
 mkdir -p "$SCRATCH_DIR"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-REVIEW_TOKEN="$REVIEW_TOKEN" GH_REPO="$GH_REPO_FULL_NAME" REPO_ROOT="$REPO_ROOT" codex exec \
+GH_TOKEN="$REVIEW_TOKEN" GH_REPO="$GH_REPO_FULL_NAME" REPO_ROOT="$REPO_ROOT" codex exec \
   --sandbox workspace-write \
   -c sandbox_workspace_write.network_access=true \
   --ephemeral \
   --skip-git-repo-check \
   --cd "$SCRATCH_DIR" \
   --output-last-message "$SESSION_TMP_DIR/round-${ROUND}-review.txt" \
-  "${REPO_ROOT}/commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。REVIEW_TOKEN・GH_REPO・REPO_ROOT は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。"
+  "${REPO_ROOT}/commands/pr-review-exec.md を読み、そこに書かれている内容を PR #<PR番号> に対してそのまま実行しなさい。GH_TOKEN・GH_REPO・REPO_ROOT は環境変数から利用できる。このタスク以外のコマンド（/work, /pr-review, /task, /patch 等）は実行しないこと。"
 ```
 
 `--sandbox` 初期化（bubblewrap）がネストしたサンドボックス環境（例: 別の agent の sandboxed shell から本コマンドを実行する場合）では失敗することが実地確認で分かっている。Codex CLI を通常のトップレベルセッションとして使う環境では問題にならない想定だが、失敗する場合は sandbox なしでの実行への切り替えが必要になる可能性がある（その場合、安全境界が `pr-review-exec.md` の指示遵守のみに低下する点に注意し、実行前にユーザーへ確認する）。

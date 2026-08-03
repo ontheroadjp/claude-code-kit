@@ -94,7 +94,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 - 自動呼び出し元: `commands/git-pr.md` Step 8
 - 手動呼び出し: `/pr-review #<PR番号>`
-- reviewer 実行委譲先: `commands/pr-review-exec.md`（`CURRENT_AGENT` に応じて `codex exec --sandbox workspace-write` または `claude -p --tools "Read,Bash"` の新規プロセスから実行される）
+- reviewer 実行委譲先: `commands/pr-review-exec.md`（`CURRENT_AGENT` に応じて `codex exec --sandbox workspace-write` または `claude -p --allowedTools ...` の新規プロセスから実行される。token は `GH_TOKEN` としてプロセス環境変数で渡す）
 - commit/docs: `/git-commit`、必要な場合は `/docs-sync`
 - GitHub: `gh pr view`、`gh pr checkout`、`gh api user`
 - 一時ファイル: `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/`（reviewer subprocess の scratch ディレクトリと起動ログのみ）
