@@ -7,6 +7,42 @@ hook scripts 間で共有する Bash helper 関数ライブラリ。
 | ファイル | 用途 |
 |---|---|
 | `approval-safety.sh` | PreToolUse hook で使う破壊的操作検出 helper |
+| `session-id.sh` | セッション ID 解決 helper |
+
+## session-id.sh
+
+`auto-approve-readonly.sh` と `cleanup-session.sh` の両方から `source` で読み込まれる共有 helper。
+
+### 提供する関数
+
+**`session_id_resolve [payload]`**
+
+現在のセッション ID を解決する。`payload`（省略可）は hook が受け取った PreToolUse/Stop の JSON ペイロード文字列。hook 以外の文脈（`commands/*.md` の Bash スニペットなど）から呼ぶ場合は省略する。
+
+優先順位:
+1. `CLAUDE_CODE_KIT_SESSION_ID`（テスト/上書き用）
+2. `CLAUDE_CODE_SESSION_ID`（Claude Code が設定するセッション ID。hook プロセスだけでなく、Bash tool が実行するシェルにも見える）
+3. `payload.session_id`（hook 文脈のみ）
+4. `payload.transcript_path` のハッシュ（hook 文脈のみ）
+5. `CODEX_THREAD_ID` のハッシュ
+6. `process-<PPID>` フォールバック（弱い。呼び出し側は「未解決」として扱うこと）
+
+**`session_id_sanitize <value>`** / **`session_id_hash_key <value>`**
+
+`session_id_resolve` が内部で使うサニタイズ・ハッシュ helper。単体でも利用可能。
+
+### 使い方（hook から呼び出す例）
+
+```bash
+# hook script 内で source する
+. "${REPO_DIR}/hooks/lib/session-id.sh"
+
+SESSION_ID="$(session_id_resolve "$payload")"
+```
+
+### commands/*.md での扱い
+
+`commands/work.md` / `task.md` / `patch.md` / `docs-sync.md` / `git-pr.md` の Bash スニペットは、この repo の外（ユーザーの任意のプロジェクトディレクトリ）で実行されるため、このファイルを `source` せず、同じ解決式（`CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID` → `CODEX_THREAD_ID` のハッシュ）を各ファイルにインライン展開している。式を変更する場合は両方を更新すること。
 
 ## approval-safety.sh
 

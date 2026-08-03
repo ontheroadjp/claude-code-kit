@@ -108,13 +108,21 @@ PreToolUse hook。Read、session temp / session-listed file、read-only Bash、s
 
 `sed` の `e` / `w`、external command を pipe する `awk getline`、`awk` の `print`/`printf` 出力リダイレクト、file output 等を含む curl short-option cluster は read-only とみなさない。Git write category は shared predicate により `+refspec` push、forced checkout/switch、forced branch deletion を除外する。write redirect 検出は quote-aware（シングルクォート内の比較演算子としての `>` を誤検知しない）で、`>&<数値fd|->` は fd 複製として background operator 扱いしない。
 
-根拠: `hooks/auto-approve-readonly.sh:23-1093`, `hooks/lib/approval-safety.sh:1-119`, `docs/L3_implementation/hooks/auto_approve_readonly.md`
+セッション ID 解決は `hooks/lib/session-id.sh` を source して行う（`hooks/cleanup-session.sh` と共有）。優先順位は `CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID`（Claude Code のセッション ID env var） → payload の `session_id` → payload の `transcript_path` hash → `CODEX_THREAD_ID` hash → `process-<PPID>` fallback。承認ファイルの解決結果を通知するグローバル共有ポインタファイル（旧 `current-session-approved-path`）は issue #210 で廃止済み。
+
+根拠: `hooks/auto-approve-readonly.sh:1-1057`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`
 
 ### `hooks/lib/approval-safety.sh`
 
 PreToolUse hook で共有する Bash safety helper。system directory 破壊、block device 操作、fork bomb、history rewrite、force push、hard reset、checkout/restore dot、clean、forced branch deletion、stash drop/clear を破壊的操作として検出し、JSON block decision を生成する。Git force predicate は session-approved fast path と destructive guard で共有し、branch deletion は同一 shell segment 内の delete / force option だけを組み合わせる。
 
 根拠: `hooks/lib/approval-safety.sh:1-119`, `docs/L3_implementation/hooks/lib/approval-safety.sh.md`
+
+### `hooks/lib/session-id.sh`
+
+`hooks/auto-approve-readonly.sh` と `hooks/cleanup-session.sh` が共有するセッション ID 解決 helper（`session_id_resolve`/`session_id_sanitize`/`session_id_hash_key`）。両ファイルに重複していたロジックを一本化した。`commands/work.md`/`task.md`/`patch.md`/`docs-sync.md`/`git-pr.md` は任意のユーザープロジェクトディレクトリで実行されるためこのファイルを `source` せず、同じ解決式（`CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID` → `CODEX_THREAD_ID` hash）を各ファイルにインライン展開している。
+
+根拠: `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/lib/session-id.sh.md`
 
 ### `hooks/guard-destructive-cmd.sh`
 
@@ -124,9 +132,9 @@ PreToolUse Bash guard の互換 wrapper。Bash 以外は何も出力せず終了
 
 ### `hooks/cleanup-session.sh`
 
-Stop hook。現在の hook セッションに対応する `session-approved` を削除し、空になった session directory のみ削除する。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）は削除しない。Stop hook はターン終了ごとに発火するため、スキル間（`/task` → `/docs-sync` → `/git-pr`）で temp ファイルが消えてしまう問題を避けるため。`/tmp` の自動クリーンアップ（OS 再起動 / tmpfiles.d）に委ねる。
+Stop hook。`hooks/lib/session-id.sh` を source してセッション ID を解決し、現在の hook セッションに対応する `session-approved` を削除し、空になった session directory のみ削除する。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）は削除しない。Stop hook はターン終了ごとに発火するため、スキル間（`/task` → `/docs-sync` → `/git-pr`）で temp ファイルが消えてしまう問題を避けるため。`/tmp` の自動クリーンアップ（OS 再起動 / tmpfiles.d）に委ねる。
 
-根拠: `hooks/cleanup-session.sh:39-50`
+根拠: `hooks/cleanup-session.sh:1-24`
 
 詳細（生成される中間ファイルと削除タイミング全体）: `docs/L3_implementation/intermediate-files.md`
 

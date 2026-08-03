@@ -23,4 +23,5 @@
 
 ## 変更履歴（git log より自動生成）
 
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 3656e6e docs(#175): add README.md to each module directory

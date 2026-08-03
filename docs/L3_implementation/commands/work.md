@@ -21,8 +21,9 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - report 判定は label name の完全一致とし、類似名による read-only workflow への誤配送を避ける。
 - report routing を実装向け現状調査より前に置き、評価だけを求める issue に implementation planning を適用しない。
 - label 取得に失敗した場合は推測で既存 flow に進まず、安全に停止する。
+- G-0 の前回承認状態クリアは `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出して削除する。以前は `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んで導出していたが、複数セッション同時実行時に他セッションのファイルを誤って参照する競合があったため（issue #210）、共有ファイルを経由しない方式に変更した。
 
-根拠: `commands/work.md:53-68`
+根拠: `commands/work.md:9-24`, `hooks/lib/session-id.sh`
 
 ## 統合ポイント
 
@@ -35,5 +36,18 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 - report routing はユーザーが issue 番号を明示した新規作業で適用される。
 - `/work` 自体の workspace gate は report 判定より先に実行される。
+
+## 変更履歴（git log より自動生成）
+
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
+- 0297a81 feat(#126): add report review workflow
+- 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
+- 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
+- dd29feb feat(#129): store session approvals per session
+- ab4370b fix(#119): explicitly skip Step 3 and jump to Phase 2 on resume
+- 26036e6 fix(#119): reset session-approved at G-0 and route resume to Step 2
+- 83374dc feat(#108): add session-based approval to eliminate double-confirmation prompts
+- 8f2a5fc refactor: update work routing to prioritize issue-based work over docs check
+- ef074ee refactor: replace G-0 branch deletion with git checkout main
 
 根拠: `commands/work.md:7-68`

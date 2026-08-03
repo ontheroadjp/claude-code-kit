@@ -56,7 +56,7 @@ work.md の調査結果を引き継ぎ、プラン策定に必要な情報が不
 - Step 3.2 で作成・更新する L3 per-file doc の絶対パス（`docs/L3_implementation/<source-path>.md`）
 
 ユーザーから OK が出た後:
-1. `current-session-approved-path` を読み、session-approved ファイルに**ツールカテゴリ・実装ファイル・L3 doc パス**を一括書き込みする（1 度だけ）
+1. `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出し、ツールカテゴリ・実装ファイル・L3 doc パスを一括書き込みする（1 度だけ）
 2. issue が未作成の場合は new-issue.md Step 4-5 で自動作成する
 3. issue が作成済みの場合は調査結果・作業プランを issue 本文に追記する
 
@@ -111,6 +111,10 @@ issue を先に作ると「ラフなアイデア段階の issue」が残るリ�
 
 session-approved への追記を hook が block するため、全スコープを確定させてから 1 度だけ書き込む設計になっている。スコープ変更が生じた場合は Step 2 に戻ることで、ユーザーの再承認を必須にする（無断スコープ拡大の防止）。
 
+### session ID を環境変数から直接導出する理由（issue #210）
+
+以前は Step 2 と Phase 2 Step 1 の両方で `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んで `SESSION_ID`/`SESSION_TMP_DIR` を逆算していた。この共有ファイルはセッションでスコープされておらず、複数セッション同時実行時に他セッションの hook 呼び出しで上書きされ、誤ったパスを読み取る競合が発生していた。`$CLAUDE_CODE_SESSION_ID` が hook 側の解決結果と一致することを確認できたため、共有ファイルを経由せず直接導出する方式に変更した。詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md` を参照。
+
 ## 統合ポイント
 
 - 呼び出し元: `commands/work.md`（ルーティング判定後）、`commands/patch.md`（エスカレーション時）
@@ -127,6 +131,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
@@ -135,6 +140,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - aeb0dc4 docs: remove environment-specific cli notes
 - 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
-- dd29feb feat(#129): store session approvals per session
-- 4e742c9 fix(#118): guard session-approved against mid-session scope expansion
-- 83374dc feat(#108): add session-based approval to eliminate double-confirmation prompts

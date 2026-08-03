@@ -93,9 +93,11 @@ Phase 4: 最終報告
 - `docs/L3_implementation/` 配下のファイルは Phase 3 Step 2 の L3 変更履歴更新の対象外（自己参照ループを防ぐ）
 - push・PR 作成は行わない（`/git-pr` が担う）
 - HARD STOP 時は `/init-docs` を実行してから `/task → /docs-sync` をやり直す
+- セッション temp ディレクトリの特定（Phase 1 Step 2、Phase 3 Step 3）は `${STATE_ROOT}/current-session-approved-path`（共有ポインタファイル）を経由せず、`$CLAUDE_CODE_SESSION_ID` から直接導出する（issue #210。複数セッション同時実行時の混線を防ぐため）
 
 ## 変更履歴（git log より自動生成）
 
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 5c9d8f2 feat(#165): extend docs-sync to auto-insert git log into L3 per-file docs
 - 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
@@ -105,4 +107,3 @@ Phase 4: 最終報告
 - 9df2e85 feat(#37): extract commit logic into partials/git-commit.md
 - dfb9eb8 chore: enforce English for issue and PR titles and bodies
 - ebbdebf feat(#21): add L0_concept layer and explicit L2/L3 placement for additional docs
-- fc261f8 feat(#19): add pre-commit privacy/security check to all commands

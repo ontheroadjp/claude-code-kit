@@ -90,11 +90,16 @@ Phase 3: 最終報告
 ※ Step 3 実行前に調査結果・作業プランをユーザーに提示し、明確な許可を得ること（必須）
 
 ユーザーから OK が出た場合:
-    - 以下の Bash コマンドで session-approved ファイルの正確なパスを取得する:
+    - 以下の Bash コマンドで session-approved ファイルの正確なパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接取得し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
       ```bash
-      cat "${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/current-session-approved-path"
+      SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+      if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
+          SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
+      fi
+      SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
+      SESSION_APPROVED_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
       ```
-      ファイルが存在しない場合（hook が未実行のケース）はスキップして Step 3 へ進む。
+      セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 3 へ進む。
     - Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容（1行1エントリ）:
         - 利用ツールカテゴリ（例: `tool:git_write`）
         - 新規作成・編集ファイルの絶対パス（例: `file:/abs/path/to/file.md`）
@@ -150,10 +155,13 @@ Phase 3: 最終報告
 
 #### Step 1. PR 本文・タイトルの準備
 
-セッション temp ディレクトリを特定する:
+セッション temp ディレクトリを特定する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決する）:
 ```bash
-APPROVED_PATH=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/current-session-approved-path" 2>/dev/null)
-SESSION_ID=$(basename "$(dirname "$APPROVED_PATH")" 2>/dev/null)
+SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
+    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
+fi
+SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
 SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 mkdir -p "$SESSION_TMP_DIR"
 ```

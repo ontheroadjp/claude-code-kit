@@ -20,18 +20,20 @@ SESSION_TMP_DIR（`/tmp/claude-code-kit/<SESSION_ID>/`）は削除しない。`/
 
 ## SESSION_ID 導出ロジック
 
-```bash
-resolve_session_id() {
-    # 優先順位:
-    # 1. CLAUDE_CODE_KIT_SESSION_ID 環境変数
-    # 2. payload JSON の session_id（Claude Code が UUID で提供）
-    # 3. transcript_path の sha256sum 先16文字
-    # 4. CODEX_THREAD_ID の sha256sum 先16文字
-    # 5. fallback: process-${PPID:-$$}（弱い。session-approved を書かない）
-}
+`hooks/lib/session-id.sh` の `session_id_resolve`（`hooks/auto-approve-readonly.sh` と共有）を `source` して使う。優先順位:
+
+```
+1. CLAUDE_CODE_KIT_SESSION_ID 環境変数
+2. CLAUDE_CODE_SESSION_ID 環境変数（Claude Code のセッション ID）
+3. payload JSON の session_id（Claude Code が UUID で提供）
+4. transcript_path の sha256sum 先16文字
+5. CODEX_THREAD_ID の sha256sum 先16文字
+6. fallback: process-${PPID:-$$}（弱い。session-approved を書かない）
 ```
 
-根拠: `hooks/cleanup-session.sh:9-35`
+詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md` を参照。
+
+根拠: `hooks/cleanup-session.sh:7-16`, `hooks/lib/session-id.sh`
 
 ## 重要な設計判断
 
@@ -55,8 +57,9 @@ Stop hook はターン終了ごとに発火するため、`/task` → `/docs-syn
 ## 注意事項
 
 - Stop hook はターン終了ごとに発火する（セッション終了専用ではない）
-- fallback (`process-${PPID}`) の場合は `current-session-approved-path` を書かず、`session-approved` も削除対象にならない（スキップ扱い）
+- fallback (`process-${PPID}`) の場合、`session-approved` も削除対象にならない（スキップ扱い）
 - `rmdir` は空ディレクトリのみ削除。sessions ディレクトリに他のセッションのファイルが残っていれば失敗するが、`|| true` で無視する
+- issue #210 により `${STATE_ROOT}/current-session-approved-path`（グローバル共有ポインタファイル）への書き込みは廃止された。詳細は `docs/L3_implementation/hooks/auto_approve_readonly.md` の「グローバル共有ポインタファイルの廃止」を参照
 
 ## 変更履歴（git log より自動生成）
 
