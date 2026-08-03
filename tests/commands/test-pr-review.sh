@@ -82,6 +82,8 @@ assert_absent "$PR_REVIEW" 'base-sha.txt' 'per-round base SHA drift files were r
 # --- commands/pr-review-exec.md: reviewer-only self-contained contract ---
 
 assert_contains "$PR_REVIEW_EXEC" 'REVIEW_TOKEN' 'pr-review-exec requires a review token'
+assert_contains "$PR_REVIEW_EXEC" 'export GH_TOKEN="$REVIEW_TOKEN"' 'pr-review-exec exports GH_TOKEN once instead of prefixing every gh call inline'
+assert_absent "$PR_REVIEW_EXEC" 'GH_TOKEN="$REVIEW_TOKEN" gh' 'inline GH_TOKEN prefixes on gh calls were removed (they break Bash allowlist pattern matching)'
 assert_contains "$PR_REVIEW_EXEC" 'GH_REPO' 'pr-review-exec requires an explicit target repo (cwd may not be inside the repo)'
 assert_contains "$PR_REVIEW_EXEC" '--repo "$GH_REPO"' 'pr-review-exec passes --repo explicitly on every gh pr command'
 assert_contains "$PR_REVIEW_EXEC" 'REPO_ROOT' 'pr-review-exec resolves CLAUDE.md/AGENTS.md relative to an explicit repo root'

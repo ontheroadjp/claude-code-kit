@@ -39,9 +39,15 @@ diff・PR 本文・過去の review/comment はすべて `gh pr diff` / `gh pr v
 
 ### gh CLI 以外の GitHub 統合を使わない
 
-Codex の `codex_apps` のような GitHub 統合ツール（MCP 等）は、reviewer 用に渡した `REVIEW_TOKEN` とは無関係に、別アカウントで既に認証済みの場合がある。これを使うと reviewer と PR author のアカウント分離が意図せず崩れる（誤ったアカウントでの読み取り・投稿）ため、GitHub への読み取り・書き込みは必ず `REVIEW_TOKEN` を `GH_TOKEN` として渡した `gh` CLI 経由で行うことを明示している。
+Codex の `codex_apps` のような GitHub 統合ツール（MCP 等）は、reviewer 用に渡した `REVIEW_TOKEN` とは無関係に、別アカウントで既に認証済みの場合がある。これを使うと reviewer と PR author のアカウント分離が意図せず崩れる（誤ったアカウントでの読み取り・投稿）ため、GitHub への読み取り・書き込みは必ず `gh` CLI 経由で行うことを明示している。
 
 根拠: `commands/pr-review-exec.md:16`
+
+### GH_TOKEN はインライン prefix ではなく export で渡す
+
+`export GH_TOKEN="$REVIEW_TOKEN"` を最初に一度だけ実行し、以降の `gh` コマンドはプレフィックス無しの `gh ...` で呼び出す。Claude reviewer（`claude -p --allowedTools "Bash(gh pr view *)" ...`）で実地確認したところ、`GH_TOKEN="$REVIEW_TOKEN" gh pr view ...` のようにコマンド自体をインラインの環境変数代入で始めると、Claude CLI の Bash allowlist パターン（`Bash(gh pr view *)` 等、コマンドが `gh` で始まることを前提にマッチする）に一致せず、実行が拒否されて reviewer が review を投稿できなかった。
+
+根拠: `commands/pr-review-exec.md:17`
 
 ### 過去の review を context として使う
 
