@@ -51,5 +51,6 @@ Facts の再現性を担保するため、集計はすべて決定的な正規�
 
 ## 変更履歴（git log より自動生成）
 
+- 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - 8d0793a feat(#214): track per-session redundant file reads in /analyze-access
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

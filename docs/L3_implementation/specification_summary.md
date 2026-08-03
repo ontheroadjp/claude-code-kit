@@ -26,21 +26,21 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/analyze-access` (`commands/analyze-access.md`)
 
-`logs/access/*.log` を `scripts/analyze_access.py` で集計し、その JSON のみを Facts の根拠として Assessment/Opinions/Proposals/Risks and Unknowns を分離したレポートを提示する read-only workflow。生ログは直接 Read しない。唯一の書き込みは `logs/reports/access/` 配下への新規 HTML レポートである。
+`logs/access/*.log` を `scripts/analyze_access.py` で集計し、その JSON のみを根拠に KPIダッシュボード（Primary KPI: 重複読み込みによる推定ロス率 `redundant_access_waste.estimated_waste_ratio_pct`）→ Key Findings & Proposals → Evidence（裏付けデータ）→ Risks and Unknowns の順で構成したレポートを提示する read-only workflow。生ログは直接 Read しない。唯一の書き込みは `logs/reports/access/` 配下への新規 HTML レポートである。
 
-根拠: `commands/analyze-access.md:1-77`
+根拠: `commands/analyze-access.md:1-85`
 
 ### `/analyze-auto-approve` (`commands/analyze-auto-approve.md`)
 
-`logs/auto-approve/*.log` を `scripts/analyze_auto_approve.py` で集計し、result（approved/blocked/user_prompt）・tool・agent 別内訳と上位パターンを Facts として提示する read-only workflow。`hooks/auto-approve-readonly.sh` 自体は変更せず、改善案は Proposals として提示するに留める。唯一の書き込みは `logs/reports/auto-approve/` 配下への新規 HTML レポートである。
+`logs/auto-approve/*.log` を `scripts/analyze_auto_approve.py` で集計し、KPIダッシュボード（Primary KPI: 全体の自動承認率 `result_ratio_pct.approved`、および `/work` パイプラインの定型処理（git/gh write系操作）のユーザー確認率 `routine_ops.result_ratio_pct.user_prompt`）→ Key Findings & Proposals → Evidence → Risks and Unknowns の順で構成したレポートを提示する read-only workflow。`routine_ops` は `hooks/auto-approve-readonly.sh` の `check_session_approved()` が認識する git/gh write系コマンド形状で分類し、まだ user_prompt に落ちている定型処理パターンを列挙する。`hooks/auto-approve-readonly.sh` 自体は変更せず、改善案は Proposals として提示するに留める。唯一の書き込みは `logs/reports/auto-approve/` 配下への新規 HTML レポートである。
 
-根拠: `commands/analyze-auto-approve.md:1-74`
+根拠: `commands/analyze-auto-approve.md:1-90`
 
 ### `/analyze-token-usage` (`commands/analyze-token-usage.md`)
 
-`logs/token-usage/*.log` を `scripts/analyze_token_usage.py` で集計し、コスト・トークン・モデル別/プロジェクト別内訳を Facts として提示する read-only workflow。同ログはセッションごとに累積値が毎ターン追記される形式のため、スクリプト側でセッションIDごとの最終行のみを集計に用いる。唯一の書き込みは `logs/reports/token-usage/` 配下への新規 HTML レポートである。
+`logs/token-usage/*.log` を `scripts/analyze_token_usage.py` で集計し、KPIダッシュボード（Primary KPI: セッション横断の平均キャッシュ効率 `avg_cache_ratio`）→ Key Findings & Proposals → Evidence → Risks and Unknowns の順で構成したレポートを提示する read-only workflow。同ログはセッションごとに累積値が毎ターン追記される形式のため、スクリプト側でセッションIDごとの最終行のみを集計に用いる。唯一の書き込みは `logs/reports/token-usage/` 配下への新規 HTML レポートである。
 
-根拠: `commands/analyze-token-usage.md:1-72`
+根拠: `commands/analyze-token-usage.md:1-90`
 
 ### `/task` (`commands/task.md`)
 
