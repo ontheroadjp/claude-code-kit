@@ -35,4 +35,4 @@
 
 ## 変更履歴（git log より自動生成）
 
-（新規追加）
+- 14b4255 refactor(#203): decouple pr-review reviewer execution into pr-review-exec
