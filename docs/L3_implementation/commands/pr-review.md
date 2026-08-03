@@ -117,6 +117,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 ## 変更履歴（git log より自動生成）
 
+- b128570 fix(#201): measure trivial-fix line counts before commit and align L3 doc with source of truth
 - 9d2d38f fix(#201): guard incremental pr-review diff against base drift and mode-selection ambiguity
 - ad8e042 feat(#201): scope pr-review rounds to incremental diff and add trivial-fix confirm-only mode
 - cbe90ba fix(#187): refresh pr base before each review round

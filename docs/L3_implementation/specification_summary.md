@@ -84,7 +84,7 @@ round 1 は PR 全体 diff を reviewer に渡すが、round 2 以降は直前�
 
 blocking finding は元 agent が session-approved 内で検証・修正し、最大3ラウンド再レビューする。`AI_REVIEW_TOKEN`（または互換 fallback の `CODEX_REVIEW_TOKEN`）は PR author と異なる GitHub account でなければならない。merge、branch 削除、main checkout/pull は行わず、人間の merge 待ちで終了する。
 
-根拠: `commands/pr-review.md:1-228`
+根拠: `commands/pr-review.md:1-229`
 
 ### `/coding-*` (`commands/coding-*.md`)
 
