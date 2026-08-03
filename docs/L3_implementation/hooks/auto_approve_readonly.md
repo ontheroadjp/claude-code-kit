@@ -13,19 +13,28 @@
 
 ## セッションと実行元の解決
 
-session ID は次の優先順で解決し、英数字・`.`・`_`・`-` 以外を `_` に置換する。
+session ID の解決は `hooks/lib/session-id.sh` の `session_id_resolve` に一本化されている（`hooks/cleanup-session.sh` とも共有）。次の優先順で解決し、英数字・`.`・`_`・`-` 以外を `_` に置換する。
 
 1. `CLAUDE_CODE_KIT_SESSION_ID`
-2. payload の `session_id`
-3. payload の `transcript_path` を hash 化した ID
-4. `CODEX_THREAD_ID` を hash 化した ID
-5. `process-<PPID>` fallback
+2. `CLAUDE_CODE_SESSION_ID`（Claude Code のセッション ID。hook プロセスだけでなく、Bash tool が実行するシェルにも渡る）
+3. payload の `session_id`
+4. payload の `transcript_path` を hash 化した ID
+5. `CODEX_THREAD_ID` を hash 化した ID
+6. `process-<PPID>` fallback
 
-承認ファイルの既定値は `${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/<session-id>/session-approved`、一時領域の既定値は `/tmp/claude-code-kit/<session-id>/` である。process fallback 以外では承認ファイルの解決結果を `current-session-approved-path` に通知する。
+承認ファイルの既定値は `${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/<session-id>/session-approved`、一時領域の既定値は `/tmp/claude-code-kit/<session-id>/` である。
 
 Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAGED_BY_BUN`、`CODEX_CI`、`CODEX_THREAD_ID` で判定する。それ以外は Claude とする。
 
-根拠: `hooks/auto-approve-readonly.sh:8-81`
+根拠: `hooks/auto-approve-readonly.sh:8-45`, `hooks/lib/session-id.sh`
+
+### グローバル共有ポインタファイルの廃止（issue #210）
+
+以前は承認ファイルの解決結果を `${STATE_ROOT}/current-session-approved-path` という**セッションでスコープされないグローバル単一ファイル**に書き出し、`commands/work.md`/`task.md`/`patch.md`/`docs-sync.md`/`git-pr.md` がそれを読んで自セッションの `SESSION_ID`/`SESSION_TMP_DIR` を逆算していた。複数セッションが同時に走ると、直近に hook を発火させたセッションがこのファイルを上書きし、他方のセッションが誤ったパスを読み取る競合が発生していた（issue #208 の作業中に別 repo の並行セッションと衝突する形で再現）。
+
+`$CLAUDE_CODE_SESSION_ID` が hook の解決結果と完全一致することを実機で確認できたため、コマンド側は共有ファイルを経由せず環境変数から直接 `SESSION_ID` を導出するよう変更し、このポインタファイルへの書き込みは完全に削除した（読み手が存在しなくなったため）。詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md` を参照。
+
+根拠: `hooks/lib/session-id.sh:1-38`, `tests/hooks/test-approval-hooks.sh`（Concurrent-session isolation regression test）
 
 ## 判定順序
 

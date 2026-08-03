@@ -56,7 +56,7 @@ work.md の調査結果を引き継ぎ、プラン策定に必要な情報が不
 - Step 3.2 で作成・更新する L3 per-file doc の絶対パス（`docs/L3_implementation/<source-path>.md`）
 
 ユーザーから OK が出た後:
-1. `current-session-approved-path` を読み、session-approved ファイルに**ツールカテゴリ・実装ファイル・L3 doc パス**を一括書き込みする（1 度だけ）
+1. `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出し、ツールカテゴリ・実装ファイル・L3 doc パスを一括書き込みする（1 度だけ）
 2. issue が未作成の場合は new-issue.md Step 4-5 で自動作成する
 3. issue が作成済みの場合は調査結果・作業プランを issue 本文に追記する
 
@@ -110,6 +110,10 @@ issue を先に作ると「ラフなアイデア段階の issue」が残るリ�
 ### session-approved を Step 2 で 1 度だけ書き込む理由
 
 session-approved への追記を hook が block するため、全スコープを確定させてから 1 度だけ書き込む設計になっている。スコープ変更が生じた場合は Step 2 に戻ることで、ユーザーの再承認を必須にする（無断スコープ拡大の防止）。
+
+### session ID を環境変数から直接導出する理由（issue #210）
+
+以前は Step 2 と Phase 2 Step 1 の両方で `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んで `SESSION_ID`/`SESSION_TMP_DIR` を逆算していた。この共有ファイルはセッションでスコープされておらず、複数セッション同時実行時に他セッションの hook 呼び出しで上書きされ、誤ったパスを読み取る競合が発生していた。`$CLAUDE_CODE_SESSION_ID` が hook 側の解決結果と一致することを確認できたため、共有ファイルを経由せず直接導出する方式に変更した。詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md` を参照。
 
 ## 統合ポイント
 

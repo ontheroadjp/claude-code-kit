@@ -12,6 +12,7 @@ TEST_REPO_DIR="${TMP_DIR}/repo"
 mkdir -p "${TEST_REPO_DIR}/hooks/lib"
 cp "${REPO_DIR}/hooks/auto-approve-readonly.sh" "${TEST_REPO_DIR}/hooks/auto-approve-readonly.sh"
 cp "${REPO_DIR}/hooks/lib/approval-safety.sh" "${TEST_REPO_DIR}/hooks/lib/approval-safety.sh"
+cp "${REPO_DIR}/hooks/lib/session-id.sh" "${TEST_REPO_DIR}/hooks/lib/session-id.sh"
 AUTO_HOOK="${TEST_REPO_DIR}/hooks/auto-approve-readonly.sh"
 LOG_FILE="${TEST_REPO_DIR}/logs/auto-approve/$(date '+%Y-%m').log"
 SESSION_FILE="${TMP_DIR}/session-approved"
@@ -59,7 +60,9 @@ run_auto_codex_symlink() {
 run_cleanup() {
     local session_id="$1"
     jq -cn --arg session_id "$session_id" '{session_id:$session_id}' \
-        | CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
+        | env -u CLAUDE_CODE_KIT_SESSION_ID -u CLAUDE_CODE_SESSION_ID \
+            -u CODEX_THREAD_ID \
+            CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
             CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
             bash "$CLEANUP_HOOK"
 }
@@ -67,7 +70,7 @@ run_cleanup() {
 run_auto_without_session() {
     local command="$1"
     jq -cn --arg command "$command" '{tool_name:"Bash",tool_input:{command:$command}}' \
-        | env -u CLAUDE_CODE_KIT_SESSION_ID \
+        | env -u CLAUDE_CODE_KIT_SESSION_ID -u CLAUDE_CODE_SESSION_ID \
             -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
             CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
             bash "$AUTO_HOOK"
@@ -719,6 +722,62 @@ if ! printf '%s' "$multibyte_log_line" | grep -qE 'result=approved[[:space:]]+to
 fi
 if ! printf '%s' "$multibyte_log_line" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1; then
     printf 'Multibyte log line contains invalid UTF-8: %s\n' "$multibyte_log_line" >&2
+    exit 1
+fi
+
+# --- Concurrent-session isolation regression test (issue #210) ---
+# Before the fix, both the hook and commands/*.md derived SESSION_ID by reading
+# one shared, unscoped ${STATE_ROOT}/current-session-approved-path file, so
+# whichever session's hook ran last "won" that file and a concurrent session's
+# later read could resolve the wrong session's path. The fix derives SESSION_ID
+# directly from $CLAUDE_CODE_SESSION_ID (mirroring what commands/*.md now do)
+# instead of reading any shared file, so this collision must no longer be
+# reproducible, and the shared pointer file must never be written at all.
+CONCURRENT_STATE_ROOT="${TMP_DIR}/state-concurrent"
+SESSION_A_ID="session-A-fixed"
+SESSION_B_ID="session-B-fixed"
+SESSION_A_APPROVED="${CONCURRENT_STATE_ROOT}/sessions/${SESSION_A_ID}/session-approved"
+SESSION_B_APPROVED="${CONCURRENT_STATE_ROOT}/sessions/${SESSION_B_ID}/session-approved"
+
+run_auto_write_as() {
+    local id="$1" file_path="$2" content="$3"
+    jq -cn --arg file_path "$file_path" --arg content "$content" \
+        '{tool_name:"Write",tool_input:{file_path:$file_path,content:$content}}' \
+        | env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
+            -u CLAUDE_CODE_KIT_SESSION_ID -u CLAUDE_CODE_KIT_SESSION_APPROVED_FILE \
+            CLAUDE_CODE_SESSION_ID="$id" \
+            CLAUDE_CODE_KIT_STATE_HOME="$CONCURRENT_STATE_ROOT" \
+            CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
+            bash "$AUTO_HOOK"
+}
+
+# Interleave A's hook firing, then B's, then A's again — this ordering is
+# exactly when the removed shared pointer file used to get overwritten by B
+# and mislead a subsequent read done on behalf of A.
+# Note: the hook only emits an approval decision, it never performs the Write
+# itself (the real Write tool would do that after receiving "approve"), so
+# these checks assert on the decision only, not on-disk file state.
+output=$(run_auto_write_as "$SESSION_A_ID" "$SESSION_A_APPROVED" "tool:git_write")
+assert_json_decision "$output" "approve"
+output=$(run_auto_write_as "$SESSION_B_ID" "$SESSION_B_APPROVED" "tool:git_write")
+assert_json_decision "$output" "approve"
+output=$(run_auto_write_as "$SESSION_A_ID" "$SESSION_A_APPROVED" "tool:git_write")
+assert_json_decision "$output" "approve"
+
+# Session A must never be auto-approved to write into session B's file (proves
+# the two sessions resolve to genuinely different, non-colliding paths).
+cross_output=$(run_auto_write_as "$SESSION_A_ID" "$SESSION_B_APPROVED" "tool:git_write")
+if [ -n "$cross_output" ]; then
+    cross_decision=$(printf '%s' "$cross_output" | jq -r '.decision // empty')
+    if [ "$cross_decision" = "approve" ] || [ "$cross_decision" = "allow" ]; then
+        printf 'session A was auto-approved to write into session B session-approved file\n' >&2
+        exit 1
+    fi
+fi
+
+# The removed global pointer file must never be recreated by the hook.
+if [ -e "${CONCURRENT_STATE_ROOT}/current-session-approved-path" ]; then
+    printf 'current-session-approved-path was recreated; the shared pointer file must stay removed\n' >&2
     exit 1
 fi
 

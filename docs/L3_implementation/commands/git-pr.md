@@ -29,12 +29,15 @@ Step 7: 結果報告（PR URL。ここでフロー完結）
 ### SESSION_TMP_DIR の導出
 
 ```bash
-APPROVED_PATH=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/current-session-approved-path" 2>/dev/null)
-SESSION_ID=$(basename "$(dirname "$APPROVED_PATH")" 2>/dev/null)
+SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
+    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
+fi
+SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
 SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 ```
 
-`current-session-approved-path` はセッション開始時に hook が書き込むポインタファイル。そのディレクトリ名がセッション ID であり、temp ディレクトリのパスを一意に決定する。
+`$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの ID を直接導出する。以前は `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んでディレクトリ名からセッション ID を逆算していたが、複数セッション同時実行時に他セッションのファイルを誤って参照する競合があったため（issue #210）、共有ファイルを経由しない方式に変更した。詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md` を参照。
 
 ### temp ファイルの優先順位
 

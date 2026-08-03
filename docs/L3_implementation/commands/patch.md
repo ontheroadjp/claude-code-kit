@@ -42,7 +42,7 @@ work.md の調査結果を引き継ぎ、プラン確認に必要な情報が不
 - 新規作成・編集ファイルの絶対パス
 
 ユーザーから OK が出た後:
-1. `current-session-approved-path` を読み、session-approved に `tool:git_write` と対象ファイルの絶対パスを書き込む（1 度だけ）
+1. `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出し、`tool:git_write` と対象ファイルの絶対パスを書き込む（1 度だけ）
 
 根拠: `commands/patch.md:21-40`
 
@@ -116,3 +116,4 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 
 - session-approved への追記は hook がブロックするため、Step 2 で全スコープを確定させてから 1 度だけ書き込む
 - patch フローに issue・PR は不要。ユーザーが手動で ff-merge する設計（軽量さを保つため）
+- session ID は `${STATE_ROOT}/current-session-approved-path`（共有ポインタファイル）を経由せず、`$CLAUDE_CODE_SESSION_ID` から直接導出する（issue #210。複数セッション同時実行時の混線を防ぐため）

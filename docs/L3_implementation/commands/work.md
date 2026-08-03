@@ -21,8 +21,9 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - report 判定は label name の完全一致とし、類似名による read-only workflow への誤配送を避ける。
 - report routing を実装向け現状調査より前に置き、評価だけを求める issue に implementation planning を適用しない。
 - label 取得に失敗した場合は推測で既存 flow に進まず、安全に停止する。
+- G-0 の前回承認状態クリアは `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出して削除する。以前は `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んで導出していたが、複数セッション同時実行時に他セッションのファイルを誤って参照する競合があったため（issue #210）、共有ファイルを経由しない方式に変更した。
 
-根拠: `commands/work.md:53-68`
+根拠: `commands/work.md:9-24`, `hooks/lib/session-id.sh`
 
 ## 統合ポイント
 
