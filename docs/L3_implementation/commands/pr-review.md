@@ -90,7 +90,7 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 
 - 自動呼び出し元: `commands/git-pr.md` Step 8
 - 手動呼び出し: `/pr-review #<PR番号>`
-- reviewer 実行委譲先: `commands/pr-review-exec.md`（`codex exec --sandbox workspace-write` または `claude -p --tools "Read,Bash"` から実行される）
+- reviewer 実行委譲先: `commands/pr-review-exec.md`（`codex exec --dangerously-bypass-approvals-and-sandbox` または `claude -p --tools "Read,Bash"` から実行される）
 - commit/docs: `/git-commit`、必要な場合は `/docs-sync`
 - GitHub: `gh pr view`、`gh pr checkout`、`gh api user`
 - 一時ファイル: `/tmp/claude-code-kit/<session-id>/pr-review-<PR番号>/`（reviewer subprocess の scratch ディレクトリと起動ログのみ）
@@ -103,7 +103,8 @@ AI に review と修正の反復を任せつつ、main への統合は人間の�
 - 投稿された review の `commitId` が現在の `headRefOid` と一致しない場合も `FAILED` で終了する
 - PR merge、close、branch 削除、main 同期は行わない
 - 3ラウンドで収束しない finding は人間判断へ返す
-- Codex reviewer の `workspace-write` + `network_access=true` の組み合わせで実際に `gh` のネットワーク呼び出しが通るかは、実 PR を使った実地確認が必要（このリポジトリのテストは静的 contract test のみで、実際の CLI 実行は検証しない）
+- Codex reviewer は `--dangerously-bypass-approvals-and-sandbox` で実行されるため、OS レベルの隔離はない。安全境界は `pr-review-exec.md` に明記された指示（ファイル編集・他コマンド呼び出し・gh CLI 以外の GitHub 統合を行わない）への準拠のみに依存する。実地確認（PR #204 ラウンド2）で reviewer 自身がこの点を blocking finding として指摘しており、より強い隔離（OS sandbox・container・tool allowlist）が必要かはユーザー判断待ち
+- reviewer は diff 取得時の `headRefOid` を `REVIEWED_HEAD_SHA` として記録し、投稿直前に再取得した現在の `headRefOid` と比較する（`commands/pr-review-exec.md` Step 4）。一致しない場合は投稿せず終了する。この検証は `pr-review-exec.md` 内で完結し、orchestrator 側の `commitId == headRefOid` 確認（Step 4.3）とは独立した保護である
 
 ## 変更履歴（git log より自動生成）
 

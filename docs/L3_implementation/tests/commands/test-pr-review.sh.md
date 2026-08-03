@@ -17,7 +17,7 @@
 - 最大3ラウンド
 - Claude/Codex の相互 routing、reviewer token の優先順位（`AI_REVIEW_TOKEN` → `CODEX_REVIEW_TOKEN`）
 - reviewer identity の検証
-- Codex reviewer が `--sandbox workspace-write` + `sandbox_workspace_write.network_access=true` + `--skip-git-repo-check`（scratch cwd）で実行されること
+- Codex reviewer が `--dangerously-bypass-approvals-and-sandbox` + `--skip-git-repo-check`（scratch cwd）で実行され、`workspace-write` サンドボックスに依存しないこと。orchestrator が `GH_REPO_FULL_NAME` を解決すること
 - Claude reviewer が `Read` と `gh pr diff` / `gh pr view` / `gh pr review` に限定した `Bash` だけを持ち、`Edit`/`Write` を持たないこと
 - orchestrator が `commands/pr-review-exec.md` へレビュー実行を委譲すること
 - reviewer が実際に新規 review を投稿したか（`PREV_REVIEW_ID`）、投稿された review の `commitId` が現在の `headRefOid` と一致するかを orchestrator が確認すること
@@ -47,7 +47,7 @@
 ## 注意事項・既知の制限
 
 - 静的 contract test であり、外部 CLI や GitHub API の実通信は行わない
-- Codex reviewer の `workspace-write` + `network_access=true` の組み合わせが実際に `gh` のネットワーク呼び出しを通すかどうかは、このテストでは検証できない（実 PR を使った実地確認が別途必要）
+- `--dangerously-bypass-approvals-and-sandbox` は OS レベルの隔離を提供しないため、reviewer subprocess の安全境界が `pr-review-exec.md` の指示への準拠のみに依存する点、および reviewer の diff 取得〜投稿間の commit drift が未対応である点は、静的 contract test では検出できない
 - 文言変更時は意図した契約変更か確認して test pattern も更新する
 
 ## 変更履歴（git log より自動生成）

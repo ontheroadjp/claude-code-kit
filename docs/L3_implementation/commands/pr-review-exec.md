@@ -47,6 +47,10 @@ Codex の `codex_apps` のような GitHub 統合ツール（MCP 等）は、rev
 
 `gh pr view --json ...,comments,reviews` で取得した過去の review・comment を、直前ラウンドで指摘した blocking finding が今回の diff で解消されているかどうかの判断材料に使う。専用の「confirm-only モード」のような特別扱いはせず、常にフルの diff とレビュー判断を行う。
 
+### 投稿直前に HEAD の変化を検出する
+
+Step 1 で PR 状態を取得した際の `headRefOid` を `REVIEWED_HEAD_SHA` として保持し、Step 4 で投稿する直前に現在の `headRefOid` を再取得して比較する。diff を読んでからレビュー判断を下すまでの間（LLM の推論時間を含む）に別 commit が push される可能性があり、これを検出せずに投稿すると「古い diff を根拠にしたレビューが新しい HEAD に紐づく」という不整合が生じる。一致しない場合は投稿せず終了し、呼び出し元に再実行を促す。
+
 根拠: `commands/pr-review-exec.md:31-52`
 
 ## 重要な設計判断

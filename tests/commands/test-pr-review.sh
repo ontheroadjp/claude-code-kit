@@ -82,6 +82,8 @@ assert_contains "$PR_REVIEW_EXEC" 'GH_REPO' 'pr-review-exec requires an explicit
 assert_contains "$PR_REVIEW_EXEC" '--repo "$GH_REPO"' 'pr-review-exec passes --repo explicitly on every gh pr command'
 assert_contains "$PR_REVIEW_EXEC" 'REPO_ROOT' 'pr-review-exec resolves CLAUDE.md/AGENTS.md relative to an explicit repo root'
 assert_contains "$PR_REVIEW_EXEC" 'codex_apps' 'pr-review-exec forbids GitHub integrations other than the gh CLI (wrong-identity risk)'
+assert_contains "$PR_REVIEW_EXEC" 'REVIEWED_HEAD_SHA' 'pr-review-exec records the head SHA it reviewed'
+assert_contains "$PR_REVIEW_EXEC" '一致しない場合' 'pr-review-exec refuses to post if the head changed since it fetched the diff'
 assert_contains "$PR_REVIEW_EXEC" 'gh pr diff' 'pr-review-exec fetches its own diff'
 assert_contains "$PR_REVIEW_EXEC" '--approve' 'pr-review-exec can post an approval'
 assert_contains "$PR_REVIEW_EXEC" '--request-changes' 'pr-review-exec can post a change request'

@@ -26,10 +26,11 @@
 ## Step 1: PR の状態確認
 
 ```bash
-GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --repo "$GH_REPO" --json number,url,title,body,state,headRefName,baseRefName
+GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --repo "$GH_REPO" --json number,url,title,body,state,headRefName,baseRefName,headRefOid
 ```
 
 - PR が存在しない、または `state` が `OPEN` でない場合: その旨を報告して終了する（review を投稿しない）
+- 取得した `headRefOid` を `REVIEWED_HEAD_SHA` として保持する（Step 4 で投稿直前の再確認に使う）
 
 ## Step 2: レビュー材料の取得
 
@@ -52,7 +53,15 @@ GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --repo "$GH_REPO" --json title,bo
 
 ## Step 4: GitHub への投稿
 
-review 本文には、判定結果の要約と finding の一覧（blocking / suggestion を区別する）を含める。
+投稿直前に現在の HEAD を再確認する:
+
+```bash
+GH_TOKEN="$REVIEW_TOKEN" gh pr view <PR番号> --repo "$GH_REPO" --json headRefOid --jq '.headRefOid'
+```
+
+取得した値が `REVIEWED_HEAD_SHA`（Step 1 で記録）と一致しない場合: レビュー対象の diff を取得した後に新しい commit が push されたことを意味する。この場合は review を投稿せず、「対象 PR の HEAD が review 中に変化したため投稿を中止しました。再実行が必要です」と報告して終了する。
+
+一致する場合、review 本文には判定結果の要約と finding の一覧（blocking / suggestion を区別する）を含める。
 
 APPROVE の場合:
 
