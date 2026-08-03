@@ -19,15 +19,16 @@ Step 4: logs/reports/access/<target>_<timestamp>.html を新規作成
 Step 5: 標準出力へレポートパスと要約を提示
 ```
 
-根拠: `commands/analyze-access.md:14-73`
+根拠: `commands/analyze-access.md:14-77`
 
 ## 主要な判定ロジック・フロー
 
 - ログの生データ（数千行になり得る）は直接 Read しない。数値の根拠は `scripts/analyze_access.py` が出力する JSON のみとし、AI 側での再集計・推測を禁止する
 - スクリプトが非ゼロ終了した場合（対象月のログが存在しない等）はエラーをそのままユーザーに報告して終了する
 - HTML レポートは外部リソース参照なしの単一自己完結ファイルとし、末尾に raw JSON を `<details>` で埋め込んで監査可能にする
+- Step 2 の Facts には、全セッション横断で合算した `top_duplicate_files` に加え、同一セッション内の無駄な再読み込みを特定するための `redundant_accesses_total` / `sessions_with_duplicates` / `sessions_with_duplicates_ratio` / `top_redundant_sessions` を含める。`top_redundant_sessions` は Step 4 の HTML で日時・指示内容・無駄な再読み込み回数・重複ファイル一覧を1行とする表として描画する
 
-根拠: `commands/analyze-access.md:16-24`, `commands/analyze-access.md:33-63`
+根拠: `commands/analyze-access.md:16-24`, `commands/analyze-access.md:36-46`, `commands/analyze-access.md:68-73`
 
 ## 重要な設計判断とその理由
 
@@ -50,3 +51,4 @@ Facts（決定的な集計）と Opinions/Proposals（AI の解釈）を明確�
 ## 変更履歴（git log より自動生成）
 
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands
+- feat(#214): document the redundant-read Facts fields (`redundant_accesses_total` / `sessions_with_duplicates` / `sessions_with_duplicates_ratio` / `top_redundant_sessions`) and their HTML table rendering

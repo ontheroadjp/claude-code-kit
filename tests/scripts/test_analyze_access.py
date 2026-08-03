@@ -60,7 +60,33 @@ SESSION_2 = textwrap.dedent(
     """
 )
 
-LOG_CONTENT = "\n---\n\n" + SESSION_1 + "\n---\n\n" + SESSION_2
+SESSION_3 = textwrap.dedent(
+    """\
+    [日時]
+    2026.08.03 10.00
+
+    [ユーザーからの指示内容]
+    Reread the same file too many times
+
+    [アクセスサマリ]
+    総アクセス数: 5
+    重複アクセス:
+      - /path/d (3回)
+      - /path/a (2回)
+
+    [フェーズ別アクセス順序]
+    [work] 5件
+      #1  Read  /path/d
+      #2  Read  /path/d
+      #3  Read  /path/d
+      #4  Read  /path/a
+      #5  Read  /path/a
+
+    [修正したファイル]
+    """
+)
+
+LOG_CONTENT = "\n---\n\n" + SESSION_1 + "\n---\n\n" + SESSION_2 + "\n---\n\n" + SESSION_3
 
 
 def write_log(tmp_path: Path, month: str, content: str) -> None:
@@ -71,7 +97,7 @@ def write_log(tmp_path: Path, month: str, content: str) -> None:
 
 def test_split_blocks_returns_one_block_per_session() -> None:
     blocks = analyze_access.split_blocks(LOG_CONTENT)
-    assert len(blocks) == 2
+    assert len(blocks) == 3
 
 
 def test_parse_session_extracts_summary_and_token_usage() -> None:
@@ -107,16 +133,42 @@ def test_aggregate_across_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     sessions = analyze_access.load_sessions(["2026-08"])
     result = analyze_access.aggregate(["2026-08"], sessions)
 
-    assert result["session_count"] == 2
-    assert result["total_accesses"] == 5
-    assert result["zero_modified_sessions"] == 1
-    assert result["zero_modified_ratio"] == 0.5
-    assert result["top_duplicate_files"] == [{"path": "/path/a", "count": 2}]
+    assert result["session_count"] == 3
+    assert result["total_accesses"] == 10
+    assert result["zero_modified_sessions"] == 2
+    assert result["zero_modified_ratio"] == 0.667
+    assert result["top_duplicate_files"] == [
+        {"path": "/path/a", "count": 4},
+        {"path": "/path/d", "count": 3},
+    ]
     assert result["top_modified_files"] == [{"path": "/path/a", "count": 1}]
-    assert result["phase_totals"] == {"work": 5}
-    assert result["tool_totals"] == {"Read": 4, "Bash": 1}
+    assert result["phase_totals"] == {"work": 10}
+    assert result["tool_totals"] == {"Read": 9, "Bash": 1}
     assert result["token_usage"]["sessions_with_data"] == 1
     assert result["token_usage"]["total_cost_usd"] == 1.2345
+
+
+def test_aggregate_tracks_redundant_reads_per_session(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(analyze_common, "repo_root", lambda: tmp_path)
+    write_log(tmp_path, "2026-08", LOG_CONTENT)
+
+    sessions = analyze_access.load_sessions(["2026-08"])
+    result = analyze_access.aggregate(["2026-08"], sessions)
+
+    assert result["redundant_accesses_total"] == 4
+    assert result["sessions_with_duplicates"] == 2
+    assert result["sessions_with_duplicates_ratio"] == 0.667
+
+    top_redundant_sessions = result["top_redundant_sessions"]
+    assert [entry["redundant_accesses"] for entry in top_redundant_sessions] == [3, 1]
+    assert top_redundant_sessions[0]["timestamp"] == "2026.08.03 10.00"
+    assert top_redundant_sessions[0]["duplicate_files"] == [
+        {"path": "/path/d", "count": 3},
+        {"path": "/path/a", "count": 2},
+    ]
+    assert top_redundant_sessions[1]["timestamp"] == "2026.08.01 18.49"
 
 
 def test_main_prints_valid_json(
@@ -131,4 +183,4 @@ def test_main_prints_valid_json(
     output = json.loads(capsys.readouterr().out)
     assert output["log_type"] == "access"
     assert output["months"] == ["2026-08"]
-    assert output["session_count"] == 2
+    assert output["session_count"] == 3
