@@ -87,7 +87,9 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 ユーザーに「追加の変更はありますか？」と確認し、なければ `/docs-sync` を自動実行する。`/docs-sync` 完了後、ユーザー確認なしに即座に `/git-pr` を実行する（push → PR 作成まで完結）。
 
-根拠: `commands/task.md:139-163`
+`/git-pr` による ready PR 作成が task フローのゴールである。作成後の review・merge は自動実行しない（人間、または `/review-resolve`・`/codex-review` を手動起動するユーザーが行う）。
+
+根拠: `commands/task.md:139-163`, `commands/task.md:178-186`
 
 ## 設計上の決断
 

@@ -182,3 +182,5 @@ B. 作成/更新したテスト
 C. テストの実行結果
 D. issue URL
 E. PR URL（/git-pr により公開済み）
+
+`/task` フローのゴールはここで完結する ready PR の作成までである。PR に対する追加レビューや main への merge は自動実行せず、人間（または `/review-resolve`・`/codex-review` を手動起動するユーザー）が行う。

@@ -62,16 +62,4 @@ EOF
 ### Step 7: 結果報告
 
 - PR URL を報告する
-
-### Step 8: /pr-review への引き継ぎ
-
-Step 6 で PR の作成に成功した場合のみ、作成した PR 番号を取得する:
-
-```bash
-PR_NUMBER=$(gh pr view --json number --jq '.number')
-```
-
-- PR 番号を取得できた場合: ユーザー確認なしで `/pr-review #${PR_NUMBER}` を自動実行する
-- PR 番号を取得できない場合: PR URL と「PR 番号を取得できなかったため /pr-review を開始できませんでした」を報告して終了する
-- `/pr-review` が APPROVED 以外で終了しても、作成済み PR を close・merge・削除しない
-- Step 1〜7 の push・PR 作成・結果報告の振る舞いは変更しない
+- `/git-pr` の責務はここで完結する。以降の review・merge は自動実行せず、人間（または `/review-resolve`・`/codex-review` 等の別コマンドを手動起動するユーザー）が行う
