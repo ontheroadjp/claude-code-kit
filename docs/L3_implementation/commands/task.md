@@ -127,6 +127,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
 - 7f30935 feat(#161): defer issue creation to after plan approval in task flow

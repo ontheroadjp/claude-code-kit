@@ -15,7 +15,6 @@
     "site:build": "cd site && npm run docs:build",
     "site:preview": "cd site && npm run docs:preview",
     "test:approval-hooks": "bash tests/hooks/test-approval-hooks.sh",
-    "test:pr-review": "bash tests/commands/test-pr-review.sh",
     "test:report-review": "bash tests/commands/test-report-review.sh",
     "test:install": "bash tests/install/test-install.sh"
   },
@@ -26,7 +25,6 @@
     "commands/new-issue.md",
     "commands/review-resolve.md",
     "commands/codex-review.md",
-    "commands/pr-review.md",
     "commands/task.md",
     "commands/patch.md",
     "commands/docs-sync.md",
@@ -62,7 +60,6 @@
     "npm",
     "bc",
     "codex",
-    "claude",
     "curl"
   ],
   "ci": {
@@ -99,7 +96,6 @@
     "skills/init-docs/SKILL.md",
     "skills/new-issue/SKILL.md",
     "skills/review-resolve/SKILL.md",
-    "skills/pr-review/SKILL.md",
     "skills/coding-general/SKILL.md",
     "skills/coding-py/SKILL.md",
     "skills/coding-js/SKILL.md",

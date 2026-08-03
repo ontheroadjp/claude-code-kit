@@ -34,3 +34,16 @@ template の実体は repository の `templates/` に保持する。Claude Code 
 
 - home directory 配下の symlink target を直接編集しない
 - repository 変更は `/work` workflow を経由する
+
+## 変更履歴（git log より自動生成）
+
+- 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
+- 27f1861 feat(#76): install templates for claude and codex
+- 5faaf5d docs: initialize project documentation (init-docs)
+- 145876c fix(#185): align pr-review with repository workflow rules
+- 4e96f9c feat(#142): add session-scoped temp hook access
+- 2dc74bd docs: initialize project documentation (init-docs)
+- 07ae6ac docs: initialize project documentation (init-docs)
+- bc2900f feat(#63): add /new-issue skill for idea-to-issue workflow
+- 4e87fe4 feat(#56): make /review-resolve self-contained, add opinion presentation
+- d14f403 docs(CLAUDE.md): add npm lazy-load instruction

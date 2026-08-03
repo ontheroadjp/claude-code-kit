@@ -27,9 +27,9 @@ core-toolkit-for-claude/
 
 ### `commands/`
 
-Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md`、実装は `task.md` または `patch.md` に委譲する。PR 作成後は `git-pr.md` が `pr-review.md` へ引き継ぐ。
+Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md`、実装は `task.md` または `patch.md` に委譲する。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する（作成後の自動 review はない）。
 
-根拠: `commands/work.md:1-115`, `commands/report-review.md:1-14`, `commands/git-pr.md:63-73`, `commands/README.md`
+根拠: `commands/work.md:1-115`, `commands/report-review.md:1-14`, `commands/git-pr.md:62-65`, `commands/README.md`
 
 ### `skills/`
 
@@ -45,9 +45,9 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 ### `tests/`
 
-shell 検証 scripts を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-pr-review.sh` と `test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性を検証する。
+shell 検証 scripts を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性を検証する。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-pr-review.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh:1-71`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh:1-71`
 
 ### `templates/`
 
