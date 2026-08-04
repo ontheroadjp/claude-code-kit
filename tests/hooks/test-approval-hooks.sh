@@ -121,6 +121,8 @@ for command in \
     'cd site' \
     'test -f README.md && echo present' \
     'if [ -f README.md ]; then sed -n '\''1p'\'' README.md; else echo missing; fi' \
+    'for f in README.md CLAUDE.md; do test -f "$f" || echo missing; done' \
+    $'for f in README.md CLAUDE.md\ndo\n  test -f "$f"\ndone' \
     'gh pr checks 143' \
     'git -C /tmp status --porcelain' \
     'rg -n "foo|bar" README.md' \
@@ -180,6 +182,10 @@ done
 
 for command in \
     'if [ -f README.md ]; then touch unsafe; fi' \
+    'for f in a b; do touch unsafe; done' \
+    'for ((i=0;i<3;i++)); do echo $i; done' \
+    'for f in $(rm -rf /); do echo "$f"; done' \
+    'for f; do echo "$f"; done' \
     'printf value | some-unknown-command' \
     'echo value & touch unsafe' \
     'git branch new-branch' \

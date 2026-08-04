@@ -404,6 +404,23 @@ is_safe_test_expression() {
     printf '%s' "$expression" | grep -qE '^(test[[:space:]]+.+|\[[[:space:]].*[[:space:]]\])$'
 }
 
+# Return 0 if $1 is a `for VAR in WORD...` loop header. This shape executes
+# nothing on its own — it only assigns VAR to each WORD, so there is no
+# command to classify here; actual execution happens in the do/done body,
+# which split_shell_segments already emits as separate segments and which
+# is_safe_segment validates independently (recursively, via the do[[:space:]]*
+# case below). Any $(...) already embedded in the WORD list was recursively
+# validated and placeholder-stripped by the caller before this runs.
+#
+# Deliberately narrow to `for VAR in LIST`: C-style `for ((i=0;i<n;i++))`
+# does not match (no " in "), which is correct — split_shell_segments has no
+# concept of arithmetic-context `;`, so such a header would otherwise be
+# mis-split into meaningless fragments. It falls through to the normal
+# confirmation prompt instead of being silently misclassified.
+is_safe_for_in_list() {
+    printf '%s' "$1" | grep -qE '^for[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+in[[:space:]]+.+$'
+}
+
 is_safe_git_read_command() {
     local seg
     # Checked on the raw, pre-normalization argument: normalize_git_directory_prefix
@@ -930,15 +947,20 @@ is_safe_segment() {
     _is_pure_assignment "$seg" && return 0
 
     case "$seg" in
-        then|else|fi) return 0 ;;
+        then|else|fi|do|done) return 0 ;;
         then[[:space:]]*) is_safe_segment "${seg#then}" && return 0; return 1 ;;
         else[[:space:]]*) is_safe_segment "${seg#else}" && return 0; return 1 ;;
+        do[[:space:]]*) is_safe_segment "${seg#do}" && return 0; return 1 ;;
     esac
     case "$seg" in
         if[[:space:]]*)
             condition="${seg#if}"
             condition=$(printf '%s' "$condition" | sed 's/^[[:space:]]*//')
             is_safe_test_expression "$condition" && return 0
+            return 1
+            ;;
+        for[[:space:]]*)
+            is_safe_for_in_list "$seg" && return 0
             return 1
             ;;
     esac
