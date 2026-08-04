@@ -38,6 +38,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
@@ -49,4 +50,3 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
-- 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
