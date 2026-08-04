@@ -37,6 +37,16 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 根拠: `hooks/lib/session-id.sh:1-38`, `tests/hooks/test-approval-hooks.sh`（Concurrent-session isolation regression test）
 
+### quoted-delimiter heredoc body のマスキング（issue #246）
+
+`Bash` の `command` を取得した直後、`_mask_quoted_heredoc_bodies()` が `command_for_analysis`（以降の全判定が参照する解析専用の文字列）を作る。delimiter が完全にシングルクォートまたはダブルクォートされたヒアドキュメント（`<<'DELIM'` / `<<"DELIM"`。`<<-` は非対応）で、delimiter 行の残りが空白のみ、かつ本文中に delimiter と完全一致する終端行が見つかる場合に限り、演算子（`<<'DELIM'` 部分）はそのまま残しつつ、本文（複数行）と終端行を改行を含まない単一のプレースホルダー（`__HEREDOC_BODY_SAFE__`）に置換する。この形に一致しない場合（delimiter が unquoted、`<<-`、delimiter 行に他のトークンがある、終端行が見つからない等）は一切変更しない。
+
+**なぜ安全か:** heredoc の delimiter が一部でもクォートされていると、bash はその本文に対して一切の展開（`$(...)` command substitution、backtick、`$VAR` parameter expansion）を行わない（本文はコマンドの stdin にそのまま渡される inert data）。したがってプレースホルダーへの置換によって、実行されるはずだった command substitution を隠してしまうことは原理的にありえない。演算子（`<<'DELIM'`）より前のテキスト（例: `git push --force <<'EOF'` の `--force` 部分）は置換対象に含まれず、destructive guard・write redirect 検出にそのまま渡り続ける。
+
+これにより、`commands/git-pr.md`・`commands/new-issue.md`・`commands/triage-issues.md` が使う `gh pr create --body-file - <<'EOF' ... EOF` のような形の PR/issue 本文が、`split_shell_segments` によって改行ごとに個別の「コマンド」として分割され、read-only / session-approved のどのパターンにも一致せず毎回通常許可フローへ戻ってしまっていた問題（本文が session-approved の `tool:gh_pr_write`/`tool:gh_issue_write` で明示的に許可済みでも発生していた）を解消する。`log_decision` は判定用ではなく元の `$command`（マスキング前）を記録するため、ログには実際に実行されたコマンドがそのまま残る。
+
+根拠: `hooks/auto-approve-readonly.sh`（`_mask_quoted_heredoc_bodies`、`command_for_analysis`）, issue #246
+
 ## 判定順序
 
 判定は次の順序で行う。後段の allowlist は前段の block / prompt 判定を上書きしない。
@@ -47,13 +57,14 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 4. `Edit` は session temp、session-approved file、working repo の順に評価する。
 5. `apply_patch` は working repo 内であれば WIP commit 後に承認する。repo 外は通常許可フローへ戻す。
 6. `Bash` 以外の未対応 tool は通常許可フローへ戻す。
-7. `Bash` は session-approved fast path を最初に評価する（全 segment が session-approved の場合のみ即時承認）。
-8. repo 内単一パスへの `rm -rf` は動的防御（WIP commit）後に承認する。
-9. 共有 destructive guard を評価し、該当する場合は block する。
-10. `/dev/null` redirect と escaped pipe を正規化する。
-11. quote-aware にファイルへの write redirect（unquoted かつ `>&` ではない `>`）を検出した場合は通常許可フローへ戻す。
-12. command を quote-aware に segment 分割する（`>&<fd番号|->` は fd 複製として background operator 扱いしない）。
-13. 全 segment が読み取り専用・narrow な local git write（`git add`/`git commit -m`/`git fetch`）・または session-approved のいずれかの場合のみ承認する。
+7. `Bash` の `command` から、quoted-delimiter heredoc body をマスクした `command_for_analysis` を作る（以降の判定は全てこれを使う。ログのみ元の `command` を使う）。
+8. session-approved fast path を最初に評価する（全 segment が session-approved の場合のみ即時承認）。
+9. repo 内単一パスへの `rm -rf` は動的防御（WIP commit）後に承認する。
+10. 共有 destructive guard を評価し、該当する場合は block する。
+11. `/dev/null` redirect と escaped pipe を正規化する。
+12. quote-aware にファイルへの write redirect（unquoted かつ `>&` ではない `>`）を検出した場合は通常許可フローへ戻す。
+13. command を quote-aware に segment 分割する（`>&<fd番号|->` は fd 複製として background operator 扱いしない）。
+14. 全 segment が読み取り専用・narrow な local git write（`git add`/`git commit -m`/`git fetch`）・または session-approved のいずれかの場合のみ承認する。
 
 根拠: `hooks/auto-approve-readonly.sh:709-1093`
 
@@ -376,12 +387,15 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 
+heredoc body のマスキング（issue #246）については、`gh pr create --body-file - <<'EOF' ... EOF` 形（複数行 Markdown 本文、`>`/`->`/`rm -rf /` のような他のスキャナーを誤検知させうる文字列を本文に含む場合を含む）と `<<"EOF"`（ダブルクォート）を `tool:gh_pr_write` 許可済みセッションでの positive case として固定する。演算子より前に実際の危険操作がある `git push --force <<'EOF' ... EOF` は本文の内容に関わらず引き続き block されること、`tool:gh_pr_write` が未承認の場合は同じ heredoc コマンドでも引き続き通常許可フローへ戻ること、および delimiter が unquoted な heredoc（`<<EOF`）は既知の未対応形として引き続き通常許可フローへ戻ること（回帰ではなく仕様）を negative case として固定する。
+
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-826`
+根拠: `tests/hooks/test-approval-hooks.sh:1-935`
 
 ## 変更履歴（git log より自動生成）
 
+- 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
@@ -393,4 +407,3 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 - 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
-- 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh

@@ -890,4 +890,46 @@ for command in \
     assert_no_output "$output"
 done
 
+# --- Heredoc-aware auto-approve masking regression test (issue #246) ---
+# Before the fix, split_shell_segments split a heredoc body on every embedded
+# newline, so free-form PR/issue body text (used by commands/git-pr.md,
+# new-issue.md, and triage-issues.md via `... --body-file - <<'EOF' ... EOF`)
+# never matched any allow-shape and the whole command fell through to a user
+# prompt even when tool:gh_pr_write was already approved for the session.
+# _mask_quoted_heredoc_bodies collapses a quoted-delimiter heredoc body to a
+# single inert placeholder before write-redirect detection, the destructive
+# command guard, and split_shell_segments run.
+
+output=$(run_auto $'gh pr create --title "feat: add x" --body-file - <<\'EOF\'\n## Summary\n- did a thing\n- did another thing\n\nEOF')
+assert_json_decision "$output" "approve"
+
+# Body content that would otherwise trip other scanners (write-redirect '>',
+# the destructive-command guard) must not matter once it is inside a
+# quoted-delimiter heredoc body -- it is inert data, never parsed as shell
+# syntax by bash.
+output=$(run_auto $'gh pr create --title "feat: add x" --body-file - <<\'EOF\'\nscore > 100, before -> after\nrm -rf /\nEOF')
+assert_json_decision "$output" "approve"
+
+# A double-quoted delimiter disables body expansion identically to a
+# single-quoted one.
+output=$(run_auto $'gh pr create --title "feat: add x" --body-file - <<"EOF"\n## Summary\n- did a thing\nEOF')
+assert_json_decision "$output" "approve"
+
+# A dangerous operation BEFORE the heredoc operator (outside the masked
+# body) must still be blocked -- masking only ever touches the body itself.
+output=$(run_auto $'git push --force <<\'EOF\'\nsome note\nEOF')
+assert_json_decision "$output" "block"
+
+# Masking must not bypass the session-approval gate itself: the same
+# heredoc command with no tool:gh_pr_write approved must still fall through
+# to a user prompt.
+output=$(run_auto_without_session $'gh pr create --title "feat: add x" --body-file - <<\'EOF\'\n## Summary\n- did a thing\nEOF')
+assert_no_output "$output"
+
+# Unquoted-delimiter heredocs ARE subject to bash expansion inside the body,
+# so they are deliberately left unmasked (known limitation, not a
+# regression) and continue to fall through to a user prompt.
+output=$(run_auto $'gh pr create --title "feat: add x" --body-file - <<EOF\n## Summary\n- did a thing\nEOF')
+assert_no_output "$output"
+
 printf 'approval hook tests passed\n'

@@ -247,6 +247,111 @@ _has_unquoted_write_redirect() {
     return 1
 }
 
+# Placeholder substituted for the body of a heredoc recognized by
+# _mask_quoted_heredoc_bodies. Contains no newline, so it can never be
+# re-split by split_shell_segments' newline handling.
+HEREDOC_BODY_PLACEHOLDER='__HEREDOC_BODY_SAFE__'
+
+# Recognize top-level heredocs whose delimiter is fully single- or
+# double-quoted (`<<'DELIM'` / `<<"DELIM"`, no `<<-`) and collapse the
+# (possibly multi-line) body plus its terminator line into a single,
+# newline-free placeholder token. Any other shape — unquoted delimiter,
+# `<<-`, trailing tokens after the delimiter word on the same line, or no
+# matching terminator line — is left completely unmodified.
+#
+# Why this is safe: quoting any part of a heredoc delimiter disables ALL
+# expansion inside the body (no $(...), no backticks, no $VAR — see bash's
+# own `help <<`). The body is therefore inert data piped verbatim to the
+# reading command's stdin, never parsed as shell syntax by bash itself.
+# Collapsing it to one placeholder cannot hide a command substitution that
+# was never going to run, so it is safe to strip the body from every
+# downstream text-based scanner (write-redirect detection, the destructive
+# command guard, and split_shell_segments) that would otherwise misread the
+# body's own newlines/characters as shell syntax. Everything before the
+# `<<` operator (e.g. the `--force` in `git push --force <<'EOF'`) is left
+# untouched and remains fully visible to those scanners.
+#
+# Deliberately narrow to the quoted-delimiter shape actually used by
+# commands/git-pr.md, commands/new-issue.md, and commands/triage-issues.md
+# (`... --body-file - <<'EOF' ... EOF`): an unquoted delimiter heredoc body
+# IS subject to expansion, so it is not safe to treat as inert text and is
+# left to fall through to the existing (conservative) behavior.
+_mask_quoted_heredoc_bodies() {
+    local input="$1"
+    local n="${#input}"
+    local i=0 char quote="" escaped=0 result=""
+
+    while [ "$i" -lt "$n" ]; do
+        char="${input:i:1}"
+
+        if [ "$quote" = "'" ]; then
+            result+="$char"
+            [ "$char" = "'" ] && quote=""
+            i=$((i + 1)); continue
+        fi
+        if [ "$escaped" = "1" ]; then
+            result+="$char"; escaped=0; i=$((i + 1)); continue
+        fi
+        if [ "$char" = "\\" ]; then
+            result+="$char"; escaped=1; i=$((i + 1)); continue
+        fi
+        if [ "$quote" = '"' ]; then
+            result+="$char"
+            [ "$char" = '"' ] && quote=""
+            i=$((i + 1)); continue
+        fi
+        if [ "$char" = "'" ] || [ "$char" = '"' ]; then
+            quote="$char"; result+="$char"; i=$((i + 1)); continue
+        fi
+
+        if [ "$char" = '<' ] && [ "${input:i+1:1}" = '<' ] && [ "${input:i+2:1}" != '<' ]; then
+            local j qch delim word_start k after m nl1 body_start scan line_end line term_start
+            j=$((i + 2))
+            while [ "${input:j:1}" = ' ' ] || [ "${input:j:1}" = $'\t' ]; do j=$((j + 1)); done
+            qch="${input:j:1}"
+            if [ "$qch" = "'" ] || [ "$qch" = '"' ]; then
+                word_start=$((j + 1))
+                k=$word_start
+                while [ "$k" -lt "$n" ] && [ "${input:k:1}" != "$qch" ]; do k=$((k + 1)); done
+                if [ "$k" -lt "$n" ] && [ "$k" -gt "$word_start" ]; then
+                    delim="${input:word_start:k-word_start}"
+                    after=$((k + 1))
+                    m=$after
+                    while [ "${input:m:1}" = ' ' ] || [ "${input:m:1}" = $'\t' ]; do m=$((m + 1)); done
+                    if [ "${input:m:1}" = $'\n' ] || [ "$m" -eq "$n" ]; then
+                        nl1=$m
+                        if [ "$nl1" -lt "$n" ]; then body_start=$((nl1 + 1)); else body_start=$n; fi
+                        scan=$body_start
+                        term_start=-1
+                        while [ "$scan" -le "$n" ]; do
+                            line_end=$scan
+                            while [ "$line_end" -lt "$n" ] && [ "${input:line_end:1}" != $'\n' ]; do
+                                line_end=$((line_end + 1))
+                            done
+                            line="${input:scan:line_end-scan}"
+                            if [ "$line" = "$delim" ]; then
+                                term_start=$scan
+                                break
+                            fi
+                            [ "$line_end" -ge "$n" ] && break
+                            scan=$((line_end + 1))
+                        done
+                        if [ "$term_start" -ge 0 ]; then
+                            result+="${input:i:after-i} ${HEREDOC_BODY_PLACEHOLDER}"
+                            i=$line_end
+                            continue
+                        fi
+                    fi
+                fi
+            fi
+        fi
+
+        result+="$char"
+        i=$((i + 1))
+    done
+    printf '%s' "$result"
+}
+
 # Single source of truth for bash's quoting/escaping grammar as it relates to
 # $(...) command substitution. Scans $input once, tracking single quotes (no
 # escapes), double quotes, ANSI-C $'...' quotes (escapes apply, but $(...) and
@@ -922,10 +1027,15 @@ if [ "$tool_name" != "Bash" ]; then
 fi
 
 command=$(echo "$payload" | jq -r '.tool_input.command // ""')
+# Analysis-only view of $command with inert, quoted-delimiter heredoc bodies
+# collapsed to a placeholder (see _mask_quoted_heredoc_bodies). Used for every
+# text-based classification below; log_decision always logs the original
+# $command so log output stays human-readable.
+command_for_analysis=$(_mask_quoted_heredoc_bodies "$command")
 
 # Step 1: session-approved fast path — all segments must match a session-approved category
 if [ "$SESSION_ID_IS_FALLBACK" = "0" ] && [ -f "$SESSION_APPROVED_FILE" ]; then
-    _sa_norm=$(printf '%s' "$command" \
+    _sa_norm=$(printf '%s' "$command_for_analysis" \
         | sed 's/\\|/__ESCAPED_PIPE__/g; s/[0-9]*>>\/dev\/null//g; s/[0-9]*>\/dev\/null//g; s/&>>\/dev\/null//g; s/&>\/dev\/null//g')
     _sa_all=1
     while IFS= read -r _sa_seg; do
@@ -941,15 +1051,15 @@ if [ "$SESSION_ID_IS_FALLBACK" = "0" ] && [ -f "$SESSION_APPROVED_FILE" ]; then
 fi
 
 # Step 2: in-repo rm -rf → dynamic defense (before approval_safety)
-if is_rm_rf_on_working_repo_path "$command"; then
-    _rm_path=$(printf '%s' "$command" | sed 's/^rm[[:space:]]*-[a-zA-Z]*[[:space:]]*//' | cut -c1-40)
+if is_rm_rf_on_working_repo_path "$command_for_analysis"; then
+    _rm_path=$(printf '%s' "$command_for_analysis" | sed 's/^rm[[:space:]]*-[a-zA-Z]*[[:space:]]*//' | cut -c1-40)
     do_wip_commit "rm $_rm_path" 2>/dev/null || true
     log_decision "approved" "Bash" "$command (working-repo rm)"
     emit_approval
     exit 0
 fi
 
-if destructive_reason=$(approval_safety_destructive_reason "$command"); then
+if destructive_reason=$(approval_safety_destructive_reason "$command_for_analysis"); then
     log_decision "blocked" "Bash" "$command ($destructive_reason)"
     approval_safety_emit_block "$destructive_reason"
     exit 0
@@ -960,7 +1070,7 @@ fi
 #      to avoid false positives from stderr suppression.
 #   2. Escape grep-style \| (backslash-pipe) to __ESCAPED_PIPE__ so the pipe
 #      splitter below does not fragment grep pattern strings.
-command_normalized=$(printf '%s' "$command" \
+command_normalized=$(printf '%s' "$command_for_analysis" \
     | sed 's/\\|/__ESCAPED_PIPE__/g; s/[0-9]*>>\/dev\/null//g; s/[0-9]*>\/dev\/null//g; s/&>>\/dev\/null//g; s/&>\/dev\/null//g')
 
 # Reject if command writes to a file (unquoted > but not >&). Quote-aware so
