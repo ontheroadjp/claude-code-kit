@@ -21,6 +21,17 @@ LOG_CONTENT = textwrap.dedent(
     """
 )
 
+DURATION_LOG_CONTENT = textwrap.dedent(
+    """\
+    [2026-08-01 10:00:00] agent=claude session=s1       result=approved     tool=Bash       duration_ms=10     git commit -m "a"
+    [2026-08-01 10:00:05] agent=claude session=s1       result=approved     tool=Bash       duration_ms=20     git commit -m "a"
+    [2026-08-01 10:00:10] agent=claude session=s1       result=approved     tool=Bash       duration_ms=30     git commit -m "a"
+    [2026-08-01 10:00:15] agent=claude session=s1       result=approved     tool=Bash       duration_ms=200    git push
+    [2026-08-01 10:00:20] agent=claude session=s1       result=approved     tool=Bash       duration_ms=NA     git fetch
+    [2026-08-01 10:00:25] agent=claude session=s1       result=approved     tool=Read       /repo/a.py
+    """
+)
+
 
 def write_log(tmp_path: Path, month: str, content: str) -> None:
     log_dir = tmp_path / "logs" / "auto-approve"
@@ -119,6 +130,47 @@ def test_routine_ops_breakdown_classifies_git_gh_write_commands(
     assert routine_ops["patterns_needing_approval"] == [
         {"pattern": "git commit", "user_prompt_count": 2, "approved_count": 1, "blocked_count": 0}
     ]
+
+
+def test_duration_ms_stats_excludes_na_and_missing_from_numeric_aggregation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(analyze_common, "repo_root", lambda: tmp_path)
+    write_log(tmp_path, "2026-08", DURATION_LOG_CONTENT)
+
+    decisions = analyze_auto_approve.load_decisions(["2026-08"])
+    result = analyze_auto_approve.aggregate(["2026-08"], decisions)
+
+    stats = result["duration_ms_stats"]
+    assert stats["sample_count"] == 4
+    assert stats["excluded_count"] == 2
+    assert stats["avg_ms"] == 65.0
+    assert stats["median_ms"] == 25.0
+    assert stats["p95_ms"] == 174.5
+    assert stats["max_ms"] == 200
+    assert stats["top_slow_patterns"] == [
+        {"tool": "Bash", "detail": "git push", "count": 1, "avg_ms": 200.0, "max_ms": 200},
+        {"tool": "Bash", "detail": 'git commit -m "a"', "count": 3, "avg_ms": 20.0, "max_ms": 30},
+    ]
+
+
+def test_duration_ms_stats_all_na_or_missing_returns_zeroed_stats(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(analyze_common, "repo_root", lambda: tmp_path)
+    write_log(tmp_path, "2026-08", LOG_CONTENT)
+
+    decisions = analyze_auto_approve.load_decisions(["2026-08"])
+    result = analyze_auto_approve.aggregate(["2026-08"], decisions)
+
+    stats = result["duration_ms_stats"]
+    assert stats["sample_count"] == 0
+    assert stats["excluded_count"] == 8
+    assert stats["avg_ms"] == 0.0
+    assert stats["median_ms"] == 0.0
+    assert stats["p95_ms"] == 0.0
+    assert stats["max_ms"] == 0.0
+    assert stats["top_slow_patterns"] == []
 
 
 def test_main_prints_valid_json(

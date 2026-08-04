@@ -26,10 +26,11 @@ Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提�
 - ログの生データは直接 Read しない。数値の根拠は `scripts/analyze_auto_approve.py` が出力する JSON のみ
 - `hooks/auto-approve-readonly.sh` 自体の変更は行わない。改善案は Proposals として提示するに留める
 - **Primary KPI** は2つ: 全体の自動承認率 `result_ratio_pct.approved`、および定型処理（`/work` パイプラインの git/gh write系操作）のユーザー確認率 `routine_ops.result_ratio_pct.user_prompt`（目標0%）。後者は issue #216 で追加された、`/work` の実運用に紐づく具体的なチューニング対象
-- **Supporting KPI** は `result_ratio_pct.user_prompt` / `result_ratio_pct.blocked`（全体の摩擦・防御指標）、`monthly_trend`（時系列でのチューニング効果測定）、`routine_ops.patterns_needing_approval`（user_prompt に落ちている定型処理パターンの具体的なリスト。恒久的に自動承認へ追加すべき候補をAIが読み取れる形にしたもの）
+- **Supporting KPI** は `result_ratio_pct.user_prompt` / `result_ratio_pct.blocked`（全体の摩擦・防御指標）、`monthly_trend`（時系列でのチューニング効果測定）、`routine_ops.patterns_needing_approval`（user_prompt に落ちている定型処理パターンの具体的なリスト。恒久的に自動承認へ追加すべき候補をAIが読み取れる形にしたもの）、`duration_ms_stats.avg_ms` / `p95_ms`（hook 処理時間が体感レイテンシに寄与しているかの判断材料。issue #218）
 - Step 3 では `patterns_needing_approval` の上位パターンごとに「なぜ現状 user_prompt に落ちているか」と「恒久的に自動承認へ追加する場合の具体的な提案」をセットで記述する
+- Step 3 では `duration_ms_stats.avg_ms` / `p95_ms` から hook 処理時間が体感レイテンシの有意な要因かどうかを必ず言及し、有意な場合は `duration_ms_stats.top_slow_patterns` から遅延要因パターンを特定する
 
-根拠: `commands/analyze-auto-approve.md:17-27`, `commands/analyze-auto-approve.md:39-53`
+根拠: `commands/analyze-auto-approve.md:17-27`, `commands/analyze-auto-approve.md:39-59`, `commands/analyze-auto-approve.md:65`
 
 ## 重要な設計判断とその理由
 
@@ -38,6 +39,8 @@ hook の許可ルールを直接変更すると read-only 分析の境界を越�
 以前は Facts（統計テーブル）がレポートの主役で、分析は付け足しだった。目的は「自動承認率を安全に100%へ近づける」というチューニングであり、統計はそのためのエビデンスに過ぎないため、KPIダッシュボード → Key Findings & Proposals をメインコンテンツとし、Facts は Evidence として補助セクションに格下げした（issue #216）。
 
 `routine_ops` の分類基準は `hooks/auto-approve-readonly.sh` の `check_session_approved()` をそのままミラーしている（`scripts/analyze_auto_approve.py` 側の設計判断を参照）。独自基準を作ると hook の実挙動とズレるため、唯一の正の情報源をそのまま参照する方針にした。
+
+`duration_ms_stats` を Supporting KPI に加えたのは「安全性を保ちながら自動承認率を100%に近づける」目的の裏で、hook 処理自体が別の観点（体感レイテンシ）のコストになっていないかを同じレポートで確認できるようにするため（issue #218）。Primary KPI ではなく Supporting KPI に置いているのは、この command の主目的（自動承認率のチューニング）とは独立した補助的な健全性指標であるため。
 
 ## 統合ポイント
 

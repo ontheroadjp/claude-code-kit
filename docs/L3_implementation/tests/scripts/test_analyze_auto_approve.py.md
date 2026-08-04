@@ -8,16 +8,24 @@
 
 ## 動作概要
 
-8行の合成ログ（2026-08: 1セッションに approved 1件・blocked 2件（同一detail）・user_prompt 1件、別セッションに approved 1件、agent は claude/codex 混在、加えて同一セッション内で `git commit` が user_prompt→approved(session) と遷移する2行。2026-09: 別セッションで `git commit` が user_prompt になる1行）を使い、以下を検証する:
+2つの合成ログ定数を使う。
+
+`LOG_CONTENT`（8行、`duration_ms` フィールドなし）: 2026-08: 1セッションに approved 1件・blocked 2件（同一detail）・user_prompt 1件、別セッションに approved 1件、agent は claude/codex 混在、加えて同一セッション内で `git commit` が user_prompt→approved(session) と遷移する2行。2026-09: 別セッションで `git commit` が user_prompt になる1行。
+
+`DURATION_LOG_CONTENT`（6行、`duration_ms_stats` 専用）: `git commit` x3（10/20/30ms）・`git push`（200ms）・`git fetch`（`duration_ms=NA`）・`Read`（`duration_ms` フィールド自体が欠損）。
+
+以下を検証する:
 
 - `parse_line()` が固定幅パディングを含む行から `timestamp`/`agent`/`session`/`result`/`tool`/`detail` を正しく抽出すること
 - `detail` が空文字列のケース（`update_plan` など tail 引数なしの `log_decision` 呼び出し）を正しく処理すること
 - `monkeypatch` で `repo_root` を差し替えた上で `load_decisions()` → `aggregate()` を通した集計値（`result_counts`・`result_ratio_pct`・`tool_counts`・`agent_counts`・`top_sessions`・`top_blocked_patterns`・`top_user_prompt_patterns`・`recent_blocked_samples`）が期待値と一致すること
 - `monthly_trend` が `timestamp` の年月（2026-08 / 2026-09）ごとに正しくグルーピングされ、各月の `total_decisions` / `result_counts` が一致すること
 - `routine_ops` が `git commit` 系の Bash コマンドのみを定型処理として分類し、`patterns_needing_approval` に `user_prompt_count` 降順で `git commit`（user_prompt 2件・approved 1件）が含まれること。`rm -rf /` や `curl example.com` は定型処理として分類されないこと
+- `duration_ms_stats` が数値の `duration_ms`（`git commit` x3・`git push` x1）のみを集計対象とし、`"NA"` 1件とフィールド欠損1件を `excluded_count` として除外すること。`avg_ms` / `median_ms` / `p95_ms` / `max_ms` が期待値と一致し、`top_slow_patterns` が `(tool, detail)` 別の `avg_ms` 降順（`git push` → `git commit`）で並ぶこと（別の合成ログ `DURATION_LOG_CONTENT` を使用）
+- `duration_ms_stats` は数値 `duration_ms` を1件も含まないログ（`LOG_CONTENT`）に対して `sample_count=0`・数値系フィールドは全て `0.0`・`top_slow_patterns=[]` を返すこと
 - `main()` を `sys.argv` 差し替えで直接実行し、標準出力が妥当な JSON であること
 
-根拠: `tests/scripts/test_analyze_auto_approve.py:51-113`
+根拠: `tests/scripts/test_analyze_auto_approve.py:51-113`, `tests/scripts/test_analyze_auto_approve.py:135-173`
 
 ## 重要な設計判断
 

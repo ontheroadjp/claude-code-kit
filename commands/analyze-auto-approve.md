@@ -48,6 +48,7 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 - 全体の user_prompt 率 / blocked 率（`result_ratio_pct.user_prompt` / `result_ratio_pct.blocked`）
 - 月別推移 `monthly_trend`（過去のチューニングが効いているかの時系列判断）
 - `routine_ops.patterns_needing_approval`（user_prompt に落ちている定型処理パターンの上位リスト。各要素はパターン名・user_prompt件数・approved件数・blocked件数を持つ。`routine_ops` は `hooks/auto-approve-readonly.sh` の `check_session_approved()` が認識する git/gh write系コマンド形状で分類したもの）
+- hook 処理時間 `duration_ms_stats.avg_ms` / `duration_ms_stats.p95_ms`（hook 自体の実行時間が体感レイテンシに寄与しているかの判断材料。`"NA"`（`$EPOCHREALTIME` 非対応の bash < 5.0）およびフィールド欠損の旧ログ行は `duration_ms_stats.excluded_count` として数値集計から除外される）
 
 **裏付けデータ（Evidence）**:
 - 対象月（`months`）、総判定数（`total_decisions`）
@@ -55,12 +56,13 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 - 判定数上位セッション（`top_sessions`）
 - blocked パターン上位（`top_blocked_patterns`）、user_prompt パターン上位（`top_user_prompt_patterns`）
 - 直近の blocked / user_prompt サンプル（`recent_blocked_samples` / `recent_user_prompt_samples`）
+- hook 処理時間の分布（`duration_ms_stats.sample_count` / `median_ms` / `max_ms`）と、処理時間が長い上位パターン（`duration_ms_stats.top_slow_patterns`。`(tool, detail)` 別の平均処理時間降順）
 
 ### Step 3: 所見の抽出
 
 Facts のみを根拠に、統計そのものではなく「何が改善できるか」を主役として整理する:
 
-- **主要な発見（Key Findings）**: KPI・Evidence から読み取れる重要な所見を優先度順に列挙する。各所見には根拠となる具体的な数値をインラインで引用する（例:「`routine_ops.result_ratio_pct.user_prompt` が34%、うち `git commit` パターンが最多で…」）。`monthly_trend` から自動承認率が改善傾向か悪化傾向かを必ず言及する
+- **主要な発見（Key Findings）**: KPI・Evidence から読み取れる重要な所見を優先度順に列挙する。各所見には根拠となる具体的な数値をインラインで引用する（例:「`routine_ops.result_ratio_pct.user_prompt` が34%、うち `git commit` パターンが最多で…」）。`monthly_trend` から自動承認率が改善傾向か悪化傾向かを必ず言及する。`duration_ms_stats.avg_ms` / `p95_ms` を用いて hook 処理時間が体感レイテンシの有意な要因かどうかを必ず言及する（判断基準の例: 数百 ms 未満は無視できる水準、秒単位に近い場合は要注意）。有意な場合は `top_slow_patterns` から遅延要因パターンを特定する
 - 各発見に対応する **Proposal**（改善提案）を最低1つ添える。特に `routine_ops.patterns_needing_approval` の上位パターンについては、そのパターンが現状なぜ user_prompt に落ちているか（例: セッション内でまだ `tool:git_write` 等が承認されていない、または `is_safe_segment()` の一般 allowlist に含まれていない）と、恒久的に自動承認へ追加する場合の具体的な提案（対象パターン・想定される安全性の根拠）をセットで記述する。優先度（高/中/低）・理由を付ける
 - **Opinion**（Facts からの推測）は所見に含めてよいが、事実と明確に書き分ける
 - **Risks and Unknowns**: サンプル数が少ない・偏りがある等、解釈の限界を別枠でまとめる
