@@ -225,12 +225,14 @@ ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認�
 decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する。process fallback の session は `n/a` とする。
 
 ```text
-[timestamp] agent=claude|codex session=<id|n/a> result=<result> tool=<tool> <detail>
+[timestamp] agent=claude|codex session=<id|n/a> result=<result> tool=<tool> duration_ms=<ms|NA> <detail>
 ```
+
+`duration_ms` はスクリプト冒頭（`payload=$(cat)` の前）で取得した `$EPOCHREALTIME`（bash 5.0+ のビルトイン変数、サブプロセスなし）を起点に、`log_decision()` 呼び出し時点までの経過ミリ秒を純粋な bash 整数演算（`10#` prefix で usec の leading zero を octal 誤解釈しないようにする）で計算したものである。`$EPOCHREALTIME` が使えない bash（5.0未満。例: macOS デフォルトの `/bin/bash` 3.2）では `duration_ms=NA` とし、計測不能を正直に記録する（サブプロセスベースの代替計測は行わない）。`scripts/analyze_auto_approve.py` の `LINE_RE` はこのフィールドを任意グループとして扱うため、`duration_ms` を持たない旧フォーマットのログ行も引き続き解析できる。集計・レポートへの反映は issue #218 のスコープ。
 
 `detail` は `cut -c1-120` で切り詰めてからログへ書き込む。`cut -c` は non-UTF-8-aware なロケール（`LC_ALL=C` 等）ではバイト単位に振る舞うため、日本語などマルチバイト文字を含む command を境界で切ると不正な UTF-8 バイト列を生成し、`grep` 等ロケール依存ツールがログをバイナリ扱いして検索に失敗する原因になっていた。`truncate_utf8_safe()` は `cut` の直後に `iconv -f UTF-8 -t UTF-8 -c` を通し、切り詰め境界に残った不完全なマルチバイトシーケンスを除去する（`iconv` 不在時は切り詰め結果をそのまま返すフォールバック）。
 
-根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:560-590`
+根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:530-574`
 
 ## 動的防御（Working Repo Dynamic Defense）
 

@@ -468,15 +468,15 @@ assert_json_decision "$output" "block"
 
 output=$(run_auto 'git status --porcelain')
 assert_json_decision "$output" "approve"
-assert_log_matches '] agent=claude session=test-session-fixed result=approved[[:space:]]+tool=Bash[[:space:]]+git status --porcelain$'
+assert_log_matches '] agent=claude session=test-session-fixed result=approved[[:space:]]+tool=Bash[[:space:]]+duration_ms=(NA|[0-9]+)[[:space:]]+git status --porcelain$'
 
 output=$(run_auto_codex_symlink 'git status --porcelain')
 assert_json_decision "$output" "allow"
-assert_log_matches '] agent=codex session=test-session-fixed result=approved[[:space:]]+tool=Bash[[:space:]]+git status --porcelain$'
+assert_log_matches '] agent=codex session=test-session-fixed result=approved[[:space:]]+tool=Bash[[:space:]]+duration_ms=(NA|[0-9]+)[[:space:]]+git status --porcelain$'
 
 output=$(run_auto_without_session 'git status --porcelain')
 assert_json_decision "$output" "approve"
-assert_log_matches '] agent=claude session=n/a result=approved[[:space:]]+tool=Bash[[:space:]]+git status --porcelain$'
+assert_log_matches '] agent=claude session=n/a result=approved[[:space:]]+tool=Bash[[:space:]]+duration_ms=(NA|[0-9]+)[[:space:]]+git status --porcelain$'
 
 output=$(run_auto 'git add hooks/auto-approve-readonly.sh')
 assert_json_decision "$output" "approve"

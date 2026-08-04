@@ -8,7 +8,7 @@
 
 ## 動作の概要
 
-1. 1行1判定の形式（`[timestamp] agent=X session=Y result=R tool=T <detail>`、`result`/`tool` は固定幅パディング済み）を `LINE_RE` でパースする
+1. 1行1判定の形式（`[timestamp] agent=X session=Y result=R tool=T duration_ms=<ms|NA> <detail>`、`result`/`tool` は固定幅パディング済み）を `LINE_RE` でパースする。`duration_ms=...` は任意グループのため、このフィールドが存在しない旧フォーマットのログ行も同じ規則で解析できる
 2. `load_decisions(months)` で対象月の全ログファイルを読み、判定のリストを作る
 3. `aggregate(months, decisions)` で以下を計算する:
    - `result_counts` / `result_ratio_pct`（approved / blocked / user_prompt の件数と比率）
@@ -20,7 +20,7 @@
    - `routine_ops`（`/work` パイプラインの定型処理として分類できた Bash コマンドの内訳）
 4. `main()` で `lib.analyze_common` の共通CLI・月解決処理を呼び、結果を JSON として出力する
 
-根拠: `scripts/analyze_auto_approve.py:62-253`
+根拠: `scripts/analyze_auto_approve.py:65-256`
 
 ## 主要な判定ロジック・フロー
 
@@ -53,6 +53,7 @@
 - `top_blocked_patterns` / `top_user_prompt_patterns` / `top_sessions` は `TOP_N`（10件）、サンプルは `RECENT_N`（15件）に切り詰められる。`routine_ops.patterns_needing_approval` も `TOP_N`（10件）に切り詰められる
 - `routine_ops` は Bash ツールの決定のみを対象とする（`classify_routine_op` は `tool != "Bash"` を即座に除外する）
 - `ROUTINE_OP_PATTERNS` は `hooks/auto-approve-readonly.sh` の `check_session_approved()` の手動ミラーであり、自動同期はされない。hook 側の allowlist が変わった場合、このファイルも合わせて更新しないと `routine_ops` の分類が古くなる
+- `Decision["duration_ms"]` はパースされるが `aggregate()` はまだこの値を集計・利用しない（数値文字列または `"NA"`、フィールド自体が存在しない旧ログ行では `None`）。集計・レポートへの反映は issue #218 のスコープ
 
 ## 変更履歴（git log より自動生成）
 
