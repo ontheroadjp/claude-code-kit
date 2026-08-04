@@ -55,4 +55,9 @@ Step 4:   完了報告
 
 ## 変更履歴（git log より自動生成）
 
+- 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
+- 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
+- 051fd5f fix(#113): post gh pr review instead of issue comment, add APPROVED to review-resolve
+- 7536b79 fix(#58): fetch and checkout PR branch before fetching comments
 - 4e87fe4 feat(#56): make /review-resolve self-contained, add opinion presentation
+- b1e6623 feat(#52): add /review-resolve command for interactive PR review comment handling

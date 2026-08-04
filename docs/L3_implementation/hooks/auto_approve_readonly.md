@@ -346,6 +346,9 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 ## 変更履歴（git log より自動生成）
 
+- 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
+- 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
+- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
 - 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
 - d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
