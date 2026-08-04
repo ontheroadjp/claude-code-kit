@@ -101,6 +101,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | gnome-extensions | `info`, `list` | `enable`, `disable`, `install`, `uninstall` 等 |
 | dpkg（`is_safe_dpkg_query_command`） | `-l`/`--list`, `-L`/`--listfiles`, `-s`/`--status`, `-S`/`--search` のいずれか1つのみを含む形 | `-i`/`-r`/`-P`/`--configure` 等の変更系、上記フラグを2つ以上組み合わせた形 |
 | gresource | `list`, `list-sections` | `compile`（バイナリのリソースバンドルをディスクに書き出す） |
+| tmux | `display-message`, `list-windows`, `list-sessions`, `list-panes`, `show-options` | `send-keys`（他のpane/sessionへの入力注入）、`kill-*`、`new-session` 等のセッション変更系 |
 | Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、複数トークン |
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
@@ -368,6 +369,7 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 ## 変更履歴（git log より自動生成）
 
+- b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
 - 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
 - 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands
 - 15877ae feat(#238): add strings/readlink/ss/apt-cache/desktop-file-validate/man/diff/sleep to the auto-approve hook's read-only tools allowlist
@@ -377,12 +379,3 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
-- 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
-- d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
-- 40ea58a fix(#196): track single quotes at depth=0 in subshell content helpers
-- ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
-- 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
-- 32610ca fix(#196): fix variable-expansion guard gaps found in review
-- a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
-- e740c91 fix(#194): replace node/bash syntax-check denylist with strict single-arg allowlist
-- 6c041c6 fix(#194): close gh api/journalctl/node --check allowlist bypasses

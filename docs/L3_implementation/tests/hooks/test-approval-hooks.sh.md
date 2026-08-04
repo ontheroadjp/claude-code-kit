@@ -11,7 +11,7 @@
 `run_auto`（Claude Code 形式の hook payload）と `run_auto_codex_symlink`（Codex CLI symlink 経由）で `hooks/auto-approve-readonly.sh` を isolated `TMP_DIR`（`SESSION_FILE` を含む）上で直接実行し、stdout の decision JSON と `logs/auto-approve/` のログ行を `assert_json_decision` / `assert_no_output` / `assert_log_matches` で検証する。
 
 主なカバレッジ:
-- Bash allowlist の境界（Git / GitHub CLI / Unix read tools / curl / npm / journalctl / gsettings / gnome-extensions 等）の positive / negative ペア
+- Bash allowlist の境界（Git / GitHub CLI / Unix read tools / curl / npm / journalctl / gsettings / gnome-extensions / gresource / dpkg / tmux 等）の positive / negative ペア
 - `for VAR in LIST; do ...; done` ループ（`;` 区切り・改行区切り）の read-only body の positive case と、unsafe body・C-style `for ((...))`・`$()` 経由の unsafe list・`in` 省略形の negative case（issue #224）
 - `git add`/`git commit -m`/`git fetch` の narrow allow-shape（session-approved 不要で無条件承認される3パターン）の positive / negative ペア（`-A`/`--all`/`.`/`*`、`--amend`/`--no-verify`/`-a`、refspec/`+`強制指定 等は negative）
 - variable expansion 除外（unquoted / double-quoted `$VAR` の smuggling）の negative case と、flag-invariant なコマンドでの positive case（`git add`/`git commit`/`git fetch` の allow-shape に対する smuggling も含む）
@@ -38,6 +38,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
 - 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
 - 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands
 - 15877ae feat(#238): add strings/readlink/ss/apt-cache/desktop-file-validate/man/diff/sleep to the auto-approve hook's read-only tools allowlist
@@ -47,10 +48,3 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
-- 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
-- d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
-- 40ea58a fix(#196): track single quotes at depth=0 in subshell content helpers
-- ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
-- 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
-- 32610ca fix(#196): fix variable-expansion guard gaps found in review
-- a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist

@@ -172,6 +172,11 @@ for command in \
     'dpkg --search /usr/bin/git' \
     'gresource list /usr/share/gnome-shell/gnome-shell-theme.gresource' \
     'gresource list-sections /usr/share/gnome-shell/gnome-shell-theme.gresource' \
+    'tmux display-message -p "#W"' \
+    'tmux list-windows' \
+    'tmux list-sessions' \
+    'tmux list-panes' \
+    'tmux show-options -g' \
     'bash -n script.sh' \
     'node --check script.js' \
     'node -c script.js'; do
@@ -274,6 +279,10 @@ for command in \
     'dpkg' \
     'dpkg -x package.deb /tmp' \
     'gresource compile --target=out.gresource src' \
+    'tmux send-keys -t 0 "echo hi" Enter' \
+    'tmux kill-session -t 0' \
+    'tmux kill-window -t 0' \
+    'tmux new-session -d' \
     'bash -n -c "echo hi"' \
     'bash script.sh' \
     'node --check -e "process.exit(1)"' \
