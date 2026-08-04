@@ -754,6 +754,66 @@ assert_no_output "$output"
 output=$(run_auto_in_repo "rm -rf ${TEST_GIT_REPO}/a ${TEST_GIT_REPO}/b")
 assert_no_output "$output"
 
+# --- rm [-f] <literal-path> auto-approval tests (issue #248) ---
+
+# rm -f on the current session's own session-approved file (literal, no
+# variable) → approved, no WIP commit (target is outside any repo)
+output=$(run_auto_in_repo "rm -f ${SESSION_FILE}")
+assert_json_decision "$output" "approve"
+
+# bare rm (no -f) on the session-approved file → approved (flag is optional)
+output=$(run_auto_in_repo "rm ${SESSION_FILE}")
+assert_json_decision "$output" "approve"
+
+# rm -f on a repo-internal literal path → approved + WIP commit created
+echo "to be removed" > "${TEST_GIT_REPO}/to-delete.txt"
+git -C "$TEST_GIT_REPO" add -A
+git -C "$TEST_GIT_REPO" commit --no-verify -q -m "add to-delete.txt"
+echo "dirty again" >> "${TEST_GIT_REPO}/initial.txt"
+commits_before=$(git -C "$TEST_GIT_REPO" log --oneline | wc -l | tr -d ' ')
+output=$(run_auto_in_repo "rm -f ${TEST_GIT_REPO}/to-delete.txt")
+assert_json_decision "$output" "approve"
+commits_after=$(git -C "$TEST_GIT_REPO" log --oneline | wc -l | tr -d ' ')
+if [ "$commits_after" -le "$commits_before" ]; then
+    printf 'Expected WIP commit to be created for literal rm -f, got %s (before %s)\n' \
+        "$commits_after" "$commits_before" >&2
+    exit 1
+fi
+if ! git -C "$TEST_GIT_REPO" log --oneline -1 | grep -q "wip:"; then
+    printf 'Expected latest commit to be a wip: commit\n' >&2
+    exit 1
+fi
+
+# rm -f on repo root itself → NOT approved (defeats safety net)
+output=$(run_auto_in_repo "rm -f ${TEST_GIT_REPO}")
+assert_no_output "$output"
+
+# rm -f on a .git-internal path → NOT approved
+output=$(run_auto_in_repo "rm -f ${TEST_GIT_REPO}/.git/config")
+assert_no_output "$output"
+
+# rm -f on a path that is neither the session-approved file nor in-repo → NOT approved
+output=$(run_auto_in_repo "rm -f /tmp/unrelated-outside-path.txt")
+assert_no_output "$output"
+
+# rm -f with a variable reference instead of a literal path → NOT approved
+output=$(run_auto_in_repo 'rm -f $SOME_VAR')
+assert_no_output "$output"
+
+# rm -f with the session-approved path plus an extra token → NOT approved
+output=$(run_auto_in_repo "rm -f ${SESSION_FILE} extra")
+assert_no_output "$output"
+
+# rm -f with a glob instead of a literal path → NOT approved
+output=$(run_auto_in_repo "rm -f ${TEST_GIT_REPO}/*.txt")
+assert_no_output "$output"
+
+# rm -rf (recursive) on the session-approved file → NOT approved by the
+# literal-path branch (only plain rm/-f is in scope; -rf stays on the
+# separate working-repo-only dynamic defense, which this path doesn't match)
+output=$(run_auto_in_repo "rm -rf ${SESSION_FILE}")
+assert_no_output "$output"
+
 # Write on repo-internal path with dirty tree → WIP commit is created
 echo "more changes" >> "${TEST_GIT_REPO}/initial.txt"
 commits_before=$(git -C "$TEST_GIT_REPO" log --oneline | wc -l | tr -d ' ')

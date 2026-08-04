@@ -908,6 +908,35 @@ is_rm_rf_on_working_repo_path() {
     esac
 }
 
+# rm [-f] <literal-path>: approve when the path has no variable expansion,
+# quoting, glob, or extra arguments, and resolves to either the current
+# session's own session-approved file or a path inside the working repo.
+# This is the counterpart to Write's is_session_approved_path handling
+# (commands/work.md G-0) for callers that must use Bash: the agent resolves
+# the runtime value via a separate read-only step first, then embeds the
+# literal result here — the hook never expands or executes anything to
+# decide (issue #248).
+is_rm_f_on_safe_literal_path() {
+    local cmd="$1"
+    printf '%s' "$cmd" | grep -qE '^rm([[:space:]]+-f)?[[:space:]]+[^[:space:]]+$' || return 1
+    local path
+    path=$(printf '%s' "$cmd" | sed -E 's/^rm([[:space:]]+-f)?[[:space:]]+//')
+    case "$path" in
+        ''|-*|*' '*|*$'\t'*|*'$'*|*';'*|*'|'*|*'&'*|*'>'*|*'<'*|*'`'*|*'*'*|*'?'*|*"'"*|*'"'*) return 1 ;;
+    esac
+    is_session_approved_path "$path" && return 0
+    is_in_working_repo "$path" || return 1
+    local repo_root norm_path norm_root
+    repo_root=$(detect_working_repo_root) || return 1
+    norm_path=$(realpath -m "$path" 2>/dev/null || printf '%s' "$path")
+    norm_root=$(realpath -m "$repo_root" 2>/dev/null || printf '%s' "$repo_root")
+    [ "$norm_path" = "$norm_root" ] && return 1
+    case "$norm_path" in
+        "$norm_root/.git"|"$norm_root/.git/"*) return 1 ;;
+    esac
+    return 0
+}
+
 # Always approve Read tool
 if [ "$tool_name" = "Read" ]; then
     file_path=$(echo "$payload" | jq -r '.tool_input.file_path // "-"')
@@ -1055,6 +1084,20 @@ if is_rm_rf_on_working_repo_path "$command_for_analysis"; then
     _rm_path=$(printf '%s' "$command_for_analysis" | sed 's/^rm[[:space:]]*-[a-zA-Z]*[[:space:]]*//' | cut -c1-40)
     do_wip_commit "rm $_rm_path" 2>/dev/null || true
     log_decision "approved" "Bash" "$command (working-repo rm)"
+    emit_approval
+    exit 0
+fi
+
+# Step 2b: rm [-f] <literal-path> targeting the session-approved file or a
+# working-repo path → approve (see is_rm_f_on_safe_literal_path)
+if is_rm_f_on_safe_literal_path "$command_for_analysis"; then
+    _rmf_path=$(printf '%s' "$command_for_analysis" | sed -E 's/^rm([[:space:]]+-f)?[[:space:]]+//' | cut -c1-80)
+    if is_session_approved_path "$_rmf_path"; then
+        log_decision "approved" "Bash" "$command (session-approved literal rm)"
+    else
+        do_wip_commit "rm $_rmf_path" 2>/dev/null || true
+        log_decision "approved" "Bash" "$command (working-repo literal rm)"
+    fi
     emit_approval
     exit 0
 fi
