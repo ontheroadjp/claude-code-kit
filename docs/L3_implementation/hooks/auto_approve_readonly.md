@@ -60,6 +60,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 7. `Bash` の `command` から、quoted-delimiter heredoc body をマスクした `command_for_analysis` を作る（以降の判定は全てこれを使う。ログのみ元の `command` を使う）。
 8. session-approved fast path を最初に評価する（全 segment が session-approved の場合のみ即時承認）。
 9. repo 内単一パスへの `rm -rf` は動的防御（WIP commit）後に承認する。
+9b. `rm`/`rm -f` に literal（変数・グロブ・複数トークンなし）な単一パスが続き、それが現在セッションの session-approved ファイル自身、または working repo 内であれば承認する（後者は WIP commit 後）。
 10. 共有 destructive guard を評価し、該当する場合は block する。
 11. `/dev/null` redirect と escaped pipe を正規化する。
 12. quote-aware にファイルへの write redirect（unquoted かつ `>&` ではない `>`）を検出した場合は通常許可フローへ戻す。
@@ -350,6 +351,7 @@ After:
 After:
   [NEW] 全 segment が session-approved → approve  ← 先頭に移動（fast path）
   [NEW] rm -rf + repo 内単一パス → WIP commit → approve
+  [NEW] rm[-f] + literal単一パス（session-approved file または repo内） → approve（repo内はWIP commit後）
   approval_safety → block
   正規化・write redirect → user_prompt
   segment allowlist → approve
@@ -357,6 +359,19 @@ After:
 ```
 
 根拠: `hooks/auto-approve-readonly.sh:718-1093`
+
+### `rm [-f] <literal-path>` の自動承認（issue #248）
+
+`is_rm_f_on_safe_literal_path()` は `is_rm_rf_on_working_repo_path()` の姉妹関数であり、次の点が異なる。
+
+- 対象は `-rf`/`-fr`（recursive+force）ではなく、`rm` 単体または `rm -f` のみ（非再帰）。
+- 承認先は working repo 内パスだけでなく、`is_session_approved_path()` による現在セッションの session-approved ファイル自身も含む。この2つ目の分岐が、`commands/work.md` G-0 の Write ベースの回避策（Bash `rm -f "$SESSION_APPROVED"` が確認プロンプトに落ちる問題）に対する、hook 側の汎用的な解決策にあたる。ただし G-0 自体は Write 方式のまま維持している（後述）。
+
+**なぜ hook は変数を解決せずに安全と判定できるか:** この関数は他の allowlist 判定と同じく、コマンドの**テキスト**だけを見て判定し、一切実行しない。危険操作の対象が実行時変数に依存する場合、hook 側でその値を検証する手段はないため、エージェント側が「read-only な解決ステップ（例: `echo "$SESSION_APPROVED"`）→ 解決済みの値をリテラルとして次のコマンドに埋め込む」という2段階（resolve-then-embed）に分けることを運用規約とする（`CLAUDE.md` の「リポジトリへの操作ルール」節）。hook が見るのは変数を含まない最終的なリテラルテキストだけであり、それを `is_session_approved_path`/`is_in_working_repo` という既存の（hook が独立に再計算する）述語と照合する。
+
+**拒否パターン:** `is_rm_rf_on_working_repo_path` と同じ denylist（空白・`$`・`;`・`|`・`&`・`>`・`<`・バッククォート・`*`・`?`・クォート文字・`-`始まりの2番目のトークン）に加え、repo root 自体と `.git` 配下は working-repo 分岐から除外する（safety net 自体の破壊を防ぐ、`is_rm_rf_on_working_repo_path` と同じ理由）。`-rf`（recursive）はこの関数の対象外のまま既存の `is_rm_rf_on_working_repo_path` に委ねる。
+
+根拠: `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`）, issue #248
 
 ### session-approved fast path の安全性根拠
 
@@ -384,6 +399,8 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 variable expansion の除外については、`node --check $ARGS` 型の報告された bypass に加え、`bash -n`・`curl`・`gh api`・`git diff --output`・`sed`・`find`・`sort`・`date`・`journalctl`・`yq`・`awk` への同型 bypass を negative case として固定し、`cat $FILE`・`grep ... $FILE`・シングルクォート awk script 内の `$1` が引き続き auto-approve されることを positive case で固定する。加えて、`git -C $DIR` operand への変数隠蔽、double-quoted 変数の単一フラグ密輸、シングルクォート内バックスラッシュの誤エスケープ、ダブルクォート文字列内のシングルクォートによるクォート状態誤遷移、`_extract_subshell_contents`/`_strip_subshells` のエスケープ未対応（escaped `"` をクォート終了と誤認し後続の変数参照が silently drop される）、同2関数が depth=0 でシングルクォートを追跡しないため single-quoted literal 内の `$(` を実際の subshell 開始と誤認する問題（例: `curl '$(' $OPTS ...`）、同2関数が depth=0 でダブルクォートを追跡しないため double-quoted 文字列内のリテラルな `'` により後続の本物の `$(` を検出し損ねる問題（例: `cat "foo'$(touch ...)"`）、およびネストした `$(...)` でクォート状態を push/pop しないため外側の double-quoted 文字列の中の nested substitution が正しく閉じられない問題（例: `X=$(printf '%s' "$(touch ...)")`）という、レビューで発見された8件の追加 bypass を negative case として固定する。統一 tokenizer への再設計（issue #200）に伴い、`saw_dollar` look-ahead flag がエスケープ消費時にリセットされず depth が 0 に戻らなくなる問題（例: `cat $(printf "$\"(" $(touch /tmp/unsafe))`）と、ANSI-C クォート（`$'...'`）が通常の `'...'` として扱われエスケープされた `\'` を閉じクォートと誤認する問題（例: `cat $'foo\'bar'$(touch /tmp/unsafe)`）の2件を追加の negative case として固定する。
 
 issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複製誤判定については、`awk -F: '$1>130 && $1<200'` のようなシングルクォート内比較演算子と `cat ... 2>&1` / `cat ... 1>&2` を positive case、`awk 'BEGIN { print 1 > "/tmp/unsafe" }'` のような awk 自身の出力リダイレクトと `cmd >&somefile`（fd 複製ではなく実ファイル書き込み）を negative case として固定する。同時に追加した allowlist（`command -v <name>`、`codex --version`/`--help`、`kill -0 <数値pid...>`、session tmp dir 配下限定の `mkdir -p`）についても、それぞれ許可される最小形を positive case、スコープ外の形（複数引数の `command -v`、`codex` の他サブコマンド、`-0` 以外のシグナルや負のpid/プロセスグループ指定を伴う `kill`、`-p` なし・複数パス・session tmp dir 外を対象とする `mkdir`）を negative case として固定する。
+
+`is_rm_f_on_safe_literal_path`（issue #248）については、session-approved ファイル自身への literal `rm`/`rm -f`（WIP commit なし）と working repo 内 literal パスへの `rm -f`（WIP commit あり）を positive case、repo root 自体・`.git` 配下・変数参照・複数トークン・グロブ・`-rf`（recursive、この関数の対象外）・session-approved でも repo 内でもない任意パスを negative case として固定する。
 
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 

@@ -20,9 +20,15 @@ template の実体は repository の `templates/` に保持する。Claude Code 
 
 根拠: `CLAUDE.md:32-47`
 
+「リポジトリへの操作ルール（必須）」節は、安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）について、read-only な解決ステップ → リテラル値埋め込みの2段階（resolve-then-embed）に分けることを AI に義務付ける。これは `hooks/auto-approve-readonly.sh` がコマンドテキストを実行せずに静的判定のみ行うという制約（推測・実行禁止）に対応するための運用側のルールであり、hook 側の `is_rm_f_on_safe_literal_path` によるリテラルパス自動承認と対になっている。
+
+根拠: `CLAUDE.md:60-70`, `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`）, issue #248
+
 ## 重要な設計判断
 
 `~/.claude/` と `~/.codex/` を symlink-only とすることで、agent ごとの installed path を提供しながら repository を唯一の編集対象として維持する。
+
+resolve-then-embed 規約は `commands/coding-general.md`（ソースコード編集時の言語非依存原則）ではなく `CLAUDE.md` の操作ルール節に置く。対象がソースコード編集ではなく、AI が発行する Bash コマンドそのものの構造化方法であり、セッション開始時に必ず読まれるこのファイルの方が適切なため（issue #248 での判断）。
 
 ## 統合ポイント
 
