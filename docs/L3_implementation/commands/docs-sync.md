@@ -41,7 +41,9 @@ Phase 4: 最終報告
 
 変更領域に対応する更新対象 docs を根拠付きで列挙する。HARD STOP 判定はファイル名パターンで行う（10件以上かつ3領域以上、主要レイヤ新出、エントリポイント変更）。L0_concept は更新しない。
 
-根拠: `commands/docs-sync.md:79-109`
+タスクリストの各項目を「確認不要（git diff の値をそのまま転記するだけ）」と「確認必要（文脈・意図を解釈して文章化する）」に分類する（issue #229）。全項目が確認不要なら許可を求めずそのまま Phase 3 へ進む。1項目でも確認必要な場合は、その項目について反映する文章そのものではなく根拠となった解釈を提示し、「解釈が合っているか」だけを確認する。文章化自体は確認後の Phase 3 で行い、再確認は求めない。分類に迷う場合は確認必要側に倒す。
+
+根拠: `commands/docs-sync.md:81-136`
 
 ### Phase 3: docs・README.md 最小更新 + L3 変更履歴更新
 
@@ -97,6 +99,7 @@ Phase 4: 最終報告
 
 ## 変更履歴（git log より自動生成）
 
+- 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 5c9d8f2 feat(#165): extend docs-sync to auto-insert git log into L3 per-file docs
