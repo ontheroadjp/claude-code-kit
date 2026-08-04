@@ -99,6 +99,7 @@ Phase 4: 最終報告
 
 ## 変更履歴（git log より自動生成）
 
+- 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 5c9d8f2 feat(#165): extend docs-sync to auto-insert git log into L3 per-file docs
