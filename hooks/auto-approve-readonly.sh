@@ -988,7 +988,7 @@ is_safe_segment() {
     fi
     # Standard read-only Unix tools (prefer fd over find)
     printf '%s' "$seg" | grep -qE '^cd(\s|$)' && return 0
-    printf '%s' "$seg" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl|sha256sum)(\s|$)' && return 0
+    printf '%s' "$seg" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl|sha256sum|strings|readlink|ss|apt-cache|desktop-file-validate|man|diff|sleep)(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^find(\s|$)'; then
         # A variable reference can smuggle -delete/-exec/etc past this exclusion scan.
         _has_variable_expansion "$seg" && return 1

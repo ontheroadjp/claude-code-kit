@@ -129,6 +129,14 @@ for command in \
     'printf value | sed -n '\''1p'\''' \
     'echo value | sha256sum' \
     'SESSION_ID="codex-$(printf '\''%s'\'' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"' \
+    'strings README.md' \
+    'readlink AGENTS.md' \
+    'ss -ltnp' \
+    'apt-cache policy vim' \
+    'desktop-file-validate applications/alacritty/Alacritty.desktop' \
+    'man keyd' \
+    'diff file1.txt file2.txt' \
+    'sleep 1' \
     'sed -n '\''/error/p'\'' README.md' \
     'sed -e '\''s/error/warning/'\'' README.md' \
     'awk '\''{ getline value; print value }'\'' README.md' \
