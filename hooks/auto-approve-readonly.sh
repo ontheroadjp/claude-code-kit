@@ -908,9 +908,23 @@ is_rm_rf_on_working_repo_path() {
     esac
 }
 
+# Paths that must never be auto-approved for rm, even when they would
+# otherwise match a safe rm target category. The session's own
+# session-approved file is a security-control state file, not disposable or
+# WIP-commit-recoverable data — deleting it without a real human
+# confirmation lets an agent silently reset the Write scope-expansion
+# guard's baseline (see the guard in the Write tool handler below). Add
+# future per-session control/state files here rather than special-casing
+# them inside is_rm_f_on_safe_literal_path.
+is_rm_protected_path() {
+    local path="$1"
+    is_session_approved_path "$path" && return 0
+    return 1
+}
+
 # rm [-f] <literal-path>: approve when the path has no variable expansion,
-# quoting, glob, or extra arguments, and resolves to either the current
-# session's own session-approved file or a path inside the working repo.
+# quoting, glob, or extra arguments, is not a protected path (see
+# is_rm_protected_path), and resolves to a path inside the working repo.
 # This is the counterpart to Write's is_session_approved_path handling
 # (commands/work.md G-0) for callers that must use Bash: the agent resolves
 # the runtime value via a separate read-only step first, then embeds the
@@ -924,7 +938,7 @@ is_rm_f_on_safe_literal_path() {
     case "$path" in
         ''|-*|*' '*|*$'\t'*|*'$'*|*';'*|*'|'*|*'&'*|*'>'*|*'<'*|*'`'*|*'*'*|*'?'*|*"'"*|*'"'*) return 1 ;;
     esac
-    is_session_approved_path "$path" && return 0
+    is_rm_protected_path "$path" && return 1
     is_in_working_repo "$path" || return 1
     local repo_root norm_path norm_root
     repo_root=$(detect_working_repo_root) || return 1
@@ -1088,16 +1102,13 @@ if is_rm_rf_on_working_repo_path "$command_for_analysis"; then
     exit 0
 fi
 
-# Step 2b: rm [-f] <literal-path> targeting the session-approved file or a
-# working-repo path → approve (see is_rm_f_on_safe_literal_path)
+# Step 2b: rm [-f] <literal-path> targeting a working-repo path → approve
+# (see is_rm_f_on_safe_literal_path; session-approved is excluded via
+# is_rm_protected_path and falls through to the normal confirmation flow)
 if is_rm_f_on_safe_literal_path "$command_for_analysis"; then
     _rmf_path=$(printf '%s' "$command_for_analysis" | sed -E 's/^rm([[:space:]]+-f)?[[:space:]]+//' | cut -c1-80)
-    if is_session_approved_path "$_rmf_path"; then
-        log_decision "approved" "Bash" "$command (session-approved literal rm)"
-    else
-        do_wip_commit "rm $_rmf_path" 2>/dev/null || true
-        log_decision "approved" "Bash" "$command (working-repo literal rm)"
-    fi
+    do_wip_commit "rm $_rmf_path" 2>/dev/null || true
+    log_decision "approved" "Bash" "$command (working-repo literal rm)"
     emit_approval
     exit 0
 fi

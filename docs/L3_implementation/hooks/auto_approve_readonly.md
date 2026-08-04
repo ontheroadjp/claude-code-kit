@@ -60,7 +60,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 7. `Bash` の `command` から、quoted-delimiter heredoc body をマスクした `command_for_analysis` を作る（以降の判定は全てこれを使う。ログのみ元の `command` を使う）。
 8. session-approved fast path を最初に評価する（全 segment が session-approved の場合のみ即時承認）。
 9. repo 内単一パスへの `rm -rf` は動的防御（WIP commit）後に承認する。
-9b. `rm`/`rm -f` に literal（変数・グロブ・複数トークンなし）な単一パスが続き、それが現在セッションの session-approved ファイル自身、または working repo 内であれば承認する（後者は WIP commit 後）。
+9b. `rm`/`rm -f` に literal（変数・グロブ・複数トークンなし）な単一パスが続き、それが保護対象パス（`is_rm_protected_path`。現在は session-approved ファイル自身のみ）でなく working repo 内であれば承認する（WIP commit 後）。session-approved ファイル自身への `rm`/`rm -f` は保護対象のため通常許可フローへ戻る。
 10. 共有 destructive guard を評価し、該当する場合は block する。
 11. `/dev/null` redirect と escaped pipe を正規化する。
 12. quote-aware にファイルへの write redirect（unquoted かつ `>&` ではない `>`）を検出した場合は通常許可フローへ戻す。
@@ -351,7 +351,7 @@ After:
 After:
   [NEW] 全 segment が session-approved → approve  ← 先頭に移動（fast path）
   [NEW] rm -rf + repo 内単一パス → WIP commit → approve
-  [NEW] rm[-f] + literal単一パス（session-approved file または repo内） → approve（repo内はWIP commit後）
+  [NEW] rm[-f] + literal単一パス（保護対象でなく repo内） → approve（WIP commit後）。session-approved file 自身は保護対象のため対象外
   approval_safety → block
   正規化・write redirect → user_prompt
   segment allowlist → approve
@@ -360,18 +360,24 @@ After:
 
 根拠: `hooks/auto-approve-readonly.sh:718-1093`
 
-### `rm [-f] <literal-path>` の自動承認（issue #248）
+### `rm [-f] <literal-path>` の自動承認（issue #248）と保護対象パス（issue #250）
 
 `is_rm_f_on_safe_literal_path()` は `is_rm_rf_on_working_repo_path()` の姉妹関数であり、次の点が異なる。
 
 - 対象は `-rf`/`-fr`（recursive+force）ではなく、`rm` 単体または `rm -f` のみ（非再帰）。
-- 承認先は working repo 内パスだけでなく、`is_session_approved_path()` による現在セッションの session-approved ファイル自身も含む。この2つ目の分岐が、`commands/work.md` G-0 の Write ベースの回避策（Bash `rm -f "$SESSION_APPROVED"` が確認プロンプトに落ちる問題）に対する、hook 側の汎用的な解決策にあたる。ただし G-0 自体は Write 方式のまま維持している（後述）。
+- 承認先は working repo 内パスのみ（WIP commit 後）。
 
-**なぜ hook は変数を解決せずに安全と判定できるか:** この関数は他の allowlist 判定と同じく、コマンドの**テキスト**だけを見て判定し、一切実行しない。危険操作の対象が実行時変数に依存する場合、hook 側でその値を検証する手段はないため、エージェント側が「read-only な解決ステップ（例: `echo "$SESSION_APPROVED"`）→ 解決済みの値をリテラルとして次のコマンドに埋め込む」という2段階（resolve-then-embed）に分けることを運用規約とする（`CLAUDE.md` の「リポジトリへの操作ルール」節）。hook が見るのは変数を含まない最終的なリテラルテキストだけであり、それを `is_session_approved_path`/`is_in_working_repo` という既存の（hook が独立に再計算する）述語と照合する。
+**なぜ hook は変数を解決せずに安全と判定できるか:** この関数は他の allowlist 判定と同じく、コマンドの**テキスト**だけを見て判定し、一切実行しない。危険操作の対象が実行時変数に依存する場合、hook 側でその値を検証する手段はないため、エージェント側が「read-only な解決ステップ（例: `echo "$SESSION_APPROVED"`）→ 解決済みの値をリテラルとして次のコマンドに埋め込む」という2段階（resolve-then-embed）に分けることを運用規約とする（`CLAUDE.md` の「リポジトリへの操作ルール」節）。hook が見るのは変数を含まない最終的なリテラルテキストだけであり、それを `is_rm_protected_path`/`is_in_working_repo` という既存の（hook が独立に再計算する）述語と照合する。
 
 **拒否パターン:** `is_rm_rf_on_working_repo_path` と同じ denylist（空白・`$`・`;`・`|`・`&`・`>`・`<`・バッククォート・`*`・`?`・クォート文字・`-`始まりの2番目のトークン）に加え、repo root 自体と `.git` 配下は working-repo 分岐から除外する（safety net 自体の破壊を防ぐ、`is_rm_rf_on_working_repo_path` と同じ理由）。`-rf`（recursive）はこの関数の対象外のまま既存の `is_rm_rf_on_working_repo_path` に委ねる。
 
-根拠: `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`）, issue #248
+**`is_rm_protected_path()`（issue #250）:** issue #248 の初期実装は working repo 内パスに加え、`is_session_approved_path()` による現在セッションの session-approved ファイル自身も無条件承認対象に含めていた。これは `commands/work.md` G-0 の Write ベースの回避策（Bash `rm -f "$SESSION_APPROVED"` が確認プロンプトに落ちる問題）に対する、hook 側の汎用的な解決策として導入されたものだった。
+
+しかしこの2つの安全性の根拠は同一ではない。working repo 内パスが安全なのは WIP commit で復元可能だからであり、session-approved ファイルは repo 外にあり、この根拠が成立しない。session-approved は Write ハンドラのスコープ拡張ガード（判定順序3、`session-approved scope expansion blocked`）の状態そのものであり、これを無確認で削除できると、`rm -f` → 空ファイルへの「初回書き込み」として再作成、という手順でガードを回避し、ユーザーに一切提示していないスコープを無断で確定できてしまう（issue #250 で実際に観測: 一度は無確認のまま、一度は正規の追加確認と無許可の既存分の持ち越しが混在する形で発生）。issue #248 導入前はこの `rm -f` は常に通常の確認プロンプトに落ちており、それで問題なく機能していた（session-approved に含まれない操作のたびに確認が必要という不便さはあった）。
+
+`is_rm_protected_path()` は `is_rm_f_on_safe_literal_path()` の先頭で評価する明示的な拒否リストであり、session-approved ファイル自身を保護対象として切り出す。これにより working repo 内の rm 自動承認（issue #248 の本来の目的）はそのまま維持しつつ、session-approved への `rm` は issue #248 以前の挙動（常に人間の実確認が必須）に戻る。将来的に同種の per-session 状態ファイルを追加する場合は、`is_rm_f_on_safe_literal_path()` 内に個別分岐を増やすのではなく、この関数に追加すること。
+
+根拠: `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`, `is_rm_protected_path`）, issue #248, issue #250
 
 ### session-approved fast path の安全性根拠
 
@@ -400,7 +406,7 @@ variable expansion の除外については、`node --check $ARGS` 型の報告�
 
 issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複製誤判定については、`awk -F: '$1>130 && $1<200'` のようなシングルクォート内比較演算子と `cat ... 2>&1` / `cat ... 1>&2` を positive case、`awk 'BEGIN { print 1 > "/tmp/unsafe" }'` のような awk 自身の出力リダイレクトと `cmd >&somefile`（fd 複製ではなく実ファイル書き込み）を negative case として固定する。同時に追加した allowlist（`command -v <name>`、`codex --version`/`--help`、`kill -0 <数値pid...>`、session tmp dir 配下限定の `mkdir -p`）についても、それぞれ許可される最小形を positive case、スコープ外の形（複数引数の `command -v`、`codex` の他サブコマンド、`-0` 以外のシグナルや負のpid/プロセスグループ指定を伴う `kill`、`-p` なし・複数パス・session tmp dir 外を対象とする `mkdir`）を negative case として固定する。
 
-`is_rm_f_on_safe_literal_path`（issue #248）については、session-approved ファイル自身への literal `rm`/`rm -f`（WIP commit なし）と working repo 内 literal パスへの `rm -f`（WIP commit あり）を positive case、repo root 自体・`.git` 配下・変数参照・複数トークン・グロブ・`-rf`（recursive、この関数の対象外）・session-approved でも repo 内でもない任意パスを negative case として固定する。
+`is_rm_f_on_safe_literal_path`（issue #248）については、working repo 内 literal パスへの `rm -f`（WIP commit あり）を positive case、repo root 自体・`.git` 配下・変数参照・複数トークン・グロブ・`-rf`（recursive、この関数の対象外）・repo 内でない任意パスを negative case として固定する。`is_rm_protected_path`（issue #250）については、session-approved ファイル自身への literal `rm`/`rm -f` が自動承認されず通常許可フローへ戻ることを negative case として固定する（issue #248 時点では positive case だったものを、保護対象パスの導入に伴い反転）。
 
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 

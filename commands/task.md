@@ -74,12 +74,12 @@ Phase 3: 最終報告
 - 想定される影響とリスク
 - 検証方法（成功条件）
 - ロールバック方針
-- 利用ツール（該当するものを列挙）:
-    - `tool:git_write`（git add / commit / push / stash / checkout / switch / branch / merge）
-    - `tool:gh_issue_write`（gh issue create / edit / close / comment / reopen）
-    - `tool:gh_pr_write`（gh pr create / edit / merge / close / ready）
-- 新規作成ファイル（絶対パス）
-- 編集ファイル（絶対パス）
+- 利用ツール:
+    - `tool:git_write`（git add / commit / push / stash / checkout / switch / branch / merge） — 該当する場合のみ列挙
+    - `tool:gh_issue_write`（gh issue create / edit / close / comment / reopen） — **`/task` フローでは常に列挙する（条件判定不要）**。Step 3.2 で issue が新規・既存いずれの場合も完了コメントを投稿するため、issue の有無に関わらず必ず必要になる
+    - `tool:gh_pr_write`（gh pr create / edit / merge / close / ready） — 該当する場合のみ列挙
+- 新規作成ファイル（絶対パス）— プラン本文で言及した実装ファイル・テストファイルを漏れなく転記する
+- 編集ファイル（絶対パス）— 同上
 - タスクリスト（以下を必ず含む）
     - 作業ブランチの作成（feat/change/fix/test/chore-<slug>）
         - /patch からのエスカレーションの場合はブランチ再利用（新規作成しない）
