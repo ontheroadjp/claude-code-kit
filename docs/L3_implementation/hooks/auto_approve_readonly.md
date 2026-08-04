@@ -2,10 +2,11 @@
 
 ## 目的と安全境界
 
-`hooks/auto-approve-readonly.sh` は Claude Code / Codex CLI の PreToolUse hook である。通常操作の不要な許可プロンプトを減らしつつ、自動承認を次の2種類に限定する。
+`hooks/auto-approve-readonly.sh` は Claude Code / Codex CLI の PreToolUse hook である。通常操作の不要な許可プロンプトを減らしつつ、自動承認を次の3種類に限定する。
 
 1. 永続状態を変更しない読み取り専用操作
-2. 現在セッションでユーザーが承認したファイルまたはツールカテゴリに属する操作
+2. ローカルリポジトリの外に一切影響しない narrow な git write 操作（`git add`/`git commit -m`/`git fetch`。共有・remote 状態は変更しない）
+3. 現在セッションでユーザーが承認したファイルまたはツールカテゴリに属する操作
 
 この分類に確信を持てない操作は出力なしで終了し、クライアントの通常許可フローへ戻す。破壊的操作は allowlist より先に評価し、session-approved が存在しても block する。
 
@@ -52,7 +53,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 10. `/dev/null` redirect と escaped pipe を正規化する。
 11. quote-aware にファイルへの write redirect（unquoted かつ `>&` ではない `>`）を検出した場合は通常許可フローへ戻す。
 12. command を quote-aware に segment 分割する（`>&<fd番号|->` は fd 複製として background operator 扱いしない）。
-13. 全 segment が読み取り専用または session-approved の場合のみ承認する。
+13. 全 segment が読み取り専用・narrow な local git write（`git add`/`git commit -m`/`git fetch`）・または session-approved のいずれかの場合のみ承認する。
 
 根拠: `hooks/auto-approve-readonly.sh:709-1093`
 
@@ -98,8 +99,25 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | journalctl | ログ照会全般 | `--vacuum-size/--vacuum-time/--vacuum-files`, `--rotate`, `--flush`, `--sync`, `--relinquish-var`, `--smart-relinquish-var`, `--setup-keys`, `--update-catalog`, `--force` |
 | gsettings | `get`, `list-schemas`, `list-relocatable-schemas`, `list-keys`, `list-children`, `list-recursively`, `range`, `describe`, `writable` | `set`, `reset`, `reset-recursively`, `monitor` |
 | gnome-extensions | `info`, `list` | `enable`, `disable`, `install`, `uninstall` 等 |
+| Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、複数トークン |
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
+
+### `is_safe_local_git_write_command`: session-approved 不要な local git write
+
+`git add`/`git commit`/`git fetch` は `tool:git_write`（session-approved カテゴリ）にも属するが、この3パターンに限っては**セッション同意なしで無条件承認**する専用関数 `is_safe_local_git_write_command` を `is_safe_git_read_command` の直後に追加している。
+
+**なぜ無条件で安全か:** この3操作はローカルリポジトリの外に一切影響しない。`add` はステージングのみ、`commit` はローカル履歴への記録のみ、許可される `fetch` の形（引数なし、または remote 名のみ）はローカルの remote-tracking ref を更新するだけで working tree・push・共有状態には触れない。これは Write/Edit tool が working repo 内のファイルを既に無条件承認している設計（動的防御セクション参照）と同じ「共有状態への影響がない」境界線上にある。
+
+一方で `git push`・`gh issue`/`gh pr` の書き込みは GitHub 上で他者から見える共有状態を変更するため、恒久 allowlist には追加せず `tool:git_write`/`tool:gh_issue_write`/`tool:gh_pr_write`（session-approved、1セッション1回のユーザー同意）に留める。
+
+**allowlist-shape（denylist ではない）:** `docs/L0_concept/policy.md` の設計方針に従い、いずれの分岐も「危険フラグを列挙して除外する」のではなく「安全な形だけを正規表現全体でマッチさせる」positive shape である。
+
+- `git add`: 各トークンが `-` 始まりでなく、かつ `.`/`*` 単独でもないことを要求する。1つでも該当すれば unsafe。
+- `git commit`: セグメント全体が `git commit (-m|--message) "..."` または `git commit (-m|--message) '...'` に完全一致することを要求する（`$(...)` はこのチェックより前段で `__SUBSHELL_SAFE__` に置換・再帰検証済みのため、ヒアドキュメント経由の複数行メッセージもこの形に収まる）。
+- `git fetch`: `git fetch` 単体、または `git fetch <remote>`（英数字始まりの単一トークン。`--all` のような `-` 始まりトークンは除外）のみ許可する。
+
+根拠: `hooks/auto-approve-readonly.sh`（`is_safe_local_git_write_command`、`is_safe_git_read_command` 直後）, issue #221
 
 次の mode はコマンド名が読み取り系でも常時許可しない。
 

@@ -26,7 +26,35 @@ gh pr view <PR番号> --json number,url,title,headRefName
 
 ---
 
-## Step 1.5: PR ブランチの取得・切り替え
+## Step 1.5: セッション内 git 書き込み操作の一括承認
+
+このコマンドは `/work` を経由しないため、`task.md`/`patch.md` が持つ session-approved の一括承認ゲートを持たない。そのままだと Step 1.6 以降の `git fetch`/`checkout`/`push` が毎回個別に確認プロンプトを要求する。
+
+ユーザーに確認する:
+**「PR #<番号> のレビュー対応を進めます。このセッション中の git 書き込み操作（fetch / checkout / add / commit / push）を自動承認にしてよいですか？」**
+
+- OK の場合:
+    - 以下の Bash コマンドで session-approved ファイルの正確なパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接取得し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
+      ```bash
+      SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+      if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
+          SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
+      fi
+      SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
+      SESSION_APPROVED_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
+      ```
+      セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 1.6 へ進む。
+    - Write ツールで上記パスに session-approved ファイルを作成する。内容: `tool:git_write`
+    - 注: `session-approved` はこの Step で 1 度だけ書き込む。実行中にスコープを追加しようとすると hook がブロックする。スコープ変更が必要な場合はこの Step に戻り、ユーザーの許可を得てから再書き込みすること。
+    - このゲートは `tool:git_write`（fetch/checkout/add/commit/非force push 等）のみを対象とする。コメント返信（`gh api ... --method POST`）は対象外で、引き続き通常の許可フローに従う — `gh api` の write 操作は allowlist-shape 上の理由から一律 session-approved 対象外としているため（`docs/L0_concept/policy.md`）。
+- NG または回答なしの場合:
+    - session-approved ファイルは作成せず、各 git 書き込み操作は通常の許可フローに従う
+
+Step 1.6 へ進む。
+
+---
+
+## Step 1.6: PR ブランチの取得・切り替え
 
 ```bash
 git fetch origin <headRefName>
