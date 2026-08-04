@@ -43,6 +43,7 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 
 ## 変更履歴（git log より自動生成）
 
+- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 27f1861 feat(#76): install templates for claude and codex
 - 5faaf5d docs: initialize project documentation (init-docs)

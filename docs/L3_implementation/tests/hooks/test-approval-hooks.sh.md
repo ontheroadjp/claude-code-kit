@@ -39,6 +39,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect

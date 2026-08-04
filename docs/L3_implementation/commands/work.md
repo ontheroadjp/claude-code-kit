@@ -41,6 +41,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 1e3b7fa fix(#227): avoid rm -f confirmation prompt in /work G-0 by clearing session-approved via Write tool
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 0297a81 feat(#126): add report review workflow
