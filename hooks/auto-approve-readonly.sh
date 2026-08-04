@@ -421,6 +421,24 @@ is_safe_for_in_list() {
     printf '%s' "$1" | grep -qE '^for[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+in[[:space:]]+.+$'
 }
 
+# Return 0 if $1 is `dpkg` invoked with exactly one read-only query flag
+# (-l/--list, -L/--listfiles, -s/--status, -S/--search) and no other flag.
+# dpkg mixes read-only query modes with destructive install/remove/configure
+# modes in the same command, so — unlike apt-cache, which has no mutating
+# subcommand at all — this must be a narrow positive allow-shape rather than
+# a blanket allow. Deliberately stricter than the git branch/tag read-only-
+# mode pattern: only a single recognized flag token is accepted, so even
+# combining two allowed flags (e.g. `dpkg -l -L pkg`) is rejected, not just
+# combining an allowed flag with a mutating one.
+is_safe_dpkg_query_command() {
+    local seg="$1" stripped
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-l|--list|-L|--listfiles|-s|--status|-S|--search)([[:space:]]|$)' || return 1
+    stripped=$(printf '%s' "$seg" | sed -E 's/(^|[[:space:]])(-l|--list|-L|--listfiles|-s|--status|-S|--search)([[:space:]]|$)/\1\3/')
+    printf '%s' "$stripped" | grep -qE '(^|[[:space:]])-' && return 1
+    return 0
+}
+
 is_safe_git_read_command() {
     local seg
     # Checked on the raw, pre-normalization argument: normalize_git_directory_prefix
@@ -1055,6 +1073,12 @@ is_safe_segment() {
 
     # gnome-extensions — allow read-only introspection subcommands only
     printf '%s' "$seg" | grep -qE '^gnome-extensions[[:space:]]+(info|list)(\s|$)' && return 0
+
+    # dpkg — allow read-only query flags only (see is_safe_dpkg_query_command)
+    if printf '%s' "$seg" | grep -qE '^dpkg(\s|$)'; then
+        is_safe_dpkg_query_command "$seg" && return 0
+        return 1
+    fi
 
     # Runtime version / syntax-check-only invocations
     printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
