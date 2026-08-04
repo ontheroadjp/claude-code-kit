@@ -38,6 +38,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
 - 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
 - 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands
 - 15877ae feat(#238): add strings/readlink/ss/apt-cache/desktop-file-validate/man/diff/sleep to the auto-approve hook's read-only tools allowlist
@@ -47,10 +48,3 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
-- 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
-- d3b63f5 fix(#196): track double quotes at depth=0 and save/restore quote state across nested subshells
-- 40ea58a fix(#196): track single quotes at depth=0 in subshell content helpers
-- ca76400 fix: add escape-awareness to subshell quote tracking in auto-approve hook
-- 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
-- 32610ca fix(#196): fix variable-expansion guard gaps found in review
-- a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
