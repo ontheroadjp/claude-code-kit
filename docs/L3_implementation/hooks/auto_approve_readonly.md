@@ -107,6 +107,18 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
 
+### 絶対パス起動の認識（`normalize_absolute_path_prefix`）
+
+`is_safe_git_read_command`・`is_safe_local_git_write_command`・Unix read tools 正規表現は、`/usr/bin/git status` のような絶対パス起動には元々一致しない（いずれも bare コマンド名にアンカーしているため）。`normalize_absolute_path_prefix` は、セグメント先頭が固定の既知安全システムディレクトリ（`/usr/bin/`, `/bin/`, `/usr/local/bin/`, `/sbin/`, `/usr/sbin/`）のいずれかで始まる場合のみ、その prefix を剥がしてから既存の allow-shape 正規表現に通す。
+
+**なぜ「既知の固定ディレクトリ」に限定するか（issue #237 の決定）:** bare コマンド名は実行時に PATH 解決されるが、絶対パス起動は PATH を経由せず**指定パスのバイナリを直接実行**する。任意の絶対パス prefix を無条件に剥がす実装にすると、agent-writable な任意の場所（例: `/tmp/evil/git`）に置かれた偽バイナリも `git` として誤認識され、auto-approve をすり抜けてしまう。認識対象を通常環境で agent が書き込めないシステムディレクトリのみに限定することで、この迂回を構造的に防ぐ。
+
+`is_safe_git_read_command`・`is_safe_local_git_write_command` では `normalize_absolute_path_prefix` を `normalize_git_directory_prefix` より先に適用する（`/usr/bin/git -C /tmp status` のように先頭の絶対パスを剥がして初めて `-C` prefix が認識できるため）。`_has_variable_expansion` は引き続き両正規化を適用する**前**の生 segment に対して呼ぶ（`git -C $DIR` の場合と同じ理由）。
+
+Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・引数の内容に関わらず read-only が保証されるコマンド群であるため、`normalize_absolute_path_prefix` 適用に追加の variable-expansion guard は不要（bare 名invocationの既存挙動と同じ）。
+
+根拠: `hooks/auto-approve-readonly.sh`（`normalize_absolute_path_prefix`、`is_safe_git_read_command`・`is_safe_local_git_write_command` 冒頭、Unix read tools 正規表現）, issue #237, issue #244
+
 ### `is_safe_local_git_write_command`: session-approved 不要な local git write
 
 `git add`/`git commit`/`git fetch` は `tool:git_write`（session-approved カテゴリ）にも属するが、この3パターンに限っては**セッション同意なしで無条件承認**する専用関数 `is_safe_local_git_write_command` を `is_safe_git_read_command` の直後に追加している。

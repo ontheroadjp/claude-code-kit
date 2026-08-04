@@ -111,6 +111,26 @@ normalize_git_directory_prefix() {
     fi
 }
 
+# Strip a leading absolute-path prefix from a segment's command token, but
+# only for a fixed set of known-safe system directories -- restricted per the
+# decision on issue #237. Unlike a bare command name (resolved via PATH at
+# execution time), an absolute-path invocation bypasses PATH resolution
+# entirely and runs whatever binary actually lives at that path. Normalizing
+# ANY leading absolute path would let a binary planted at an
+# attacker-controlled, agent-writable path (e.g. /tmp/evil/git) be
+# misclassified as the trusted bare command; restricting recognition to
+# directories that are not agent-writable in a normal environment avoids that.
+ABSOLUTE_PATH_PREFIX_PATTERN='^(/usr/bin/|/bin/|/usr/local/bin/|/sbin/|/usr/sbin/)([^/[:space:]]+)([[:space:]].*)?$'
+
+normalize_absolute_path_prefix() {
+    local seg="$1"
+    if [[ "$seg" =~ $ABSOLUTE_PATH_PREFIX_PATTERN ]]; then
+        printf '%s%s' "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+    else
+        printf '%s' "$seg"
+    fi
+}
+
 has_unsupported_expansion() {
     # $() is handled separately by _subshells_are_safe; only reject backtick and process substitution
     printf '%s' "$1" | grep -qE '`|[<>]\('
@@ -442,11 +462,13 @@ is_safe_dpkg_query_command() {
 is_safe_git_read_command() {
     local seg
     # Checked on the raw, pre-normalization argument: normalize_git_directory_prefix
-    # discards the "-C <dir>" operand entirely from its output, so a variable
-    # reference hidden there (e.g. DIR='repo branch -D victim'; git -C $DIR diff)
-    # would otherwise be invisible to this guard.
+    # discards the "-C <dir>" operand entirely from its output, and
+    # normalize_absolute_path_prefix discards the leading system-directory
+    # path, so a variable reference hidden in either (e.g.
+    # DIR='repo branch -D victim'; git -C $DIR diff) would otherwise be
+    # invisible to this guard.
     _has_variable_expansion "$1" && return 1
-    seg=$(normalize_git_directory_prefix "$1")
+    seg=$(normalize_git_directory_prefix "$(normalize_absolute_path_prefix "$1")")
 
     has_unsupported_expansion "$seg" && return 1
     # --output exclusion (and the branch/tag exclusion-then-allow checks below)
@@ -494,8 +516,10 @@ is_safe_git_read_command() {
 # per docs/L0_concept/policy.md's allowlist-shape design principle.
 is_safe_local_git_write_command() {
     local seg
+    # See is_safe_git_read_command for why this must run on the raw,
+    # pre-normalization argument.
     _has_variable_expansion "$1" && return 1
-    seg=$(normalize_git_directory_prefix "$1")
+    seg=$(normalize_git_directory_prefix "$(normalize_absolute_path_prefix "$1")")
 
     has_unsupported_expansion "$seg" && return 1
 
@@ -1004,9 +1028,13 @@ is_safe_segment() {
         printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X[^[:space:]]*|-f[^[:space:]]*|-F[^[:space:]]*|--method([=[:space:]]|$)|--field([=[:space:]]|$)|--raw-field([=[:space:]]|$)|--input([=[:space:]]|$))' && return 1
         return 0
     fi
-    # Standard read-only Unix tools (prefer fd over find)
+    # Standard read-only Unix tools (prefer fd over find). These are safe
+    # regardless of arguments/flags (see _has_variable_expansion's docstring),
+    # so normalizing a known-safe absolute-path prefix here needs no
+    # additional variable-expansion guard beyond what already applies to
+    # bare-name invocations.
     printf '%s' "$seg" | grep -qE '^cd(\s|$)' && return 0
-    printf '%s' "$seg" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl|sha256sum|strings|readlink|ss|apt-cache|desktop-file-validate|man|diff|sleep)(\s|$)' && return 0
+    printf '%s' "$(normalize_absolute_path_prefix "$seg")" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl|sha256sum|strings|readlink|ss|apt-cache|desktop-file-validate|man|diff|sleep)(\s|$)' && return 0
     if printf '%s' "$seg" | grep -qE '^find(\s|$)'; then
         # A variable reference can smuggle -delete/-exec/etc past this exclusion scan.
         _has_variable_expansion "$seg" && return 1

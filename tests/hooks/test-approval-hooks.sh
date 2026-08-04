@@ -863,4 +863,31 @@ if [ -e "${CONCURRENT_STATE_ROOT}/current-session-approved-path" ]; then
     exit 1
 fi
 
+# Absolute-path invocations of already-allowlisted commands under a fixed set
+# of known-safe system directories (issue #237 decision, implemented in #244)
+# must auto-approve identically to their bare-name equivalents.
+for command in \
+    '/usr/bin/git status' \
+    '/usr/bin/git -C /tmp status --porcelain' \
+    '/bin/nl README.md' \
+    '/usr/local/bin/rg -n foo README.md' \
+    '/usr/bin/git add README.md' \
+    '/usr/bin/git commit -m "docs: sync documentation"' \
+    '/usr/bin/git fetch origin'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# Absolute paths outside the recognized system directories — in particular
+# agent-writable locations — must NOT be normalized away: a binary planted at
+# such a path bypasses PATH resolution and must not be misclassified as the
+# trusted bare command.
+for command in \
+    '/tmp/evil/git status' \
+    '/opt/attacker-controlled/nl README.md' \
+    './git status'; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
 printf 'approval hook tests passed\n'
