@@ -38,6 +38,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- d3b2129 fix(#231): add sha256sum to the auto-approve hook's read-only tools allowlist
 - d5a823a feat(#224): add for/do/done allow-shape to auto-approve-readonly.sh
 - 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
