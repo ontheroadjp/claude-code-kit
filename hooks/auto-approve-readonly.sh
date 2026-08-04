@@ -1084,6 +1084,10 @@ is_safe_segment() {
     # writes a binary resource bundle to disk and must remain excluded
     printf '%s' "$seg" | grep -qE '^gresource[[:space:]]+(list|list-sections)(\s|$)' && return 0
 
+    # tmux — allow read-only introspection subcommands only; send-keys can
+    # inject input into another pane/session and kill-* can terminate them
+    printf '%s' "$seg" | grep -qE '^tmux[[:space:]]+(display-message|list-windows|list-sessions|list-panes|show-options)(\s|$)' && return 0
+
     # Runtime version / syntax-check-only invocations
     printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0
