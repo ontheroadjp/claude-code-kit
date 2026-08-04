@@ -36,6 +36,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 9f7ccdf fix(#208): close write-redirect/background-operator false positives and extend read-only allowlist in auto-approve-readonly.sh
 - 4815067 fix(#200): unify subshell extraction into a single tokenizer, closing saw_dollar and ANSI-C quoting bypasses
@@ -45,5 +46,3 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 0ed05e5 fix(#196): fix quote-state desync when a double-quoted string contains a single quote
 - 32610ca fix(#196): fix variable-expansion guard gaps found in review
 - a04b853 fix(#196): close unquoted variable expansion bypass in auto-approve allowlist
-- e740c91 fix(#194): replace node/bash syntax-check denylist with strict single-arg allowlist
-- 3655fd5 feat(#194): extend read-only allowlist and fix multibyte log truncation
