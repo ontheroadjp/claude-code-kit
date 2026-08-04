@@ -367,6 +367,7 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 ## 変更履歴（git log より自動生成）
 
+- 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands
 - 15877ae feat(#238): add strings/readlink/ss/apt-cache/desktop-file-validate/man/diff/sleep to the auto-approve hook's read-only tools allowlist
 - d3b2129 fix(#231): add sha256sum to the auto-approve hook's read-only tools allowlist
 - d5a823a feat(#224): add for/do/done allow-shape to auto-approve-readonly.sh
