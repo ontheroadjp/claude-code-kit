@@ -99,6 +99,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | journalctl | ログ照会全般 | `--vacuum-size/--vacuum-time/--vacuum-files`, `--rotate`, `--flush`, `--sync`, `--relinquish-var`, `--smart-relinquish-var`, `--setup-keys`, `--update-catalog`, `--force` |
 | gsettings | `get`, `list-schemas`, `list-relocatable-schemas`, `list-keys`, `list-children`, `list-recursively`, `range`, `describe`, `writable` | `set`, `reset`, `reset-recursively`, `monitor` |
 | gnome-extensions | `info`, `list` | `enable`, `disable`, `install`, `uninstall` 等 |
+| dpkg（`is_safe_dpkg_query_command`） | `-l`/`--list`, `-L`/`--listfiles`, `-s`/`--status`, `-S`/`--search` のいずれか1つのみを含む形 | `-i`/`-r`/`-P`/`--configure` 等の変更系、上記フラグを2つ以上組み合わせた形 |
 | Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、複数トークン |
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
@@ -118,6 +119,14 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 - `git fetch`: `git fetch` 単体、または `git fetch <remote>`（英数字始まりの単一トークン。`--all` のような `-` 始まりトークンは除外）のみ許可する。
 
 根拠: `hooks/auto-approve-readonly.sh`（`is_safe_local_git_write_command`、`is_safe_git_read_command` 直後）, issue #221
+
+### `is_safe_dpkg_query_command`: dpkg の read-only クエリ限定 allow-shape
+
+`dpkg` は `-l`/`-L`/`-s`/`-S` のような read-only クエリと `-i`/`-r`/`-P`/`--configure` のような変更系操作を同一コマンドで混在させているため、`apt-cache`（変更系サブコマンドが一切存在しない）のように無条件では許可できない。`is_safe_dpkg_query_command` は、`-l`/`--list`・`-L`/`--listfiles`・`-s`/`--status`・`-S`/`--search` のうち**ちょうど1つ**が存在し、それ以外に `-` で始まるトークンが一切ないことを要求する。
+
+**`git branch`/`git tag` の read-only-mode allow-shape より厳格な理由:** それらは「危険フラグを除外し、既知の read-only フラグが1つでもあれば許可」という形だが、dpkg では2つの許可フラグを組み合わせた場合（例: `dpkg -l -L pkg`）も意図的に拒否する。単一フラグのみを許可形状とすることで、フラグの組み合わせによる未検証の挙動変化を一切許容しない。
+
+根拠: `hooks/auto-approve-readonly.sh`（`is_safe_dpkg_query_command`、`is_safe_for_in_list` 直後）, issue #233
 
 次の mode はコマンド名が読み取り系でも常時許可しない。
 

@@ -162,6 +162,14 @@ for command in \
     'journalctl --since today' \
     'gnome-extensions info example-extension-uuid' \
     'gnome-extensions list' \
+    'dpkg -l gnome-shell' \
+    'dpkg -L gnome-shell' \
+    'dpkg -s gnome-shell' \
+    'dpkg -S /usr/bin/git' \
+    'dpkg --list' \
+    'dpkg --listfiles gnome-shell' \
+    'dpkg --status gnome-shell' \
+    'dpkg --search /usr/bin/git' \
     'bash -n script.sh' \
     'node --check script.js' \
     'node -c script.js'; do
@@ -255,6 +263,14 @@ for command in \
     'gh api repos/octocat/hello-world --input body.json' \
     'gnome-extensions disable example-extension-uuid' \
     'gnome-extensions enable example-extension-uuid' \
+    'dpkg -i package.deb' \
+    'dpkg -r gnome-shell' \
+    'dpkg -P gnome-shell' \
+    'dpkg --configure -a' \
+    'dpkg -l -L gnome-shell' \
+    'dpkg -l -i package.deb' \
+    'dpkg' \
+    'dpkg -x package.deb /tmp' \
     'bash -n -c "echo hi"' \
     'bash script.sh' \
     'node --check -e "process.exit(1)"' \
