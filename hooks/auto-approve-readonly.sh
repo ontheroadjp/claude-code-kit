@@ -449,6 +449,52 @@ is_safe_git_read_command() {
     return 1
 }
 
+# git add / commit / fetch in their narrow known-safe shapes: unlike
+# tool:git_write (which requires one-time per-session user consent because it
+# also covers push/checkout/branch/stash), these three cannot affect anything
+# outside the local repository — add only stages, commit only records local
+# history, and the accepted fetch shape only updates local remote-tracking
+# refs. Approved unconditionally, independent of session-approved state.
+# Each branch is a positive allow-shape (not a denylist of dangerous flags),
+# per docs/L0_concept/policy.md's allowlist-shape design principle.
+is_safe_local_git_write_command() {
+    local seg
+    _has_variable_expansion "$1" && return 1
+    seg=$(normalize_git_directory_prefix "$1")
+
+    has_unsupported_expansion "$seg" && return 1
+
+    # git add: one or more explicit path arguments only. No flags at all
+    # (blocks -A/--all/-p/-i/-u/-n/...) and no "." / "*" blanket-add tokens —
+    # see docs/L0_concept/policy.md's "git add -A / git add . を使う" prohibition.
+    if printf '%s' "$seg" | grep -qE '^git[[:space:]]+add(\s|$)'; then
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-[^[:space:]]*|\.|\*)([[:space:]]|$)' && return 1
+        printf '%s' "$seg" | grep -qE '^git[[:space:]]+add[[:space:]]+[^[:space:]]' && return 0
+        return 1
+    fi
+
+    # git commit: exact "-m/--message <single quoted message>" shape only, no
+    # other flag — excludes --amend (rewrites history), --no-verify/-n (skips
+    # commit hooks such as secret scanning), -a/--all (implicit staging), and
+    # any other combination.
+    if printf '%s' "$seg" | grep -qE '^git[[:space:]]+commit(\s|$)'; then
+        printf '%s' "$seg" | grep -qE '^git[[:space:]]+commit[[:space:]]+(-m|--message)[[:space:]]+"[^"]*"[[:space:]]*$' && return 0
+        printf '%s' "$seg" | grep -qE "^git[[:space:]]+commit[[:space:]]+(-m|--message)[[:space:]]+'[^']*'[[:space:]]*\$" && return 0
+        return 1
+    fi
+
+    # git fetch: bare, or a single plain remote-name argument only. No
+    # refspec (":") and no flags — in particular no force ("+") refspec,
+    # which could overwrite a local branch non-fast-forward.
+    if printf '%s' "$seg" | grep -qE '^git[[:space:]]+fetch(\s|$)'; then
+        [ "$seg" = "git fetch" ] && return 0
+        printf '%s' "$seg" | grep -qE '^git[[:space:]]+fetch[[:space:]]+[A-Za-z0-9][A-Za-z0-9._/-]*[[:space:]]*$' && return 0
+        return 1
+    fi
+
+    return 1
+}
+
 split_shell_segments() {
     local input="$1" current="" quote="" char next prev
     local escaped=0 i
@@ -903,6 +949,9 @@ is_safe_segment() {
 
     # git read-only subcommands
     is_safe_git_read_command "$seg" && return 0
+
+    # git add / commit / fetch — narrow known-safe shapes, local-only
+    is_safe_local_git_write_command "$seg" && return 0
 
     # gh read-only subcommands
     printf '%s' "$seg" | grep -qE '^gh[[:space:]]+(issue|pr|label|repo|release|run|workflow)[[:space:]]+(list|view|status)(\s|$)' && return 0

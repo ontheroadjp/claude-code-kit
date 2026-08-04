@@ -163,6 +163,21 @@ assert_json_decision "$output" "approve"
 output=$(run_auto $'gh pr view 143 --json mergeable,mergeStateStatus,isDraft,state,url,headRefOid\ngh pr checks 143')
 assert_json_decision "$output" "approve"
 
+# git add / commit / fetch in their narrow known-safe shapes must auto-approve
+# unconditionally, independent of any session-approved state (no SESSION_FILE
+# has been written yet at this point in the test).
+for command in \
+    'git add README.md' \
+    'git add README.md docs/L0_concept/policy.md' \
+    'git commit -m "docs: sync documentation"' \
+    "git commit --message 'fix: correct typo'" \
+    'git fetch' \
+    'git fetch origin' \
+    'git -C /tmp fetch origin'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
 for command in \
     'if [ -f README.md ]; then touch unsafe; fi' \
     'printf value | some-unknown-command' \
@@ -235,7 +250,25 @@ for command in \
     'node --check ./a.js ./b.js' \
     'bash -n -x script.sh' \
     'bash -n script.sh extra-arg' \
-    'node script.js'; do
+    'node script.js' \
+    'git add -A' \
+    'git add --all' \
+    'git add .' \
+    'git add *' \
+    'git add -A README.md' \
+    'git add -p README.md' \
+    'git commit --amend' \
+    'git commit --amend -m "docs: sync documentation"' \
+    'git commit -m "docs: sync documentation" --no-verify' \
+    'git commit -n -m "docs: sync documentation"' \
+    'git commit -a -m "docs: sync documentation"' \
+    'git commit -m "docs: sync documentation" README.md' \
+    'git commit -m docs' \
+    'git commit -m "unterminated' \
+    'git fetch origin +main:main' \
+    'git fetch origin main:main' \
+    'git fetch --all' \
+    'git fetch --prune origin'; do
     output=$(run_auto "$command")
     assert_no_output "$output"
 done
@@ -363,7 +396,10 @@ for command in \
     "FINDOPT='-delete'; find . \$FINDOPT" \
     "SORTOPT='-o /tmp/sorted'; sort \$SORTOPT README.md" \
     "DATEOPT='--set tomorrow'; date \$DATEOPT" \
-    "JOPT='--rotate'; journalctl \$JOPT"; do
+    "JOPT='--rotate'; journalctl \$JOPT" \
+    "ADDOPT='-A'; git add \$ADDOPT" \
+    "MSG='\"pwned\" --amend'; git commit -m \$MSG" \
+    "REF='+main:main'; git fetch origin \$REF"; do
     output=$(run_auto "$command")
     assert_no_output "$output"
 done
