@@ -12,6 +12,7 @@ one line per PreToolUse decision, e.g.
 from __future__ import annotations
 
 import re
+import statistics
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -29,6 +30,7 @@ from lib.analyze_common import (  # noqa: E402
 
 TOP_N = 10
 RECENT_N = 15
+P95_PERCENTILE = 95
 
 # Mirrors hooks/auto-approve-readonly.sh's check_session_approved() categories
 # (tool:git_write / tool:gh_issue_write / tool:gh_pr_write) — the same Bash
@@ -141,6 +143,70 @@ def top_detail_patterns(decisions: list[Decision], result: str, n: int) -> list[
     return [{"tool": tool, "detail": detail, "count": count} for (tool, detail), count in ranked]
 
 
+def numeric_duration_ms(decision: Decision) -> int | None:
+    value = decision["duration_ms"]
+    if value is None or not value.isdigit():
+        return None
+    return int(value)
+
+
+def percentile(sorted_values: list[int], pct: int) -> float:
+    if len(sorted_values) == 1:
+        return float(sorted_values[0])
+    quantiles = statistics.quantiles(sorted_values, n=100, method="inclusive")
+    return round(quantiles[pct - 1], 2)
+
+
+def top_slow_patterns(decisions: list[Decision], n: int) -> list[dict[str, object]]:
+    grouped: dict[tuple[str, str], list[int]] = {}
+    for decision in decisions:
+        duration = numeric_duration_ms(decision)
+        if duration is None:
+            continue
+        key = (decision["tool"], decision["detail"])
+        grouped.setdefault(key, []).append(duration)
+
+    ranked = sorted(grouped.items(), key=lambda kv: sum(kv[1]) / len(kv[1]), reverse=True)[:n]
+    return [
+        {
+            "tool": tool,
+            "detail": detail,
+            "count": len(durations),
+            "avg_ms": round(sum(durations) / len(durations), 2),
+            "max_ms": max(durations),
+        }
+        for (tool, detail), durations in ranked
+    ]
+
+
+def duration_ms_stats(decisions: list[Decision], n: int) -> dict[str, object]:
+    durations = [d for d in (numeric_duration_ms(decision) for decision in decisions) if d is not None]
+    sample_count = len(durations)
+    excluded_count = len(decisions) - sample_count
+
+    if sample_count == 0:
+        return {
+            "sample_count": 0,
+            "excluded_count": excluded_count,
+            "avg_ms": 0.0,
+            "median_ms": 0.0,
+            "p95_ms": 0.0,
+            "max_ms": 0.0,
+            "top_slow_patterns": [],
+        }
+
+    sorted_durations = sorted(durations)
+    return {
+        "sample_count": sample_count,
+        "excluded_count": excluded_count,
+        "avg_ms": round(sum(durations) / sample_count, 2),
+        "median_ms": statistics.median(durations),
+        "p95_ms": percentile(sorted_durations, P95_PERCENTILE),
+        "max_ms": max(durations),
+        "top_slow_patterns": top_slow_patterns(decisions, n),
+    }
+
+
 def classify_routine_op(tool: str, detail: str) -> str | None:
     if tool != "Bash":
         return None
@@ -245,6 +311,7 @@ def aggregate(months: list[str], decisions: list[Decision]) -> dict[str, object]
         "recent_user_prompt_samples": recent_samples(decisions, "user_prompt", RECENT_N),
         "monthly_trend": monthly_trend(decisions),
         "routine_ops": routine_ops_breakdown(decisions, TOP_N),
+        "duration_ms_stats": duration_ms_stats(decisions, TOP_N),
     }
 
 

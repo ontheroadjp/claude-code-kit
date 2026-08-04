@@ -18,9 +18,10 @@
    - `recent_blocked_samples` / `recent_user_prompt_samples`（直近 `RECENT_N` 件のサンプル）
    - `monthly_trend`（`timestamp` の年月ごとにグルーピングした判定数・result内訳・比率の時系列）
    - `routine_ops`（`/work` パイプラインの定型処理として分類できた Bash コマンドの内訳）
+   - `duration_ms_stats`（`duration_ms` の数値集計。`sample_count` / `excluded_count` / `avg_ms` / `median_ms` / `p95_ms` / `max_ms` / `top_slow_patterns`）
 4. `main()` で `lib.analyze_common` の共通CLI・月解決処理を呼び、結果を JSON として出力する
 
-根拠: `scripts/analyze_auto_approve.py:65-256`
+根拠: `scripts/analyze_auto_approve.py:67-315`
 
 ## 主要な判定ロジック・フロー
 
@@ -29,8 +30,10 @@
 - `classify_routine_op(tool, detail)` は `ROUTINE_OP_PATTERNS` の正規表現リストを先頭一致で試し、Bash の `detail` 先頭が `hooks/auto-approve-readonly.sh` の `check_session_approved()` が認識する git/gh write系コマンド形状（`git add` / `git commit` / `git push` / ... / `gh pr merge` 等）に一致すればそのラベルを返す。一致しなければ `None`（定型処理として扱わない）。パターンの並び順・粒度は `check_session_approved()` の分岐と1:1対応させており、あるパターンを恒久的に自動承認へ追加したくなった場合、hook 側のどの正規表現分岐を編集すべきかがそのまま分かるようにしている
 - `routine_ops_breakdown()` は `classify_routine_op` で分類できた判定のみを対象に、パターンごとの result 内訳を集計し、`user_prompt_count > 0` のパターンを `user_prompt_count` 降順で `patterns_needing_approval` として抽出する
 - `monthly_trend()` は `timestamp` の先頭 `MONTH_PATTERN_LENGTH`（7文字 = `YYYY-MM`）を月キーとして `decisions` をグルーピングする
+- `numeric_duration_ms(decision)` は `duration_ms` が数字のみ（`str.isdigit()`）の場合にのみ `int` を返し、`None` および `"NA"` は `None` として扱う（例外送出ではなく判定で除外する設計）
+- `duration_ms_stats(decisions, n)` は `numeric_duration_ms` で数値化できた `duration_ms` のみを対象に `avg_ms` / `median_ms`（`statistics.median`）/ `p95_ms`（`percentile()`、`statistics.quantiles(..., method="inclusive")`）/ `max_ms` を計算し、`top_slow_patterns(decisions, n)`（`(tool, detail)` 別の平均処理時間 `avg_ms` 降順 TOP `n`、`top_blocked_patterns` と同じグルーピング様式）を添える。数値サンプルが1件のみの場合は `percentile()` がそのまま単一値を返す（`statistics.quantiles` は2件未満で例外を送出するため）。数値サンプルが0件の場合は `sample_count=0`・数値系フィールドは全て `0.0`・`top_slow_patterns=[]` を返す（`ratio()` が `total=0` を `0.0` で扱う既存の設計と揃えている）
 
-根拠: `scripts/analyze_auto_approve.py:35-60`, `scripts/analyze_auto_approve.py:126-206`
+根拠: `scripts/analyze_auto_approve.py:35-60`, `scripts/analyze_auto_approve.py:129-207`
 
 ## 重要な設計判断とその理由
 
@@ -39,6 +42,8 @@
 `/analyze-auto-approve` の目的は「安全性を保ちながら自動承認率を100%に近づける」ことであり、その一部として「`/work` パイプラインの定型処理（git/gh write系操作）がどれだけユーザー確認に落ちているか」を明示的な KPI として求められた（issue #216）。これを実データから機械的に判定するために、`hooks/auto-approve-readonly.sh` が既に持つ `check_session_approved()` の分類ロジックをそのまま踏襲した。独自の分類基準を新しく作ると hook の実際の動作とズレるおそれがあるため、既存の唯一の正の情報源（hook 自体の allowlist）をミラーする設計にした。ただし文字列一致の複製であるため、hook 側の allowlist が変わった場合はこのファイルの `ROUTINE_OP_PATTERNS` も追従して更新する必要がある（ドリフトの可能性は `docs/L3_implementation/commands/analyze-auto-approve.md` にも明記）。
 
 `monthly_trend` は、`--all` 実行時に過去のチューニング施策（hook の allowlist 拡張など）が自動承認率を実際に改善させたかどうかを時系列で確認できるようにするために追加した。
+
+`duration_ms_stats` は「hook 自体の実行時間が体感レイテンシに寄与しているか」を数値で判断できるようにするために追加した（issue #218）。集計手段として標準ライブラリ `statistics` を採用し、独自の百分位計算ロジックは実装していない — 統計ロジックの正しさを自前で検証・保守するコストを避けるため。`"NA"` は bash < 5.0 で `$EPOCHREALTIME` が使えず計測できなかったことを表す欠損値であり、0 として扱うと平均値が不当に下がるため `excluded_count` として分離し数値集計から完全に除外する設計にした。
 
 ## 統合ポイント
 
@@ -53,7 +58,8 @@
 - `top_blocked_patterns` / `top_user_prompt_patterns` / `top_sessions` は `TOP_N`（10件）、サンプルは `RECENT_N`（15件）に切り詰められる。`routine_ops.patterns_needing_approval` も `TOP_N`（10件）に切り詰められる
 - `routine_ops` は Bash ツールの決定のみを対象とする（`classify_routine_op` は `tool != "Bash"` を即座に除外する）
 - `ROUTINE_OP_PATTERNS` は `hooks/auto-approve-readonly.sh` の `check_session_approved()` の手動ミラーであり、自動同期はされない。hook 側の allowlist が変わった場合、このファイルも合わせて更新しないと `routine_ops` の分類が古くなる
-- `Decision["duration_ms"]` はパースされるが `aggregate()` はまだこの値を集計・利用しない（数値文字列または `"NA"`、フィールド自体が存在しない旧ログ行では `None`）。集計・レポートへの反映は issue #218 のスコープ
+- `duration_ms_stats.top_slow_patterns` も `TOP_N`（10件）に切り詰められる
+- `duration_ms_stats` は `"NA"` およびフィールド欠損（旧フォーマットのログ行）を区別せず一律 `excluded_count` にまとめる。bash バージョンによる計測不能とログフォーマット移行前の欠損を JSON レベルでは区別できない
 
 ## 変更履歴（git log より自動生成）
 
