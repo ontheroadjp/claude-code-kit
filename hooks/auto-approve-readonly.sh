@@ -1074,6 +1074,10 @@ is_safe_segment() {
     # gnome-extensions — allow read-only introspection subcommands only
     printf '%s' "$seg" | grep -qE '^gnome-extensions[[:space:]]+(info|list)(\s|$)' && return 0
 
+    # gdbus — allow read-only introspection subcommand only; call/emit/wait/
+    # monitor can invoke arbitrary D-Bus methods with unknowable side effects
+    printf '%s' "$seg" | grep -qE '^gdbus[[:space:]]+introspect(\s|$)' && return 0
+
     # dpkg — allow read-only query flags only (see is_safe_dpkg_query_command)
     if printf '%s' "$seg" | grep -qE '^dpkg(\s|$)'; then
         is_safe_dpkg_query_command "$seg" && return 0

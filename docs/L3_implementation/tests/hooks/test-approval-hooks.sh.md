@@ -11,7 +11,7 @@
 `run_auto`（Claude Code 形式の hook payload）と `run_auto_codex_symlink`（Codex CLI symlink 経由）で `hooks/auto-approve-readonly.sh` を isolated `TMP_DIR`（`SESSION_FILE` を含む）上で直接実行し、stdout の decision JSON と `logs/auto-approve/` のログ行を `assert_json_decision` / `assert_no_output` / `assert_log_matches` で検証する。
 
 主なカバレッジ:
-- Bash allowlist の境界（Git / GitHub CLI / Unix read tools / curl / npm / journalctl / gsettings / gnome-extensions / gresource / dpkg / tmux 等）の positive / negative ペア
+- Bash allowlist の境界（Git / GitHub CLI / Unix read tools / curl / npm / journalctl / gsettings / gnome-extensions / gdbus / gresource / dpkg / tmux 等）の positive / negative ペア
 - `for VAR in LIST; do ...; done` ループ（`;` 区切り・改行区切り）の read-only body の positive case と、unsafe body・C-style `for ((...))`・`$()` 経由の unsafe list・`in` 省略形の negative case（issue #224）
 - `git add`/`git commit -m`/`git fetch` の narrow allow-shape（session-approved 不要で無条件承認される3パターン）の positive / negative ペア（`-A`/`--all`/`.`/`*`、`--amend`/`--no-verify`/`-a`、refspec/`+`強制指定 等は negative）
 - variable expansion 除外（unquoted / double-quoted `$VAR` の smuggling）の negative case と、flag-invariant なコマンドでの positive case（`git add`/`git commit`/`git fetch` の allow-shape に対する smuggling も含む）
@@ -38,6 +38,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- 199021a feat(#236): add narrow allow-shape for gdbus introspect
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
 - 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
 - 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands

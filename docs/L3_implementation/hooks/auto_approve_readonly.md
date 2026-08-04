@@ -99,6 +99,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | journalctl | ログ照会全般 | `--vacuum-size/--vacuum-time/--vacuum-files`, `--rotate`, `--flush`, `--sync`, `--relinquish-var`, `--smart-relinquish-var`, `--setup-keys`, `--update-catalog`, `--force` |
 | gsettings | `get`, `list-schemas`, `list-relocatable-schemas`, `list-keys`, `list-children`, `list-recursively`, `range`, `describe`, `writable` | `set`, `reset`, `reset-recursively`, `monitor` |
 | gnome-extensions | `info`, `list` | `enable`, `disable`, `install`, `uninstall` 等 |
+| gdbus | `introspect` | `call`（任意のD-Busメソッドを実行でき、副作用は対象メソッド依存で不明）, `emit`, `wait`, `monitor` |
 | dpkg（`is_safe_dpkg_query_command`） | `-l`/`--list`, `-L`/`--listfiles`, `-s`/`--status`, `-S`/`--search` のいずれか1つのみを含む形 | `-i`/`-r`/`-P`/`--configure` 等の変更系、上記フラグを2つ以上組み合わせた形 |
 | gresource | `list`, `list-sections` | `compile`（バイナリのリソースバンドルをディスクに書き出す） |
 | tmux | `display-message`, `list-windows`, `list-sessions`, `list-panes`, `show-options` | `send-keys`（他のpane/sessionへの入力注入）、`kill-*`、`new-session` 等のセッション変更系 |
@@ -369,6 +370,7 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 ## 変更履歴（git log より自動生成）
 
+- 199021a feat(#236): add narrow allow-shape for gdbus introspect
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
 - 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
 - 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands

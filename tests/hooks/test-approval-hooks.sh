@@ -170,6 +170,7 @@ for command in \
     'dpkg --listfiles gnome-shell' \
     'dpkg --status gnome-shell' \
     'dpkg --search /usr/bin/git' \
+    'gdbus introspect --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications' \
     'gresource list /usr/share/gnome-shell/gnome-shell-theme.gresource' \
     'gresource list-sections /usr/share/gnome-shell/gnome-shell-theme.gresource' \
     'tmux display-message -p "#W"' \
@@ -278,6 +279,7 @@ for command in \
     'dpkg -l -i package.deb' \
     'dpkg' \
     'dpkg -x package.deb /tmp' \
+    'gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.CloseNotification 1' \
     'gresource compile --target=out.gresource src' \
     'tmux send-keys -t 0 "echo hi" Enter' \
     'tmux kill-session -t 0' \
