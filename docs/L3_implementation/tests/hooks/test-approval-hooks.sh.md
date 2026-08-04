@@ -12,6 +12,7 @@
 
 主なカバレッジ:
 - Bash allowlist の境界（Git / GitHub CLI / Unix read tools / curl / npm / journalctl / gsettings / gnome-extensions 等）の positive / negative ペア
+- `for VAR in LIST; do ...; done` ループ（`;` 区切り・改行区切り）の read-only body の positive case と、unsafe body・C-style `for ((...))`・`$()` 経由の unsafe list・`in` 省略形の negative case（issue #224）
 - `git add`/`git commit -m`/`git fetch` の narrow allow-shape（session-approved 不要で無条件承認される3パターン）の positive / negative ペア（`-A`/`--all`/`.`/`*`、`--amend`/`--no-verify`/`-a`、refspec/`+`強制指定 等は negative）
 - variable expansion 除外（unquoted / double-quoted `$VAR` の smuggling）の negative case と、flag-invariant なコマンドでの positive case（`git add`/`git commit`/`git fetch` の allow-shape に対する smuggling も含む）
 - `$(...)` command substitution の read-only 検証（`_extract_subshell_contents` / `_strip_subshells` / `_subshells_are_safe` 経由）
@@ -37,6 +38,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- d5a823a feat(#224): add for/do/done allow-shape to auto-approve-readonly.sh
 - 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file

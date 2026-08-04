@@ -89,7 +89,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | Git reflog | 一覧、`show`, `exists` | delete/expire |
 | Git config | `--list`, `--get*`, `-l` | 値の設定・削除 |
 | GitHub CLI | issue/PR/repository/release/run/workflow の list/view/status、`gh pr checks`、`gh auth status`、`gh api`（デフォルト GET） | write action、`gh api` の `-X/--method`, `-f/-F/--field`, `--raw-field`, `--input` |
-| Shell navigation / test | `cd`, `test`, `[ ... ]`, read-only `if` | command/process substitution、operatorを含む test |
+| Shell navigation / test | `cd`, `test`, `[ ... ]`, read-only `if`, `for VAR in LIST; do ...; done`（body が read-only の場合） | command/process substitution、operatorを含む test、C-style `for ((...))`、`in` 省略の `for` |
 | Unix read tools | `ls`, `cat`, `head`, `tail`, grep 系、`rg`, `fd`, `wc`, `cut`, `tr`, `sed`, `awk`, `sort`, `jq`, `yq`, `nl`, `pgrep` など | 下記のwrite/execute mode |
 | Runtime | version 表示、`codex --version`/`--help`/`-h`、`bash -n <file>`・`node --check`/`-c <file>`・`command -v <name>`（他のフラグを含まない単一引数形のみ） | script / program 実行、`bash -n`・`node --check`・`command -v` へのフラグ追加や複数引数（denylist ではなく「厳密な単一引数形」の allowlist。node は long option のハイフン/アンダースコア表記が等価かつ `--experimental-config-file` 経由で preload 可能なため、危険フラグの列挙では網羅できない） |
 | プロセス確認 | `kill -0 <数値pid...>`（シグナル0=生存確認のみ、実際には何も送信しない） | 数値以外のpid、負のpid（プロセスグループ指定）、`-0`以外のシグナル/フラグ |
@@ -187,7 +187,19 @@ destructive guard に該当する操作は category があっても block する
 
 ## 複合 command
 
-newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 segment を個別評価する。single / double quote 内の `|` は正規表現等の文字として保持する。read-onlyな `if` / `then` / `else` / `fi` は各 body を個別評価する。
+newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 segment を個別評価する。single / double quote 内の `|` は正規表現等の文字として保持する。read-onlyな `if` / `then` / `else` / `fi` / `for` / `do` / `done` は各 body を個別評価する。
+
+### `for` / `do` / `done` ループの評価
+
+`for VAR in LIST; do ...; done` は `if`/`then`/`else`/`fi` と同じ「制御構造キーワードは透過的に扱い、本体だけを個別に allowlist 判定する」設計で扱う。
+
+- `for VAR in LIST` ヘッダーは `is_safe_for_in_list` が形状のみを確認して safe と判定する。このヘッダー自体はループ変数への代入を行うだけで何も実行しないため、`LIST` の内容そのものを検査する必要がない。`LIST` に含まれる `$(...)` は、この判定に到達する前に `is_safe_segment` 冒頭の再帰検証で既に safe 確認・プレースホルダー置換済みである。
+- `do` は `then`/`else` と同じ prefix-strip 方式（`do` を取り除いた残りを `is_safe_segment` に再帰的に渡す）、`done` は `fi` と同じ bare keyword（本体を持たない終端）として扱う。
+- ループ本体は既存の `;`/`&&`/`||`/`|` によるセグメント分割で個別セグメントに分かれるため、本体内の各コマンドは他の command と同一の read-only allowlist で判定される。`for` である無条件承認は一切ない — `for f in a b; do touch unsafe; done` のように本体が allowlist に一致しない場合は通常許可フローへ戻る。
+
+**スコープ外（意図的にフォールスルー）:** C-style `for ((i=0;i<n;i++))` は `is_safe_for_in_list` の `in` 必須パターンに一致しないため対象外のまま通常確認へ戻る（`split_shell_segments` は算術コンテキスト内の `;` を認識せず、対応した場合ヘッダーを誤分割してしまうため）。`while`/`until`/`case`/`select`、および `in` を省略した `for VAR; do ...; done`（暗黙の `"$@"` 参照）も同様に未対応のまま。
+
+根拠: `hooks/auto-approve-readonly.sh:400-421`, `hooks/auto-approve-readonly.sh:950-965`, issue #224
 
 ### `$()` subshell の評価
 
@@ -332,7 +344,7 @@ Bash ハンドラーの先頭で「全 segment が session-approved category に
 
 ## テストと既知の制限
 
-`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作、`git merge-base`、`pgrep`、`gh api`（GET-only）、`gsettings get`系、`journalctl`、`gnome-extensions info/list`、`bash -n`、`node --check`/`-c` を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants、`git merge-base --output`、`gsettings set/reset`、`journalctl --vacuum-*/--rotate/--flush/--update-catalog/--smart-relinquish-var`、`gh api -X/-XPOST/-f/-fkey=value/--input`（区切り文字なしの結合形も含む）、`gnome-extensions enable/disable`、`bash -n` へのフラグ追加・複数引数、`node --check` へのフラグ追加・複数引数（アンダースコア表記や `--experimental-config-file` 経由の preload を含む）を negative case として固定する。
+`tests/hooks/test-approval-hooks.sh` は常時許可、session-approved、複合command、write mode、destructive block、session temp、cleanup、working repo dynamic defense をpositive / negativeの両面から検証する。Bash allowlist の境界では、通常の `sed -e`、plain `awk getline`、read-only curl option cluster、non-force Git 操作、`git merge-base`、`pgrep`、`gh api`（GET-only）、`gsettings get`系、`journalctl`、`gnome-extensions info/list`、`bash -n`、`node --check`/`-c` を positive case とし、`sed e/w`、pipe-based `awk getline`、file output を含む curl cluster、Git force variants、`git merge-base --output`、`gsettings set/reset`、`journalctl --vacuum-*/--rotate/--flush/--update-catalog/--smart-relinquish-var`、`gh api -X/-XPOST/-f/-fkey=value/--input`（区切り文字なしの結合形も含む）、`gnome-extensions enable/disable`、`bash -n` へのフラグ追加・複数引数、`node --check` へのフラグ追加・複数引数（アンダースコア表記や `--experimental-config-file` 経由の preload を含む）を negative case として固定する。`for`/`do`/`done`（issue #224）については、read-only body を持つ `for VAR in LIST; do ...; done`（`;` 区切り・改行区切りの両方）を positive case、unsafe body を持つ for ループ、C-style `for ((i=0;i<n;i++))`、`$()` 経由で unsafe コマンドを list に埋め込む for ループ、`in` を省略した `for VAR; do ...; done` を negative case として固定する。
 
 variable expansion の除外については、`node --check $ARGS` 型の報告された bypass に加え、`bash -n`・`curl`・`gh api`・`git diff --output`・`sed`・`find`・`sort`・`date`・`journalctl`・`yq`・`awk` への同型 bypass を negative case として固定し、`cat $FILE`・`grep ... $FILE`・シングルクォート awk script 内の `$1` が引き続き auto-approve されることを positive case で固定する。加えて、`git -C $DIR` operand への変数隠蔽、double-quoted 変数の単一フラグ密輸、シングルクォート内バックスラッシュの誤エスケープ、ダブルクォート文字列内のシングルクォートによるクォート状態誤遷移、`_extract_subshell_contents`/`_strip_subshells` のエスケープ未対応（escaped `"` をクォート終了と誤認し後続の変数参照が silently drop される）、同2関数が depth=0 でシングルクォートを追跡しないため single-quoted literal 内の `$(` を実際の subshell 開始と誤認する問題（例: `curl '$(' $OPTS ...`）、同2関数が depth=0 でダブルクォートを追跡しないため double-quoted 文字列内のリテラルな `'` により後続の本物の `$(` を検出し損ねる問題（例: `cat "foo'$(touch ...)"`）、およびネストした `$(...)` でクォート状態を push/pop しないため外側の double-quoted 文字列の中の nested substitution が正しく閉じられない問題（例: `X=$(printf '%s' "$(touch ...)")`）という、レビューで発見された8件の追加 bypass を negative case として固定する。統一 tokenizer への再設計（issue #200）に伴い、`saw_dollar` look-ahead flag がエスケープ消費時にリセットされず depth が 0 に戻らなくなる問題（例: `cat $(printf "$\"(" $(touch /tmp/unsafe))`）と、ANSI-C クォート（`$'...'`）が通常の `'...'` として扱われエスケープされた `\'` を閉じクォートと誤認する問題（例: `cat $'foo\'bar'$(touch /tmp/unsafe)`）の2件を追加の negative case として固定する。
 
@@ -342,10 +354,11 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-725`
+根拠: `tests/hooks/test-approval-hooks.sh:1-826`
 
 ## 変更履歴（git log より自動生成）
 
+- d5a823a feat(#224): add for/do/done allow-shape to auto-approve-readonly.sh
 - 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
