@@ -127,6 +127,8 @@ for command in \
     'git -C /tmp status --porcelain' \
     'rg -n "foo|bar" README.md' \
     'printf value | sed -n '\''1p'\''' \
+    'echo value | sha256sum' \
+    'SESSION_ID="codex-$(printf '\''%s'\'' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"' \
     'sed -n '\''/error/p'\'' README.md' \
     'sed -e '\''s/error/warning/'\'' README.md' \
     'awk '\''{ getline value; print value }'\'' README.md' \

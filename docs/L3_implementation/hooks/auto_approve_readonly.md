@@ -90,7 +90,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | Git config | `--list`, `--get*`, `-l` | 値の設定・削除 |
 | GitHub CLI | issue/PR/repository/release/run/workflow の list/view/status、`gh pr checks`、`gh auth status`、`gh api`（デフォルト GET） | write action、`gh api` の `-X/--method`, `-f/-F/--field`, `--raw-field`, `--input` |
 | Shell navigation / test | `cd`, `test`, `[ ... ]`, read-only `if`, `for VAR in LIST; do ...; done`（body が read-only の場合） | command/process substitution、operatorを含む test、C-style `for ((...))`、`in` 省略の `for` |
-| Unix read tools | `ls`, `cat`, `head`, `tail`, grep 系、`rg`, `fd`, `wc`, `cut`, `tr`, `sed`, `awk`, `sort`, `jq`, `yq`, `nl`, `pgrep` など | 下記のwrite/execute mode |
+| Unix read tools | `ls`, `cat`, `head`, `tail`, grep 系、`rg`, `fd`, `wc`, `cut`, `tr`, `sed`, `awk`, `sort`, `jq`, `yq`, `nl`, `pgrep`, `sha256sum` など | 下記のwrite/execute mode |
 | Runtime | version 表示、`codex --version`/`--help`/`-h`、`bash -n <file>`・`node --check`/`-c <file>`・`command -v <name>`（他のフラグを含まない単一引数形のみ） | script / program 実行、`bash -n`・`node --check`・`command -v` へのフラグ追加や複数引数（denylist ではなく「厳密な単一引数形」の allowlist。node は long option のハイフン/アンダースコア表記が等価かつ `--experimental-config-file` 経由で preload 可能なため、危険フラグの列挙では網羅できない） |
 | プロセス確認 | `kill -0 <数値pid...>`（シグナル0=生存確認のみ、実際には何も送信しない） | 数値以外のpid、負のpid（プロセスグループ指定）、`-0`以外のシグナル/フラグ |
 | セッション一時ディレクトリ作成 | `mkdir -p <session tmp dir またはその配下、単一パスのみ>` | `-p`以外のフラグ、複数パス、session tmp dir 外 |
