@@ -10,7 +10,7 @@
 
 ### `/work` (`commands/work.md`)
 
-全作業の通常入口。G-0 で main へ checkout し、現在の hook セッションに対応する session-approved を削除して前回の承認状態をクリアする。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
+全作業の通常入口。G-0 で main へ checkout し、現在の hook セッションに対応する session-approved を Write ツールで空にして前回の承認状態をクリアする。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
 exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。それ以外は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
 

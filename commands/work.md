@@ -9,7 +9,7 @@
 ### G-0: main ブランチへの切り替え
 
 `git checkout main` を実行し、main ブランチに切り替える。
-前回の `/work` 呼び出しの承認状態をクリアするため、以下を実行する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
+前回の `/work` 呼び出しの承認状態をクリアするため、まずセッション承認ファイルのパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
 ```bash
 SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
 if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
@@ -17,11 +17,10 @@ if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
 fi
 SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
 if [ -n "$SESSION_ID" ]; then
-    SESSION_APPROVED="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
-    rm -f "$SESSION_APPROVED"
+    echo "${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
 fi
 ```
-セッション ID が解決できない場合、またはファイルが存在しない場合はスキップする。
+セッション ID が解決できない場合はスキップする。パスが出力された場合、**`rm` は使わず**、Write ツールでそのパスへ空文字列を書き込んで前回の承認状態をクリアする（ファイルが存在しない場合も空文字列の書き込みで問題ない）。これは hook（`hooks/auto-approve-readonly.sh`）の Write ハンドラが、書き込み先を自セッションの承認ファイルパスとして独立に再計算した上で、内容が空または既存より狭い場合は無条件承認する既存の仕組みをそのまま利用しており、Bash 経由の `rm` のように毎回ユーザー確認が発生することはない。
 
 ### G-1: docs/.ai/repo.profile.json の存在確認
 - 存在しない場合: /init-docs の実行を促して終了する
