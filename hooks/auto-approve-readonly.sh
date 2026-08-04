@@ -1080,6 +1080,10 @@ is_safe_segment() {
         return 1
     fi
 
+    # gresource — allow read-only introspection subcommands only; compile
+    # writes a binary resource bundle to disk and must remain excluded
+    printf '%s' "$seg" | grep -qE '^gresource[[:space:]]+(list|list-sections)(\s|$)' && return 0
+
     # Runtime version / syntax-check-only invocations
     printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0

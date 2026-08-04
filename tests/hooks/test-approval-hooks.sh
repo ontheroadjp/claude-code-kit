@@ -170,6 +170,8 @@ for command in \
     'dpkg --listfiles gnome-shell' \
     'dpkg --status gnome-shell' \
     'dpkg --search /usr/bin/git' \
+    'gresource list /usr/share/gnome-shell/gnome-shell-theme.gresource' \
+    'gresource list-sections /usr/share/gnome-shell/gnome-shell-theme.gresource' \
     'bash -n script.sh' \
     'node --check script.js' \
     'node -c script.js'; do
@@ -271,6 +273,7 @@ for command in \
     'dpkg -l -i package.deb' \
     'dpkg' \
     'dpkg -x package.deb /tmp' \
+    'gresource compile --target=out.gresource src' \
     'bash -n -c "echo hi"' \
     'bash script.sh' \
     'node --check -e "process.exit(1)"' \

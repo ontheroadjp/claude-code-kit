@@ -100,6 +100,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | gsettings | `get`, `list-schemas`, `list-relocatable-schemas`, `list-keys`, `list-children`, `list-recursively`, `range`, `describe`, `writable` | `set`, `reset`, `reset-recursively`, `monitor` |
 | gnome-extensions | `info`, `list` | `enable`, `disable`, `install`, `uninstall` 等 |
 | dpkg（`is_safe_dpkg_query_command`） | `-l`/`--list`, `-L`/`--listfiles`, `-s`/`--status`, `-S`/`--search` のいずれか1つのみを含む形 | `-i`/`-r`/`-P`/`--configure` 等の変更系、上記フラグを2つ以上組み合わせた形 |
+| gresource | `list`, `list-sections` | `compile`（バイナリのリソースバンドルをディスクに書き出す） |
 | Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、複数トークン |
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
