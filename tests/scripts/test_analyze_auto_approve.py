@@ -37,6 +37,7 @@ def test_parse_line_extracts_all_fields() -> None:
         "session": "s1",
         "result": "approved",
         "tool": "Read",
+        "duration_ms": None,
         "detail": "/repo/a.py",
     }
 
@@ -46,6 +47,26 @@ def test_parse_line_handles_empty_detail() -> None:
     decision = analyze_auto_approve.parse_line(line)
     assert decision is not None
     assert decision["detail"] == ""
+
+
+def test_parse_line_extracts_duration_ms_without_corrupting_detail() -> None:
+    line = (
+        "[2026-08-01 10:00:00] agent=claude session=s1       result=approved     "
+        'tool=Bash       duration_ms=12     git commit -m "wip"'
+    )
+    decision = analyze_auto_approve.parse_line(line)
+    assert decision is not None
+    assert decision["duration_ms"] == "12"
+    assert decision["detail"] == 'git commit -m "wip"'
+    assert analyze_auto_approve.classify_routine_op(decision["tool"], decision["detail"]) == "git commit"
+
+
+def test_parse_line_handles_na_duration_ms() -> None:
+    line = "[2026-08-01 10:00:00] agent=claude session=s1       result=approved     tool=Read       duration_ms=NA     /repo/a.py"
+    decision = analyze_auto_approve.parse_line(line)
+    assert decision is not None
+    assert decision["duration_ms"] == "NA"
+    assert decision["detail"] == "/repo/a.py"
 
 
 def test_aggregate_counts_results_and_patterns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

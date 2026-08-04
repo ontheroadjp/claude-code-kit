@@ -2,6 +2,12 @@
 # PreToolUse hook: auto-approve Read tool and read-only Bash commands
 set -euo pipefail
 
+# EPOCHREALTIME is a bash>=5.0 builtin variable (no subprocess spawn); used by
+# log_decision() to record how long this hook took, without adding a timing
+# subprocess of its own. Left empty (and duration_ms logged as "NA") on
+# older bash (e.g. macOS default /bin/bash 3.2).
+HOOK_START_TIME="${EPOCHREALTIME:-}"
+
 payload=$(cat)
 tool_name=$(echo "$payload" | jq -r '.tool_name // ""')
 
@@ -535,14 +541,36 @@ truncate_utf8_safe() {
     printf '%s' "$truncated"
 }
 
+_hook_duration_ms() {
+    if [ -z "$HOOK_START_TIME" ]; then
+        HOOK_DURATION_MS="NA"
+        return
+    fi
+    local now="$EPOCHREALTIME"
+    local start_sec="${HOOK_START_TIME%.*}" start_usec="${HOOK_START_TIME#*.}"
+    local now_sec="${now%.*}" now_usec="${now#*.}"
+    # Right-pad to 6 digits so a short fractional part (e.g. leading-zero
+    # microseconds bash prints without them) doesn't shrink the magnitude.
+    start_usec="${start_usec}000000"
+    start_usec="${start_usec:0:6}"
+    now_usec="${now_usec}000000"
+    now_usec="${now_usec:0:6}"
+    # 10# forces base-10 so a leading-zero usec segment (e.g. "007123") isn't
+    # parsed as an invalid octal literal.
+    local start_us=$((10#$start_sec * 1000000 + 10#$start_usec))
+    local now_us=$((10#$now_sec * 1000000 + 10#$now_usec))
+    HOOK_DURATION_MS=$(( (now_us - start_us) / 1000 ))
+}
+
 log_decision() {
     local result="$1" tool="$2" detail="${3:-}"
     mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || return 0
     local short
     short=$(truncate_utf8_safe "$(printf '%s' "$detail" | tr '\n' ' ')" 120)
-    printf '[%s] agent=%s session=%s result=%-12s tool=%-10s %s\n' \
+    _hook_duration_ms
+    printf '[%s] agent=%s session=%s result=%-12s tool=%-10s duration_ms=%-6s %s\n' \
         "$(date '+%Y-%m-%d %H:%M:%S')" "$AGENT" "$LOG_SESSION_ID" \
-        "$result" "$tool" "$short" >> "$LOG_FILE" || true
+        "$result" "$tool" "$HOOK_DURATION_MS" "$short" >> "$LOG_FILE" || true
 }
 
 emit_approval() {

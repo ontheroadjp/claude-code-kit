@@ -3,7 +3,10 @@
 
 Log format is produced by hooks/auto-approve-readonly.sh `log_decision()`:
 one line per PreToolUse decision, e.g.
-"[2026-08-03 22:34:07] agent=claude session=<id> result=approved  tool=Bash    <detail>"
+"[2026-08-03 22:34:07] agent=claude session=<id> result=approved  tool=Bash    duration_ms=12     <detail>"
+
+`duration_ms` is absent on log lines written before this field existed;
+`LINE_RE` treats it as optional so both formats parse identically.
 """
 
 from __future__ import annotations
@@ -64,7 +67,9 @@ LINE_RE = re.compile(
     r"agent=(?P<agent>\S+)\s+"
     r"session=(?P<session>\S+)\s+"
     r"result=(?P<result>\S+)\s+"
-    r"tool=(?P<tool>\S+)\s*"
+    r"tool=(?P<tool>\S+)"
+    r"(?:\s+duration_ms=(?P<duration_ms>\S+))?"
+    r"\s*"
     r"(?P<detail>.*)$"
 )
 
@@ -75,6 +80,7 @@ class Decision(TypedDict):
     session: str
     result: str
     tool: str
+    duration_ms: str | None
     detail: str
 
 
@@ -88,6 +94,7 @@ def parse_line(line: str) -> Decision | None:
         "session": match.group("session"),
         "result": match.group("result"),
         "tool": match.group("tool"),
+        "duration_ms": match.group("duration_ms"),
         "detail": match.group("detail"),
     }
 
