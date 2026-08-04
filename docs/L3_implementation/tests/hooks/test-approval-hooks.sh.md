@@ -17,7 +17,7 @@
 - variable expansion 除外（unquoted / double-quoted `$VAR` の smuggling）の negative case と、flag-invariant なコマンドでの positive case（`git add`/`git commit`/`git fetch` の allow-shape に対する smuggling も含む）
 - `$(...)` command substitution の read-only 検証（`_extract_subshell_contents` / `_strip_subshells` / `_subshells_are_safe` 経由）
 - session-approved fast path、destructive guard、working repo dynamic defense（WIP commit）
-- `rm [-f] <literal-path>` の自動承認（issue #248）: 現在セッションの session-approved ファイル自身、または working repo 内パスへの literal（変数・グロブ・複数トークンなし）な `rm`/`rm -f` の positive case（working repo 内は WIP commit 作成も検証）と、variable 参照・repo root 自体・`.git` 配下・複数トークン・グロブ・`-rf`（recursive、対象外）を negative case として固定
+- `rm [-f] <literal-path>` の自動承認（issue #248）: working repo 内パスへの literal（変数・グロブ・複数トークンなし）な `rm`/`rm -f` の positive case（WIP commit 作成も検証）と、variable 参照・repo root 自体・`.git` 配下・複数トークン・グロブ・`-rf`（recursive、対象外）・保護対象パスを negative case として固定。現在セッションの session-approved ファイル自身への literal `rm`/`rm -f` は `is_rm_protected_path` により保護対象であり、常に negative case（issue #250。issue #248 時点では positive case だった）
 
 根拠: `tests/hooks/test-approval-hooks.sh:22-100`, `tests/hooks/test-approval-hooks.sh:240-360`
 
@@ -39,6 +39,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist

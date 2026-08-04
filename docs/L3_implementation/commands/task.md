@@ -51,8 +51,8 @@ work.md の調査結果を引き継ぎ、プラン策定に必要な情報が不
 以下を含む作業プランを確定し、ユーザーの明確な許可を得る:
 
 - 完了条件、Before/After、変更対象（最小単位）、影響とリスク、検証方法、ロールバック方針
-- 利用ツール（`tool:git_write` / `tool:gh_issue_write` / `tool:gh_pr_write`）
-- 新規作成・編集ファイルの絶対パス
+- 利用ツール（`tool:git_write` / `tool:gh_issue_write` / `tool:gh_pr_write`）。**`tool:gh_issue_write` は `/task` フローでは常に列挙する** — Step 3.2 の完了コメント投稿が issue の新旧を問わず必ず発生するため、条件付き判定の対象にしない（issue #250）
+- 新規作成・編集ファイルの絶対パス。プラン本文で言及した実装ファイル・テストファイルを漏れなく転記する
 - Step 3.2 で作成・更新する L3 per-file doc の絶対パス（`docs/L3_implementation/<source-path>.md`）
 
 ユーザーから OK が出た後:
@@ -131,6 +131,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync

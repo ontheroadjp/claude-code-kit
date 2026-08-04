@@ -756,14 +756,19 @@ assert_no_output "$output"
 
 # --- rm [-f] <literal-path> auto-approval tests (issue #248) ---
 
-# rm -f on the current session's own session-approved file (literal, no
-# variable) → approved, no WIP commit (target is outside any repo)
+# rm -f on the current session's own session-approved file → NOT approved.
+# session-approved is a protected path (is_rm_protected_path): it is a
+# security-control state file, not disposable/recoverable data, so deleting
+# it must always fall through to a real human confirmation prompt rather
+# than being silently auto-approved (this is what let an agent bypass the
+# Write scope-expansion guard by rm-ing the file and rewriting it as if
+# fresh — see issue #250).
 output=$(run_auto_in_repo "rm -f ${SESSION_FILE}")
-assert_json_decision "$output" "approve"
+assert_no_output "$output"
 
-# bare rm (no -f) on the session-approved file → approved (flag is optional)
+# bare rm (no -f) on the session-approved file → also NOT approved
 output=$(run_auto_in_repo "rm ${SESSION_FILE}")
-assert_json_decision "$output" "approve"
+assert_no_output "$output"
 
 # rm -f on a repo-internal literal path → approved + WIP commit created
 echo "to be removed" > "${TEST_GIT_REPO}/to-delete.txt"
