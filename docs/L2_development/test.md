@@ -26,7 +26,7 @@ bash tests/commands/test-report-review.sh
 
 `test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、command/skill catalog 整合性を確認する。
 
-根拠: `tests/commands/test-report-review.sh:1-72`
+根拠: `tests/commands/test-report-review.sh:1-73`
 
 ## Installer contract test
 

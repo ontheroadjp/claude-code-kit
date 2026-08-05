@@ -22,7 +22,7 @@
 | issue トリアージ | `commands/triage-issues.md` | open issue を stale/inconsistent/duplicated/unclear/ready に分類し、ユーザー承認後に各アクションを実行するスタンドアロン入口 | `commands/triage-issues.md:1-178` |
 | issue 作成 | `commands/new-issue.md` | 漠然としたアイデアから issue を作成する任意 pre-step | `commands/new-issue.md:1-126` |
 | coding 原則 | `commands/coding-*.md` | general / py / js / ts / sh の実装規約 | `commands/coding-general.md:1-3`, `commands/coding-ts.md:1-12`, `commands/coding-sh.md:1-92` |
-| Codex skills | `skills/*/SKILL.md` | 20個の wrapper が対応する command markdown を Source of Truth として実行する | `skills/*/SKILL.md` 実体一覧 |
+| Codex skills | `skills/*/SKILL.md` | 21個の wrapper が対応する command markdown を Source of Truth として実行する | `skills/*/SKILL.md` 実体一覧 |
 | hooks | `hooks/*.sh` | 自動承認、破壊的操作 guard、ログ、セッション cleanup | `hooks/auto-approve-readonly.sh`, `hooks/guard-destructive-cmd.sh`, `hooks/cleanup-session.sh` |
 | tests | `tests/hooks/*.sh`, `tests/commands/*.sh`, `tests/install/*.sh`, `tests/scripts/*.py` | hook safety、declarative workflow、installer symlink contract を shell で、ログ解析を pytest で検証 | `tests/README.md`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py` |
 | site | `site/` | VitePress による公開ドキュメントサイト | `site/package.json:1-14`, `site/.vitepress/config.mts:1-183` |
