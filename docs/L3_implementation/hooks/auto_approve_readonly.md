@@ -338,8 +338,12 @@ ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認�
 | 結果 | Claude | Codex |
 |---|---|---|
 | approve | `{"decision":"approve"}` | `{"decision":"allow"}` |
-| prompt fallback | stdoutなし | stdoutなし |
+| prompt fallback | stdoutなし | `{}` |
 | destructive block | reason付きblock JSON | reason付きblock JSON |
+
+**prompt fallback が Claude と Codex で異なる理由（issue #265）:** Claude Code は stdout が空の場合「hook は判定しない」と解釈し、通常の許可フローへ委ねる。Codex CLI の hook engine はこれと異なり、PreToolUse hook 呼び出しごとに有効な JSON を要求し、空 stdout は `hook returned invalid pre-tool-use JSON output` エラーとして扱われる（この repo にインストール済みの Codex CLI バイナリの文字列解析で、PreToolUse の `decision` フィールドが受理する値が `approve`/`block`/`allow` の3種類のみであることを確認済み。`decision`/`hookSpecificOutput` キーを持たない `{}` は「hook は判定しない」と等価に解釈され、通常の許可フローへ委ねられる）。`emit_fallback()`（`is_codex_invocation` の場合のみ `{}` を出力する）が全ての prompt fallback 経路（7箇所）で呼ばれる。Claude 側の挙動（stdoutなし）は変更していない。
+
+根拠: `hooks/auto-approve-readonly.sh`（`emit_fallback`）, issue #265
 
 decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する。process fallback の session は `n/a` とする。
 
@@ -475,6 +479,8 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
+- f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
 - 202a7eb refactor(#257): extract _heredoc_skip_end_index and make subshell span scanner heredoc-aware
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
@@ -483,5 +489,3 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
-- 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
-- 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands

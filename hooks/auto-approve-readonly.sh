@@ -1067,6 +1067,19 @@ emit_approval() {
     fi
 }
 
+# Claude Code treats empty stdout as "hook has no opinion, use the normal
+# permission flow". Codex CLI's hook engine does not: it requires valid JSON
+# on every PreToolUse invocation and errors with "hook returned invalid
+# pre-tool-use JSON output" on empty stdout, which surfaces to the user as a
+# hook failure and forces a manual confirmation. `{}` carries no `decision`/
+# `hookSpecificOutput` key, so Codex falls through to its normal permission
+# flow exactly like Claude does on empty stdout. Claude's behavior is
+# unchanged (still no output).
+emit_fallback() {
+    is_codex_invocation && echo '{}'
+    return 0
+}
+
 is_session_approved_file() {
     local path="$1"
     [ -f "$SESSION_APPROVED_FILE" ] || return 1
@@ -1288,6 +1301,7 @@ if [ "$tool_name" = "Write" ]; then
         exit 0
     fi
     log_decision "user_prompt" "Write" "$file_path"
+    emit_fallback
     exit 0
 fi
 
@@ -1311,6 +1325,7 @@ if [ "$tool_name" = "Edit" ]; then
         exit 0
     fi
     log_decision "user_prompt" "Edit" "$file_path"
+    emit_fallback
     exit 0
 fi
 
@@ -1323,6 +1338,7 @@ if [ "$tool_name" = "apply_patch" ]; then
         exit 0
     fi
     log_decision "user_prompt" "apply_patch" ""
+    emit_fallback
     exit 0
 fi
 
@@ -1337,11 +1353,13 @@ fi
 if [ "$tool_name" = "webrun" ]; then
     _webrun_payload=$(echo "$payload" | jq -c '.tool_input // {}' 2>/dev/null | cut -c1-200)
     log_decision "user_prompt" "webrun" "$_webrun_payload"
+    emit_fallback
     exit 0
 fi
 
 if [ "$tool_name" != "Bash" ]; then
     log_decision "user_prompt" "${tool_name:-unknown}" ""
+    emit_fallback
     exit 0
 fi
 
@@ -1408,6 +1426,7 @@ command_normalized=$(printf '%s' "$command_for_analysis" \
 # '$1>130 && $1<200') is not misread as a redirect.
 if _has_unquoted_write_redirect "$command_normalized"; then
     log_decision "user_prompt" "Bash" "$command"
+    emit_fallback
     exit 0
 fi
 
@@ -1670,6 +1689,7 @@ while IFS= read -r segment; do
     segment=$(printf '%s' "$segment" | sed 's/__ESCAPED_PIPE__/\\|/g')
     if [ -n "$segment" ] && ! is_safe_segment "$segment"; then
         log_decision "user_prompt" "Bash" "$command"
+        emit_fallback
         exit 0
     fi
 done < <(split_shell_segments "$command_normalized")

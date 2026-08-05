@@ -100,6 +100,17 @@ assert_no_output() {
     fi
 }
 
+# Codex-invoked prompt-fallback case: unlike Claude (no output), the hook
+# must emit a valid-but-neutral JSON object so Codex's hook engine doesn't
+# error with "hook returned invalid pre-tool-use JSON output".
+assert_codex_fallback() {
+    local output="$1"
+    if [ "$output" != '{}' ]; then
+        printf 'Expected codex fallback {}, got: %s\n' "$output" >&2
+        exit 1
+    fi
+}
+
 assert_log_matches() {
     local pattern="$1"
     local line
@@ -657,13 +668,13 @@ output=$(run_auto_file_tool "Edit" "${SESSION_TMP_DIR}/scratch.txt")
 assert_json_decision "$output" "allow"
 
 output=$(run_auto_file_tool "Write" "${TMP_ROOT}/other-session/scratch.txt")
-assert_no_output "$output"
+assert_codex_fallback "$output"
 
 rm -rf "$SESSION_TMP_DIR"
 mkdir -p "$TMP_ROOT" "${TMP_DIR}/symlink-target"
 ln -s "${TMP_DIR}/symlink-target" "$SESSION_TMP_DIR"
 output=$(run_auto_file_tool "Write" "${SESSION_TMP_DIR}/scratch.txt")
-assert_no_output "$output"
+assert_codex_fallback "$output"
 rm -f "$SESSION_TMP_DIR"
 
 output=$(run_auto 'gh run rerun 12345')
@@ -671,6 +682,15 @@ assert_no_output "$output"
 
 output=$(run_auto 'some-unknown-command --flag')
 assert_no_output "$output"
+
+# Codex-invoked fallback: unlike Claude (no output), the hook must emit
+# valid {} JSON so Codex's hook engine doesn't error on empty stdout
+# (issue #265).
+output=$(run_auto_codex_symlink 'some-unknown-command --flag')
+assert_codex_fallback "$output"
+
+output=$(run_auto_codex_symlink 'TMP_DIR=$(mktemp -d) && echo "$TMP_DIR"')
+assert_codex_fallback "$output"
 
 output=$(run_guard 'git reset --hard')
 assert_json_decision "$output" "block"
