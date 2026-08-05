@@ -44,6 +44,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 1e3b7fa fix(#227): avoid rm -f confirmation prompt in /work G-0 by clearing session-approved via Write tool
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
@@ -53,8 +54,5 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - dd29feb feat(#129): store session approvals per session
 - ab4370b fix(#119): explicitly skip Step 3 and jump to Phase 2 on resume
 - 26036e6 fix(#119): reset session-approved at G-0 and route resume to Step 2
-- 83374dc feat(#108): add session-based approval to eliminate double-confirmation prompts
-- 8f2a5fc refactor: update work routing to prioritize issue-based work over docs check
-- ef074ee refactor: replace G-0 branch deletion with git checkout main
 
 根拠: `commands/work.md:9-140`
