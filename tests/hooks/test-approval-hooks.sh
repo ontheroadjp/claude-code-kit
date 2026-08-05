@@ -1075,4 +1075,68 @@ assert_no_output "$output"
 output=$(run_auto $'git commit -m "$(cat <<\'EOF\'\nmessage\nEOF\n; rm -rf /)"')
 assert_no_output "$output"
 
+# --- session-approved Write-handler state transitions (issue #261) ---
+# commands/work.md's G-0 used to write an empty string to session-approved
+# unconditionally before every /work invocation. That converted an absent
+# file (the normal case once hooks/cleanup-session.sh's Stop hook has
+# deleted it) into an existing-but-empty file, and the hook's initial-write
+# free pass only applies while the file is absent -- so the very next real
+# write (task.md/patch.md Step 2's actual approved content) was diffed
+# against that empty baseline and every line was flagged as scope expansion,
+# deterministically blocking Step 2 on every /work run. G-0 no longer
+# performs that write; these tests characterize the Write handler states
+# that fix now relies on (and the states it deliberately still blocks).
+SESSION_262_STATE_ROOT="${TMP_DIR}/state-262"
+SESSION_262_ID="session-262-fixed"
+SESSION_262_APPROVED="${SESSION_262_STATE_ROOT}/sessions/${SESSION_262_ID}/session-approved"
+
+run_auto_write_262() {
+    local content="$1"
+    jq -cn --arg file_path "$SESSION_262_APPROVED" --arg content "$content" \
+        '{tool_name:"Write",tool_input:{file_path:$file_path,content:$content}}' \
+        | env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
+            -u CLAUDE_CODE_KIT_SESSION_ID -u CLAUDE_CODE_KIT_SESSION_APPROVED_FILE \
+            CLAUDE_CODE_SESSION_ID="$SESSION_262_ID" \
+            CLAUDE_CODE_KIT_STATE_HOME="$SESSION_262_STATE_ROOT" \
+            CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
+            bash "$AUTO_HOOK"
+}
+
+# Absent file + a real (non-empty) approval write, exactly what task.md/
+# patch.md Step 2 does now that G-0 no longer writes first -- must be
+# approved as an initial write, with no confirmation prompt.
+output=$(run_auto_write_262 $'tool:git_write\nfile:/abs/path/to/file.md')
+assert_json_decision "$output" "approve"
+
+# Fresh session: writing empty content over an absent file (what G-0 used to
+# do) is still approved -- shrinking to nothing is never scope expansion.
+# This is not exercised by commands/*.md anymore, but the hook itself is
+# intentionally unchanged (see issue #261 assessment), so pin the behavior.
+SESSION_262B_ID="session-262b-fixed"
+SESSION_262B_APPROVED="${SESSION_262_STATE_ROOT}/sessions/${SESSION_262B_ID}/session-approved"
+run_auto_write_262b() {
+    local content="$1"
+    jq -cn --arg file_path "$SESSION_262B_APPROVED" --arg content "$content" \
+        '{tool_name:"Write",tool_input:{file_path:$file_path,content:$content}}' \
+        | env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
+            -u CLAUDE_CODE_KIT_SESSION_ID -u CLAUDE_CODE_KIT_SESSION_APPROVED_FILE \
+            CLAUDE_CODE_SESSION_ID="$SESSION_262B_ID" \
+            CLAUDE_CODE_KIT_STATE_HOME="$SESSION_262_STATE_ROOT" \
+            CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
+            bash "$AUTO_HOOK"
+}
+output=$(run_auto_write_262b '')
+assert_json_decision "$output" "approve"
+
+# ... but once that empty content has actually been written (file now exists
+# with empty content, mirroring G-0's old behavior), the next real-content
+# write is still blocked as scope expansion against the empty baseline. This
+# is the collision issue #261 identified and the reason G-0 stopped writing
+# first, rather than a hook fix -- the hook's scope-expansion guard is
+# deliberately left unchanged (see docs/L3_implementation/commands/work.md).
+mkdir -p "$(dirname "$SESSION_262B_APPROVED")"
+printf '' > "$SESSION_262B_APPROVED"
+output=$(run_auto_write_262b $'tool:git_write\nfile:/abs/path/to/file.md')
+assert_json_decision "$output" "block"
+
 printf 'approval hook tests passed\n'
