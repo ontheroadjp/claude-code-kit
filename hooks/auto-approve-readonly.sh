@@ -483,6 +483,185 @@ _strip_subshells() {
     printf '%s' "$result"
 }
 
+# Emit "<start> <end>" (0-based, end exclusive) one pair per line for each
+# top-level (i.e. outside any quoting) whitespace-delimited word in $1. Quote
+# handling (single quote: no escapes; double quote + backslash escape: same
+# grammar as _has_variable_expansion) matches the rest of this file, so a
+# quoted space does not split a token. Used by _xargs_wrapped_command and
+# _find_exec_clauses_are_safe to locate option/argument boundaries without
+# re-tokenizing (word-splitting) the text themselves — the original substring
+# is sliced directly from these indices, so quoting in the wrapped command
+# itself is preserved exactly as written.
+_top_level_tokens() {
+    local input="$1"
+    local i char n="${#input}"
+    local quote="" escaped=0
+    local in_token=0 start=0
+
+    for ((i = 0; i < n; i++)); do
+        char="${input:i:1}"
+
+        if [ "$quote" = "'" ]; then
+            [ "$char" = "'" ] && quote=""
+            continue
+        fi
+        if [ "$escaped" = "1" ]; then
+            escaped=0
+            continue
+        fi
+        if [ "$char" = "\\" ]; then
+            escaped=1
+            [ "$in_token" = "0" ] && { start=$i; in_token=1; }
+            continue
+        fi
+        if [ "$quote" = '"' ]; then
+            [ "$char" = '"' ] && quote=""
+            continue
+        fi
+
+        case "$char" in
+            ' '|$'\t')
+                if [ "$in_token" = "1" ]; then
+                    printf '%s %s\n' "$start" "$i"
+                    in_token=0
+                fi
+                ;;
+            "'") quote="'"; [ "$in_token" = "0" ] && { start=$i; in_token=1; } ;;
+            '"') quote='"'; [ "$in_token" = "0" ] && { start=$i; in_token=1; } ;;
+            *) [ "$in_token" = "0" ] && { start=$i; in_token=1; } ;;
+        esac
+    done
+    [ "$in_token" = "1" ] && printf '%s %s\n' "$start" "$n"
+}
+
+# Return (via stdout) the substring of $1 (a `xargs ...` segment, WITHOUT the
+# leading `xargs` word) starting at the first token that is not one of a
+# narrow, known-safe subset of xargs's own options — i.e. the wrapped command
+# and its initial-args, exactly as written (quoting preserved). Print nothing
+# and return 1 if any token is an unrecognized option, a value-taking
+# option's value is missing, or no command token is found at all.
+#
+# Recognized options (deliberately a narrow allow-shape, not a denylist — an
+# unrecognized flag falls through to the normal confirmation prompt rather
+# than being guessed at):
+#   boolean, no value:        -0 -r -t -p -x
+#   value-taking:              -I -n -P -L -s -a -d
+#     (value either attached, e.g. -I{}, or a separate following token, e.g. -I {})
+#   optional-value, attached only: -i -l
+#     (GNU xargs itself never accepts these as a separate token, so neither
+#     does this scanner — a bare -i/-l takes no value, an attached -i{}/-l5
+#     supplies one)
+#   -- end-of-options marker
+#
+# GNU long options (--replace, --max-args, ...) are NOT recognized and fall
+# through to reject: narrower initial scope (see
+# docs/L3_implementation/hooks/auto_approve_readonly.md), can be extended
+# later if a real need arises. Clustering (-rt for two booleans in one
+# token) is likewise NOT recognized, to keep token classification
+# unambiguous — each option must be its own token.
+_xargs_wrapped_command() {
+    local rest="$1"
+    local start end tok idx=0 total next_start
+    local -a starts=() ends=()
+
+    while read -r start end; do
+        starts+=("$start"); ends+=("$end")
+    done < <(_top_level_tokens "$rest")
+    total="${#starts[@]}"
+
+    while [ "$idx" -lt "$total" ]; do
+        start="${starts[$idx]}"
+        end="${ends[$idx]}"
+        tok="${rest:start:end-start}"
+        case "$tok" in
+            --)
+                idx=$((idx + 1))
+                if [ "$idx" -lt "$total" ]; then
+                    next_start="${starts[$idx]}"
+                    printf '%s' "${rest:next_start}"
+                    return 0
+                fi
+                return 1
+                ;;
+            -0|-r|-t|-p|-x)
+                idx=$((idx + 1))
+                ;;
+            -I|-n|-P|-L|-s|-a|-d)
+                idx=$((idx + 1))
+                [ "$idx" -ge "$total" ] && return 1
+                idx=$((idx + 1))
+                ;;
+            -i|-l)
+                idx=$((idx + 1))
+                ;;
+            -I*|-n*|-P*|-L*|-s*|-a*|-d*|-i*|-l*)
+                idx=$((idx + 1))
+                ;;
+            -*)
+                return 1
+                ;;
+            *)
+                printf '%s' "${rest:start}"
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+# Return 0 if every -exec/-execdir/-ok/-okdir clause in $1 (the full `find
+# ...` segment) wraps a read-only command. Each clause is delimited by an
+# unquoted terminator: `\;` (escaped semicolon — the common shell-quoted
+# form) or a standalone `+` token (the batching form). Quoted terminator
+# forms (e.g. `';'`) are not recognized and cause that clause (and therefore
+# the whole find command) to be rejected — narrower initial scope, not a
+# correctness gap: an unrecognized shape falls through to the normal
+# confirmation prompt rather than being guessed at.
+#
+# Multiple -exec/-execdir/-ok/-okdir clauses in the same find command are
+# each extracted and validated independently; all must be read-only for the
+# find command as a whole to be approved.
+_find_exec_clauses_are_safe() {
+    local seg="$1"
+    local start end tok idx=0 total
+    local -a starts=() ends=()
+    local cmd_start cmd_end_idx inner
+
+    while read -r start end; do
+        starts+=("$start"); ends+=("$end")
+    done < <(_top_level_tokens "$seg")
+    total="${#starts[@]}"
+
+    while [ "$idx" -lt "$total" ]; do
+        tok="${seg:${starts[$idx]}:${ends[$idx]}-${starts[$idx]}}"
+        case "$tok" in
+            -exec|-execdir|-ok|-okdir)
+                idx=$((idx + 1))
+                cmd_start="$idx"
+                while [ "$idx" -lt "$total" ]; do
+                    tok="${seg:${starts[$idx]}:${ends[$idx]}-${starts[$idx]}}"
+                    case "$tok" in
+                        '+'|'\;') break ;;
+                    esac
+                    idx=$((idx + 1))
+                done
+                [ "$idx" -ge "$total" ] && return 1
+                cmd_end_idx=$((idx - 1))
+                [ "$cmd_end_idx" -lt "$cmd_start" ] && return 1
+                start="${starts[$cmd_start]}"
+                end="${ends[$cmd_end_idx]}"
+                inner="${seg:start:end-start}"
+                is_safe_segment "$inner" || return 1
+                idx=$((idx + 1))
+                ;;
+            *)
+                idx=$((idx + 1))
+                ;;
+        esac
+    done
+    return 0
+}
+
 # Return 0 if the segment looks like a pure variable assignment with no command execution.
 # Accepts: VAR=value, VAR="quoted string", VAR='quoted', VAR=__SUBSHELL_SAFE__
 # Rejects: VAR=value cmd arg  (env-var prefix — unquoted space after the value)
@@ -1202,8 +1381,27 @@ is_safe_segment() {
     if printf '%s' "$seg" | grep -qE '^find(\s|$)'; then
         # A variable reference can smuggle -delete/-exec/etc past this exclusion scan.
         _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(delete|exec|execdir|ok|okdir|fls|fprint|fprintf)([[:space:]]|$)' && return 1
+        # -delete/-fls/-fprint* mutate or write files directly and don't wrap
+        # a command — always reject, no recursive validation applies.
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(delete|fls|fprint|fprintf)([[:space:]]|$)' && return 1
+        # -exec/-execdir/-ok/-okdir wrap an arbitrary command; validate each
+        # clause's wrapped command recursively instead of rejecting outright
+        # (see _find_exec_clauses_are_safe).
+        if printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(exec|execdir|ok|okdir)([[:space:]]|$)'; then
+            _find_exec_clauses_are_safe "$seg" && return 0
+            return 1
+        fi
         return 0
+    fi
+    if printf '%s' "$seg" | grep -qE '^xargs(\s|$)'; then
+        # A variable reference can smuggle a dangerous xargs option or the
+        # wrapped command itself past this scan.
+        _has_variable_expansion "$seg" && return 1
+        local xargs_rest xargs_cmd
+        xargs_rest=$(printf '%s' "$seg" | sed -E 's/^xargs[[:space:]]*//')
+        xargs_cmd=$(_xargs_wrapped_command "$xargs_rest") || return 1
+        is_safe_segment "$xargs_cmd"
+        return $?
     fi
     if printf '%s' "$seg" | grep -qE '^sed(\s|$)'; then
         # A variable reference can smuggle -i/e/w past this exclusion scan.

@@ -157,7 +157,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 次の mode はコマンド名が読み取り系でも常時許可しない。
 
-- `find -delete/-exec/-execdir/-ok/-fprint*`
+- `find -delete/-fls/-fprint/-fprintf`（ファイルの削除・書き込みを直接行い、コマンドをラップしないため常に拒否。`-exec`/`-execdir`/`-ok`/`-okdir` は下記「xargs / find -exec」参照）
 - `sed -i/--in-place` および script 内の `e` / `w` command
 - `sort -o/--output`
 - `yq -i/--inplace`
@@ -206,6 +206,37 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 クォート文字自体も、それが「他方のクォートの内側ではリテラル文字である」ケースを区別する。ダブルクォート内の `'`（例: `curl --user-agent "foo'bar" $OPTS ...`）はシングルクォート開始とはみなさない — bash はダブルクォート内で `'` に特別な意味を与えないため、無条件に `quote="'"` へ遷移すると、以降の実際の閉じダブルクォートを取りこぼしてクォート状態が誤って `'` のまま持ち越され、後続の unquoted `$OPTS` を見逃す。この遷移は現在 `quote` が空（unquoted 状態）のときのみ許可する。
 
 根拠: `hooks/auto-approve-readonly.sh:166-209`, `hooks/auto-approve-readonly.sh:509-523`, `hooks/auto-approve-readonly.sh:877-1078`
+
+### `xargs` / `find -exec`: ラップされたコマンドの再帰検証（issue #254）
+
+`xargs ...` と `find ... -exec/-execdir/-ok/-okdir ...` は、`$(...)` subshell と同じ「セグメント自身ではなく、引数として渡された別コマンドを実行する」構造を持つ。以前はこの構造を区別せず、`xargs` はホワイトリスト不在で default deny、`find -exec` 系は明示的な拒否対象だったため、ラップされたコマンドが `tail`/`cat` のような read-only であっても常に通常許可フローへ戻っていた。
+
+いずれも、ラップされたコマンド部分を元のテキストから切り出し、`is_safe_segment` に再帰的に渡して判定する（`$(...)` の `_subshells_are_safe` と同じ設計）。切り出しに使う `_top_level_tokens` は、`_has_variable_expansion` などと同じ single/double quote + backslash escape の文法で、トップレベル（クォート外）の空白区切りトークンの開始・終了 index を1行ずつ出力する共有 tokenizer である。文字を再構築せず元の文字列から直接 substring を切り出すため、ラップされたコマンド自身のクォートはそのまま保持される。
+
+#### `xargs`（`_xargs_wrapped_command`）
+
+`xargs` 自身のオプション領域を、狭い allow-shape でのみ読み飛ばす（denylist ではない）。
+
+| 種別 | 対象 | 値の与え方 |
+|---|---|---|
+| 真偽値（値なし） | `-0`, `-r`, `-t`, `-p`, `-x` | — |
+| 値必須 | `-I`, `-n`, `-P`, `-L`, `-s`, `-a`, `-d` | 分離トークン（`-I {}`）または添字形（`-I{}`）の両方 |
+| 値任意（添字のみ） | `-i`, `-l` | 添字形のみ（`-i{}`）。GNU xargs 自体がこれらを分離トークンの値として受け付けないため、このスキャナーも受け付けない |
+| 終端 | `--` | 以降を無条件でラップされたコマンドの開始とみなす |
+
+これら以外のトークン（GNU long option、クラスタ化された短縮フラグ `-rt`、未知のフラグ）が現れた時点で走査を打ち切り、通常許可フローへ戻す。認識したオプション領域を通過した最初の非フラグトークン以降を「ラップされたコマンド」として切り出し、`is_safe_segment` で再帰検証する。
+
+**なぜ long option・クラスタ化を対象外にしたか:** 実際に必要になった具体例（`xargs -I{} tail -20 {}` のような log 調査パターン）は短縮オプションのみで表現できる。long option（`--replace`, `--max-args` 等）やクラスタ化（`-rt`）まで対応を広げると、オプションと値の境界判定が複雑化し誤判定のリスクが増す一方、実際の必要性が確認できていない。認識できない形は安全側（通常確認フロー）に倒れるため、必要になった時点でこの allow-shape を広げればよい。
+
+#### `find -exec`/`-execdir`/`-ok`/`-okdir`（`_find_exec_clauses_are_safe`）
+
+`-exec` 系の各節は、unquoted な終端記号（`\;` のようなエスケープされたセミコロン、または独立した `+` トークン）まででラップされたコマンドを構成する。`_find_exec_clauses_are_safe` は `_top_level_tokens` でトークン化した上で `-exec`/`-execdir`/`-ok`/`-okdir` トークンを見つけるたびに、終端トークンまでの範囲を元のテキストから切り出し `is_safe_segment` で再帰検証する。1つの `find` コマンドに複数の `-exec` 節がある場合は全節を検証し、1つでも unsafe なら find コマンド全体を拒否する。
+
+**なぜ quoted terminator（`';'` 等）を対象外にしたか:** シェルの通常の書き方は `\;`（エスケープ）または `+`（unquoted）であり、`';'`/`"; "` のような quoted 形は実用上ほぼ現れない。対応を狭く保ち、認識できない形は終端記号が見つからないケースと同様に拒否（通常確認フローへ戻す）する。
+
+**`-delete`/`-fls`/`-fprint`/`-fprintf` は対象外のまま:** これらはコマンドをラップせず、ファイルの削除・書き込みを `find` 自身が直接行うため、`-exec` 系とは異なる性質を持つ。したがって再帰検証の対象にはならず、従来通り無条件拒否を維持する。
+
+根拠: `hooks/auto-approve-readonly.sh:495-535`（`_top_level_tokens`）, `hooks/auto-approve-readonly.sh:562-610`（`_xargs_wrapped_command`）, `hooks/auto-approve-readonly.sh:624-663`（`_find_exec_clauses_are_safe`）, `hooks/auto-approve-readonly.sh:1381-1404`（`is_safe_segment` の find/xargs 分岐）, issue #254
 
 ### session-approved tool category
 
@@ -408,13 +439,15 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 `is_rm_f_on_safe_literal_path`（issue #248）については、working repo 内 literal パスへの `rm -f`（WIP commit あり）を positive case、repo root 自体・`.git` 配下・変数参照・複数トークン・グロブ・`-rf`（recursive、この関数の対象外）・repo 内でない任意パスを negative case として固定する。`is_rm_protected_path`（issue #250）については、session-approved ファイル自身への literal `rm`/`rm -f` が自動承認されず通常許可フローへ戻ることを negative case として固定する（issue #248 時点では positive case だったものを、保護対象パスの導入に伴い反転）。
 
+`xargs`/`find -exec`（issue #254）については、read-only な wrapped command を持つ `xargs`（分離/添字形の `-I`、`-0`、`-n`/`-P` の組み合わせ、`--` marker、パイプライン経由）と `find -exec`/`-execdir`（`\;`/`+` 終端、複数 `-exec` 節）を positive case、unsafe な wrapped command（`rm` 系）、終端記号の欠落、一部の節だけ unsafe な複数 `-exec`、認識対象外の xargs オプション（long option・クラスタ化）、`is_safe_segment` が元々認識しない wrapped command（`sh -c ...`）、変数展開によるオプション/wrapped command の smuggling を negative case として固定する。`-fprintf` は `-exec` 系と異なりコマンドをラップしないため、既存の `-delete` と同様に無条件拒否のまま negative case として固定する。
+
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 
 heredoc body のマスキング（issue #246）については、`gh pr create --body-file - <<'EOF' ... EOF` 形（複数行 Markdown 本文、`>`/`->`/`rm -rf /` のような他のスキャナーを誤検知させうる文字列を本文に含む場合を含む）と `<<"EOF"`（ダブルクォート）を `tool:gh_pr_write` 許可済みセッションでの positive case として固定する。演算子より前に実際の危険操作がある `git push --force <<'EOF' ... EOF` は本文の内容に関わらず引き続き block されること、`tool:gh_pr_write` が未承認の場合は同じ heredoc コマンドでも引き続き通常許可フローへ戻ること、および delimiter が unquoted な heredoc（`<<EOF`）は既知の未対応形として引き続き通常許可フローへ戻ること（回帰ではなく仕様）を negative case として固定する。
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-935`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1046`
 
 ## 変更履歴（git log より自動生成）
 

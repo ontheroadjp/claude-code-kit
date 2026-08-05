@@ -18,6 +18,7 @@
 - `$(...)` command substitution の read-only 検証（`_extract_subshell_contents` / `_strip_subshells` / `_subshells_are_safe` 経由）
 - session-approved fast path、destructive guard、working repo dynamic defense（WIP commit）
 - `rm [-f] <literal-path>` の自動承認（issue #248）: working repo 内パスへの literal（変数・グロブ・複数トークンなし）な `rm`/`rm -f` の positive case（WIP commit 作成も検証）と、variable 参照・repo root 自体・`.git` 配下・複数トークン・グロブ・`-rf`（recursive、対象外）・保護対象パスを negative case として固定。現在セッションの session-approved ファイル自身への literal `rm`/`rm -f` は `is_rm_protected_path` により保護対象であり、常に negative case（issue #250。issue #248 時点では positive case だった）
+- `xargs`/`find -exec`（issue #254）: read-only な wrapped command を持つ `xargs`（分離/添字形の `-I`、`-0`、`-n`/`-P`、`--` marker、パイプライン経由）と `find -exec`/`-execdir`（`\;`/`+` 終端、複数 `-exec` 節）の positive case、unsafe な wrapped command・終端記号欠落・一部の節だけ unsafe・認識対象外の xargs オプション（long option・クラスタ化）・`sh -c` のような未対応 wrapped command・変数展開による smuggling の negative case。`-fprintf` は `-exec` 系と異なりコマンドをラップしないため既存の `-delete` と同様に無条件拒否のままであることも固定
 
 根拠: `tests/hooks/test-approval-hooks.sh:22-100`, `tests/hooks/test-approval-hooks.sh:240-360`
 
