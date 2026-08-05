@@ -276,10 +276,76 @@ HEREDOC_BODY_PLACEHOLDER='__HEREDOC_BODY_SAFE__'
 # (`... --body-file - <<'EOF' ... EOF`): an unquoted delimiter heredoc body
 # IS subject to expansion, so it is not safe to treat as inert text and is
 # left to fall through to the existing (conservative) behavior.
+#
+# Given $2 = the index of the first '<' of a candidate "<<" token in $1,
+# determine whether it opens a masking-eligible heredoc (quoted delimiter,
+# no `<<-`, nothing but whitespace between the delimiter word and the end of
+# that line, and a later line consisting of exactly the delimiter). On
+# success, print "<after> <line_end>" (0-based): <after> is the index right
+# past the delimiter word's closing quote (so the caller can keep the
+# opening `<<'DELIM'` text visible), and <line_end> is the index of the
+# newline ending the terminator line (or the input length, if the
+# terminator is the last line) — the index scanning should resume from to
+# skip the (now-inert) body and terminator. Prints nothing and returns 1 for
+# any other shape, leaving the '<' character to the caller's normal
+# per-character handling.
+#
+# Single source of truth for this boundary grammar, shared by
+# _mask_quoted_heredoc_bodies (which needs both indices to build the masked
+# placeholder) and _find_top_level_subshell_spans (which only needs
+# <line_end>, to skip a heredoc body's characters from quote/paren
+# tracking) — same single-tokenizer rationale as
+# _find_top_level_subshell_spans itself (see its own docstring): duplicating
+# this grammar in two places is what let a fix land in one function but not
+# the other across past review rounds.
+_heredoc_skip_end_index() {
+    local input="$1" i="$2"
+    local n="${#input}"
+    local j qch delim word_start k after m nl1 body_start scan line_end line term_start
+
+    j=$((i + 2))
+    while [ "${input:j:1}" = ' ' ] || [ "${input:j:1}" = $'\t' ]; do j=$((j + 1)); done
+    qch="${input:j:1}"
+    [ "$qch" = "'" ] || [ "$qch" = '"' ] || return 1
+
+    word_start=$((j + 1))
+    k=$word_start
+    while [ "$k" -lt "$n" ] && [ "${input:k:1}" != "$qch" ]; do k=$((k + 1)); done
+    [ "$k" -lt "$n" ] && [ "$k" -gt "$word_start" ] || return 1
+    delim="${input:word_start:k-word_start}"
+    after=$((k + 1))
+
+    m=$after
+    while [ "${input:m:1}" = ' ' ] || [ "${input:m:1}" = $'\t' ]; do m=$((m + 1)); done
+    { [ "${input:m:1}" = $'\n' ] || [ "$m" -eq "$n" ]; } || return 1
+
+    nl1=$m
+    if [ "$nl1" -lt "$n" ]; then body_start=$((nl1 + 1)); else body_start=$n; fi
+    scan=$body_start
+    term_start=-1
+    while [ "$scan" -le "$n" ]; do
+        line_end=$scan
+        while [ "$line_end" -lt "$n" ] && [ "${input:line_end:1}" != $'\n' ]; do
+            line_end=$((line_end + 1))
+        done
+        line="${input:scan:line_end-scan}"
+        if [ "$line" = "$delim" ]; then
+            term_start=$scan
+            break
+        fi
+        [ "$line_end" -ge "$n" ] && break
+        scan=$((line_end + 1))
+    done
+    [ "$term_start" -ge 0 ] || return 1
+
+    printf '%s %s\n' "$after" "$line_end"
+}
+
 _mask_quoted_heredoc_bodies() {
     local input="$1"
     local n="${#input}"
     local i=0 char quote="" escaped=0 result=""
+    local heredoc_after heredoc_line_end
 
     while [ "$i" -lt "$n" ]; do
         char="${input:i:1}"
@@ -304,46 +370,11 @@ _mask_quoted_heredoc_bodies() {
             quote="$char"; result+="$char"; i=$((i + 1)); continue
         fi
 
-        if [ "$char" = '<' ] && [ "${input:i+1:1}" = '<' ] && [ "${input:i+2:1}" != '<' ]; then
-            local j qch delim word_start k after m nl1 body_start scan line_end line term_start
-            j=$((i + 2))
-            while [ "${input:j:1}" = ' ' ] || [ "${input:j:1}" = $'\t' ]; do j=$((j + 1)); done
-            qch="${input:j:1}"
-            if [ "$qch" = "'" ] || [ "$qch" = '"' ]; then
-                word_start=$((j + 1))
-                k=$word_start
-                while [ "$k" -lt "$n" ] && [ "${input:k:1}" != "$qch" ]; do k=$((k + 1)); done
-                if [ "$k" -lt "$n" ] && [ "$k" -gt "$word_start" ]; then
-                    delim="${input:word_start:k-word_start}"
-                    after=$((k + 1))
-                    m=$after
-                    while [ "${input:m:1}" = ' ' ] || [ "${input:m:1}" = $'\t' ]; do m=$((m + 1)); done
-                    if [ "${input:m:1}" = $'\n' ] || [ "$m" -eq "$n" ]; then
-                        nl1=$m
-                        if [ "$nl1" -lt "$n" ]; then body_start=$((nl1 + 1)); else body_start=$n; fi
-                        scan=$body_start
-                        term_start=-1
-                        while [ "$scan" -le "$n" ]; do
-                            line_end=$scan
-                            while [ "$line_end" -lt "$n" ] && [ "${input:line_end:1}" != $'\n' ]; do
-                                line_end=$((line_end + 1))
-                            done
-                            line="${input:scan:line_end-scan}"
-                            if [ "$line" = "$delim" ]; then
-                                term_start=$scan
-                                break
-                            fi
-                            [ "$line_end" -ge "$n" ] && break
-                            scan=$((line_end + 1))
-                        done
-                        if [ "$term_start" -ge 0 ]; then
-                            result+="${input:i:after-i} ${HEREDOC_BODY_PLACEHOLDER}"
-                            i=$line_end
-                            continue
-                        fi
-                    fi
-                fi
-            fi
+        if [ "$char" = '<' ] && [ "${input:i+1:1}" = '<' ] && [ "${input:i+2:1}" != '<' ] \
+            && read -r heredoc_after heredoc_line_end < <(_heredoc_skip_end_index "$input" "$i"); then
+            result+="${input:i:heredoc_after-i} ${HEREDOC_BODY_PLACEHOLDER}"
+            i=$heredoc_line_end
+            continue
         fi
 
         result+="$char"
@@ -366,12 +397,20 @@ _mask_quoted_heredoc_bodies() {
 #
 # Prints "<start> <end>" (0-based, end = index of the matching ')') one pair
 # per line, in the order each top-level span closes.
+#
+# Also recognizes and skips quoted-delimiter heredoc bodies (via
+# _heredoc_skip_end_index — see its docstring), the same narrow shape
+# _mask_quoted_heredoc_bodies masks. This matters because a heredoc body is
+# inert data that can contain arbitrary quote/paren characters (e.g. a
+# commit message body with "don't" or "(#123)"); without skipping it, those
+# characters would desync this function's own quote/depth tracking.
 _find_top_level_subshell_spans() {
     local input="$1"
     local i char n="${#input}"
     local depth=0 quote="" escaped=0 start=0 stack_top
     local -a quote_stack=()
     local ansiq="ANSI_C_QUOTE"
+    local heredoc_after heredoc_line_end
 
     for ((i = 0; i < n; i++)); do
         char="${input:i:1}"
@@ -432,6 +471,17 @@ _find_top_level_subshell_spans() {
         if [ "$quote" = '"' ]; then
             [ "$char" = '"' ] && quote=""
             continue
+        fi
+
+        # Reaching here means quote=="" at the current nesting level (single
+        # quotes, ANSI-C quotes, and double quotes all `continue`d above),
+        # which is exactly the unquoted-position requirement real bash
+        # applies to heredoc redirects — the same condition
+        # _mask_quoted_heredoc_bodies uses at its own (single-level)
+        # top-level scan.
+        if [ "$char" = '<' ] && [ "${input:i+1:1}" = '<' ] && [ "${input:i+2:1}" != '<' ] \
+            && read -r heredoc_after heredoc_line_end < <(_heredoc_skip_end_index "$input" "$i"); then
+            i=$((heredoc_line_end - 1)); continue
         fi
 
         case "$char" in
