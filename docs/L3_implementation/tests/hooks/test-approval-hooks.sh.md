@@ -40,6 +40,8 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
+- f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
@@ -48,10 +50,4 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
 - 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
-- 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands
-- 15877ae feat(#238): add strings/readlink/ss/apt-cache/desktop-file-validate/man/diff/sleep to the auto-approve hook's read-only tools allowlist
-- d3b2129 fix(#231): add sha256sum to the auto-approve hook's read-only tools allowlist
-- d5a823a feat(#224): add for/do/done allow-shape to auto-approve-readonly.sh
-- 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
-- 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file

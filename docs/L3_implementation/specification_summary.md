@@ -10,13 +10,13 @@
 
 ### `/work` (`commands/work.md`)
 
-全作業の通常入口。G-0 で main へ checkout し、現在の hook セッションに対応する session-approved を Write ツールで空にして前回の承認状態をクリアする。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
+全作業の通常入口。G-0 で main へ checkout する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
 exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。それ以外は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
-根拠: `commands/work.md:7-143`
+根拠: `commands/work.md:7-140`
 
 ### `/report-review` (`commands/report-review.md`)
 

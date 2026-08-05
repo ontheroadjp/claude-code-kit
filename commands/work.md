@@ -9,20 +9,8 @@
 ### G-0: main ブランチへの切り替え
 
 `git checkout main` を実行し、main ブランチに切り替える。
-前回の `/work` 呼び出しの承認状態をクリアするため、まずセッション承認ファイルのパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
-```bash
-SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-fi
-SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-if [ -n "$SESSION_ID" ]; then
-    echo "${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
-fi
-```
-セッション ID が解決できない場合はスキップする。パスが出力された場合、**`rm` は使わず**、Write ツールでそのパスへ空文字列を書き込んで前回の承認状態をクリアする（ファイルが存在しない場合も空文字列の書き込みで問題ない）。これは hook（`hooks/auto-approve-readonly.sh`）の Write ハンドラが、書き込み先を自セッションの承認ファイルパスとして独立に再計算した上で、内容が空または既存より狭い場合は無条件承認する既存の仕組みをそのまま利用しており、Bash 経由の `rm` のように毎回ユーザー確認が発生することはない。
 
-（issue #248 で追記: hook 側に `rm -f <literal-path>` を自動承認する仕組み（`is_rm_f_on_safe_literal_path`）を追加した後も、この G-0 は Write 方式のまま維持している。Write 方式は既にこの上記のステップ（read-only な `echo` による値の解決）→ リテラル値を Write の `file_path` に埋め込む、という2段階で完結しており、`rm -f` を使う代替案はこれに加えてもう1回 Bash 呼び出しが必要になる分だけ手順が増えるため、変更する理由がない。）
+（issue #261 で追記: 以前はここで前回の `/work` 呼び出しの `session-approved` を空文字列で防御的にクリアしていたが、廃止した。`hooks/auto-approve-readonly.sh` の Write ハンドラは「ファイルが absent の場合のみ」無条件承認する初回書き込みブランチに入るため、この空書き込みは `hooks/cleanup-session.sh`（Stop hook）が正常に削除済みの absent 状態を「exists-empty」状態に変換してしまい、直後の `task.md`/`patch.md` Step 2 の実承認内容の書き込みが既存内容（空）との差分比較で毎回確実にスコープ拡大としてブロックされる原因になっていた。Stop hook が正常に動作していれば `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）は、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする。`rm -f` への回帰は検討したが不採用とした: commit 87ce937（fix #250）が `session-approved` を `rm -f` の自動承認対象から明示的に除外しており（`is_rm_protected_path`）、これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴を塞ぐためのもの。G-0 を `rm -f` に戻すと、この抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。）
 
 ### G-1: docs/.ai/repo.profile.json の存在確認
 - 存在しない場合: /init-docs の実行を促して終了する
