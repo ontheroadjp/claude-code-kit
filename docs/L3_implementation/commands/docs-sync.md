@@ -106,6 +106,7 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 
 ## 変更履歴（git log より自動生成）
 
+- e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
@@ -115,4 +116,3 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 - f6288ac feat(#98): add git push to /docs-sync Phase 3
 - e07fe3b fix: enforce independent README.md check in docs-sync Phase 2
 - f0d7bc1 feat(#41): move templates/ to repo root, add partials/ symlink, clean up stale symlinks
-- 9df2e85 feat(#37): extract commit logic into partials/git-commit.md

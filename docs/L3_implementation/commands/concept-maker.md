@@ -43,4 +43,4 @@ L0 への変更は他のどの docs 更新よりもユーザー自身の判断�
 
 ## 変更履歴（git log より自動生成）
 
-（次回 `/docs-sync` 実行時に自動追加される）
+- e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs

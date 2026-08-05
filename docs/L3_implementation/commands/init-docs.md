@@ -38,3 +38,16 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 - 通常の局所 docs 更新には使用しない
 - commit/PR 前にユーザー確認が必須
 - 既存 L0 の内容を更新・修正したい場合でも、このコマンドでは行えない。`/concept-maker` を使うこと
+
+## 変更履歴（git log より自動生成）
+
+- e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
+- 27f1861 feat(#76): install templates for claude and codex
+- 2137bed Merge origin/main into docs/init-docs-branch-before-editing
+- 019a6b6 docs(#140): start init-docs work on branch
+- b6b91f1 feat(#138): update init-docs local tooling guidance
+- ad364de docs(init-docs): add Phase 7 commit & PR creation workflow
+- 3b990cf fix(#50): remove primary_docs from Phase 2 schema example to prevent premature writing
+- 5497931 fix(#50): set primary_docs after Phase 3 generation, not as planned paths in Phase 2
+- 3c7e474 fix(#50): primary_docs population must reference planned Phase 3 paths, not existing files
+- 3e24c4a feat(#50): add primary_docs to repo.profile.json as lightweight SSOT for investigation
