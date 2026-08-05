@@ -39,11 +39,11 @@ Phase 4: 最終報告
 
 ### Phase 2: 更新対象の特定
 
-変更領域に対応する更新対象 docs を根拠付きで列挙する。HARD STOP 判定はファイル名パターンで行う（10件以上かつ3領域以上、主要レイヤ新出、エントリポイント変更）。L0_concept は更新しない。
+変更領域に対応する更新対象 docs を根拠付きで列挙する。`.github/workflows/*` の追加・削除・変更を検出した場合は、プローズ判断に頼らず `docs/L2_development/cicd.md` と `docs/L2_development/consistency_checks.md` を無条件で更新対象タスクへ追加する決定論的ルールを持つ（issue #271。以前はプローズ判断のみに委ねていたため、`.github/workflows/shellcheck.yml` 追加時にこの2ファイルの更新漏れが発生していた）。HARD STOP 判定はファイル名パターンで行う（10件以上かつ3領域以上、主要レイヤ新出、エントリポイント変更）。L0_concept は更新しない。
 
 タスクリストの各項目を「確認不要（git diff の値をそのまま転記するだけ）」と「確認必要（文脈・意図を解釈して文章化する）」に分類する（issue #229）。全項目が確認不要なら許可を求めずそのまま Phase 3 へ進む。1項目でも確認必要な場合は、その項目について反映する文章そのものではなく根拠となった解釈を提示し、「解釈が合っているか」だけを確認する。文章化自体は確認後の Phase 3 で行い、再確認は求めない。分類に迷う場合は確認必要側に倒す。
 
-根拠: `commands/docs-sync.md:81-136`
+根拠: `commands/docs-sync.md:81-137`
 
 ### Phase 3: docs・README.md 最小更新 + L3 変更履歴更新
 
@@ -99,6 +99,7 @@ Phase 4: 最終報告
 
 ## 変更履歴（git log より自動生成）
 
+- 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
@@ -108,5 +109,3 @@ Phase 4: 最終報告
 - e07fe3b fix: enforce independent README.md check in docs-sync Phase 2
 - f0d7bc1 feat(#41): move templates/ to repo root, add partials/ symlink, clean up stale symlinks
 - 9df2e85 feat(#37): extract commit logic into partials/git-commit.md
-- dfb9eb8 chore: enforce English for issue and PR titles and bodies
-- ebbdebf feat(#21): add L0_concept layer and explicit L2/L3 placement for additional docs

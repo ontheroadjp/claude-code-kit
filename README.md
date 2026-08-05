@@ -89,6 +89,7 @@ cd site && npm run docs:preview
 
 CI runs `npm ci` and `npm run docs:build` in `site/` on push to `main` and on manual workflow dispatch.
 A separate CI workflow runs ShellCheck against every `*.sh` file on push and pull request.
+Another CI workflow runs `tests/hooks/test-approval-hooks.sh` on push and pull request.
 
 Local verification commands:
 
@@ -113,6 +114,7 @@ shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_mod
 ```text
 .github/workflows/deploy.yml      GitHub Actions for VitePress -> GitHub Pages
 .github/workflows/shellcheck.yml  GitHub Actions running ShellCheck against all *.sh
+.github/workflows/test.yml        GitHub Actions running the approval hooks test suite
 commands/                     Markdown command specifications (includes /git-commit, /git-pr)
 hooks/                        Claude Code / Codex hook scripts and shared helpers
 skills/                       Codex skill wrappers around commands/*.md

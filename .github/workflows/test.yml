@@ -1,0 +1,17 @@
+name: Approval Hooks Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  approval-hooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Run approval hooks test suite
+        run: bash tests/hooks/test-approval-hooks.sh
