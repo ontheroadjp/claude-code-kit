@@ -4,7 +4,7 @@
 
 Stop hook。transcript 全体を再集計し、セッションの累積トークン使用量・コスト・自身の実行時間を `logs/token-usage/*.log` へ1行追記する。`scripts/analyze_token_usage.py`（呼び出し元は `commands/analyze-token-usage.md`）がこのログを消費する。
 
-根拠: `hooks/log-token-usage.sh:1-83`
+根拠: `hooks/log-token-usage.sh:1-82`
 
 ## 動作の概要
 
@@ -13,7 +13,7 @@ Stop hook。transcript 全体を再集計し、セッションの累積トーク
 3. `jq -rsc` で transcript 全体（assistant message かつ `usage` を持つエントリ）を走査し、input/output/cache_read/cache_create の累積値・モデル別単価表に基づく推定コスト・cache_ratio を算出する
 4. 算出結果と `hook_duration_ms "$HOOK_START_TIME"` の結果を1行にフォーマットし、`logs/token-usage/<YYYY-MM>.log` へ追記する
 
-根拠: `hooks/log-token-usage.sh:1-83`
+根拠: `hooks/log-token-usage.sh:1-82`
 
 ## 主要な判定ロジック・フロー
 
@@ -21,7 +21,7 @@ Stop hook。transcript 全体を再集計し、セッションの累積トーク
 - `duration_ms` フィールドはこの累積値とは性質が異なり、**その回の Stop hook 呼び出し単体の実行時間**（非累積・per-invocation）である。ログの末尾に `duration_ms=<ms|NA>` として任意フィールドで追加し、旧フォーマットの行（フィールド自体が存在しない）とも後方互換になるようにした
 - `REPO_DIR` の解決（`BASH_SOURCE[0]` の symlink 解決）を、従来はログファイルパス算出の直前（スクリプト末尾）でのみ行っていたが、`hooks/lib/hook-timing.sh` を source するために計測開始直後（スクリプト冒頭）へ移動した。ログファイルパスの算出はこの early-resolved `REPO_DIR` を再利用する
 
-根拠: `hooks/log-token-usage.sh:4-13`, `hooks/log-token-usage.sh:73-83`
+根拠: `hooks/log-token-usage.sh:4-13`, `hooks/log-token-usage.sh:73-82`
 
 ## 重要な設計判断とその理由
 

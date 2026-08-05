@@ -93,7 +93,7 @@ hook はリテラル引数が既知の安全なパス（現在セッションの
 
 ## Local Tooling Environment
 
-Observed by /init-docs on 2026-08-02:
+Observed by /init-docs on 2026-08-05:
 - gh: 2.96.0
 - gh auth: logged in to github.com; active account available for repository operations
 - node: v24.16.0

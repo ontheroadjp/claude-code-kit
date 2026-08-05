@@ -18,6 +18,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | `/patch` | Delegated by `/work` for lightweight fixes without docs changes. |
 | `/task` | Delegated by `/work` for implementation that requires docs changes. |
 | `/docs-sync` | Syncs `docs/*` and README from `git diff`, auto-updates L3 per-file doc change history, then writes Docs Sync Result to session temp for `/git-pr`. |
+| `/git-commit` | Normalizes WIP commits when needed, checks staged changes, and creates a Conventional Commit. |
 | `/git-pr` | Reads PR title/body/docs-sync-result from session temp and creates a ready PR. This is the end of the `/work`/`/task` flow — further review and merge are manual. |
 | `/init-docs` | Re-observes the repository and reconstructs project design docs. |
 | `/coding-general` | Language-independent coding principles. |
@@ -87,6 +88,15 @@ cd site && npm run docs:preview
 
 CI runs `npm ci` and `npm run docs:build` in `site/` on push to `main` and on manual workflow dispatch.
 
+Local verification commands:
+
+```bash
+bash tests/hooks/test-approval-hooks.sh
+bash tests/commands/test-report-review.sh
+bash tests/install/test-install.sh
+python3 -m pytest tests/scripts/
+```
+
 ## Design Principles
 
 - `git diff` is truth for docs sync; PR text is supplemental.
@@ -112,7 +122,3 @@ setup_statusline.sh           status line installer
 CLAUDE.md                     AI operating guidance source of truth
 AGENTS.md                     symlink to CLAUDE.md for Codex CLI
 ```
-
-## License
-
-MIT

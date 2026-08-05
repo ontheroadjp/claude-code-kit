@@ -13,10 +13,11 @@
 ${XDG_STATE_HOME:-~/.local/state}/claude-code-kit/sessions/<session-id>/session-approved
 ```
 
-**作成:** `/task` Phase 1 Step 2（ユーザーがプランを承認したタイミング）  
+**作成:** `/task` Phase 1 Step 2 または `/patch` Step 2（ユーザーがプランを承認したタイミング）
 **削除:**
-- `hooks/cleanup-session.sh`（Stop hook）— セッション終了ごとに削除し、空になったディレクトリを `rmdir` で除去
-- `commands/work.md` G-0 冒頭 — 次の `/work` 開始時に前回の承認状態をクリア
+- `hooks/cleanup-session.sh`（Stop hook）— ターン終了ごとに削除し、空になったディレクトリを `rmdir` で除去
+
+`commands/work.md` G-0 は issue #261 以降 `session-approved` を削除・空書き込みしない。Stop hook が正常に削除した absent 状態を維持し、次の実承認内容を初回 write として扱わせるためである。
 
 **目的:** auto-approve-readonly hook がこのファイルの内容（許可ツールカテゴリ・ファイルパス）を読み、承認済みスコープ内の操作を自動許可する。
 
@@ -32,7 +33,7 @@ AI agent がセッション内で自由に読み書きできる汎用ディレ�
 /tmp/claude-code-kit/<session-id>/
 ```
 
-`<session-id>` は `session-approved` のパスから `basename $(dirname ...)` で取得する。
+`<session-id>` は command workflow が `CLAUDE_CODE_KIT_SESSION_ID`、`CLAUDE_CODE_SESSION_ID`、`CODEX_THREAD_ID` から解決する。hook payload を利用する詳細な優先順位は `hooks/lib/session-id.sh` に定義される。
 
 ### 利用例: PR 作成フロー
 
@@ -104,4 +105,4 @@ gh issue comment 123 --body-file /tmp/claude-code-kit/${SESSION_ID}/comment.md
 - `CLAUDE.md` で定めたセッション tmp ディレクトリのルールに沿っている
 - Stop hook の発火タイミングに関わらず、OS の自然消去に任せられる
 
-根拠: `hooks/cleanup-session.sh:39-48`, `commands/task.md:149-154`, `commands/git-pr.md`
+根拠: `hooks/cleanup-session.sh:15-24`, `hooks/lib/session-id.sh:17-46`, `commands/task.md`, `commands/patch.md`, `commands/git-pr.md`

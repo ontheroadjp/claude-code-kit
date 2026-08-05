@@ -22,7 +22,7 @@
 - 参照元: Codex CLI ユーザー、`install.sh`（symlink 作成）
 - 関連: `skills/*/SKILL.md`（各 skill の実体）、`commands/*.md`
 
-根拠: `skills/README.md:1-60`, `skills/work/SKILL.md:1-23`, `skills/report-review/SKILL.md:1-25`
+根拠: `skills/README.md:1-60`, `skills/work/SKILL.md:1-22`, `skills/report-review/SKILL.md:1-25`
 
 ## 変更履歴（git log より自動生成）
 
