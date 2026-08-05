@@ -46,6 +46,8 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
+- b3a5b06 chore(#269): prefer L3 doc line citations over full-file reads in /work investigation
 - af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 1e3b7fa fix(#227): avoid rm -f confirmation prompt in /work G-0 by clearing session-approved via Write tool
@@ -54,7 +56,5 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
 - dd29feb feat(#129): store session approvals per session
-- ab4370b fix(#119): explicitly skip Step 3 and jump to Phase 2 on resume
-- 26036e6 fix(#119): reset session-approved at G-0 and route resume to Step 2
 
 根拠: `commands/work.md:9-145`

@@ -99,6 +99,7 @@ Phase 4: 最終報告
 
 ## 変更履歴（git log より自動生成）
 
+- 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
@@ -108,5 +109,3 @@ Phase 4: 最終報告
 - e07fe3b fix: enforce independent README.md check in docs-sync Phase 2
 - f0d7bc1 feat(#41): move templates/ to repo root, add partials/ symlink, clean up stale symlinks
 - 9df2e85 feat(#37): extract commit logic into partials/git-commit.md
-- dfb9eb8 chore: enforce English for issue and PR titles and bodies
-- ebbdebf feat(#21): add L0_concept layer and explicit L2/L3 placement for additional docs
