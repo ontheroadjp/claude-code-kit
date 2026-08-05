@@ -10,7 +10,7 @@
 
 この分類に確信を持てない操作は出力なしで終了し、クライアントの通常許可フローへ戻す。破壊的操作は allowlist より先に評価し、session-approved が存在しても block する。
 
-根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:709-1093`, `hooks/lib/approval-safety.sh`
+根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:759-1143`, `hooks/lib/approval-safety.sh`
 
 ## セッションと実行元の解決
 
@@ -69,7 +69,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 13. command を quote-aware に segment 分割する（`>&<fd番号|->` は fd 複製として background operator 扱いしない）。
 14. 全 segment が読み取り専用・narrow な local git write（`git add`/`git commit -m`/`git fetch`）・または session-approved のいずれかの場合のみ承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:709-1093`
+根拠: `hooks/auto-approve-readonly.sh:759-1143`
 
 ## File tool の許可
 
@@ -88,7 +88,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 承認ファイル自身へのスコープ追加は block する。working repo 内の Write / Edit / apply_patch の場合は承認前に WIP commit を作成する。その他は通常許可フローへ戻す。
 
-根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:718-821`
+根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:768-871`
 
 ## Bash command の許可
 
@@ -171,7 +171,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 `curl` の短縮 option は単独形だけでなく結合形も検査する。`-so`、`-sO` のように file output や request body / upload / config を有効化する文字を含む option cluster は通常許可フローへ戻す。`-sSI` のような読み取り専用 cluster は引き続き承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:877-1078`
+根拠: `hooks/auto-approve-readonly.sh:927-1128`
 
 ### write redirect 検出のクォート対応
 
@@ -179,7 +179,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 **副作用として閉じた抜け穴:** この quote-aware 化により、シングルクォート内の `>` を無条件に write redirect とみなしていた旧実装が偶発的に防いでいた `awk` 自身の `print`/`printf` 出力リダイレクト（例: `awk 'BEGIN { print 1 > "/tmp/unsafe" }'`）が、この修正だけでは auto-approve されてしまう状態が一時的に生じた。これは awk 固有 allowlist 側の `\b(print|printf)\b.*>` チェックで別途塞いでいる（上表「常時許可しない mode」参照）。`print`/`printf` キーワードの後にどこかで `>` が現れる segment は無条件に unsafe とする、意図的に粗い判定である（`print "a>b"` のような文字列リテラル内の `>` も誤検知するが、false prompt-fallback は無害であり、file write の見逃しの方が問題であるため）。
 
-根拠: `hooks/auto-approve-readonly.sh:221-258`, `hooks/auto-approve-readonly.sh:961-970`
+根拠: `hooks/auto-approve-readonly.sh:221-258`, `hooks/auto-approve-readonly.sh:1011-1020`
 
 ### `>&` の fd 複製認識
 
@@ -187,7 +187,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 **なぜ「数値 fd または `-`」に限定するか:** bash の `>&word` は word が数値または `-` の場合のみ fd 複製であり、それ以外（`>&somefile` 等）は `&>word` と同義のファイル書き込みリダイレクトである。このため判定は狭く保ち、`>&` に続く語が数値/`-` 以外の場合は引き続き background operator 分岐（結果として unsafe な `__UNSUPPORTED_BACKGROUND_OPERATOR__` segment を生成し、複合 command 全体を prompt fallback させる）に落ちる。
 
-根拠: `hooks/auto-approve-readonly.sh:482-497`
+根拠: `hooks/auto-approve-readonly.sh:532-547`
 
 ### variable expansion の除外
 
@@ -207,7 +207,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 クォート文字自体も、それが「他方のクォートの内側ではリテラル文字である」ケースを区別する。ダブルクォート内の `'`（例: `curl --user-agent "foo'bar" $OPTS ...`）はシングルクォート開始とはみなさない — bash はダブルクォート内で `'` に特別な意味を与えないため、無条件に `quote="'"` へ遷移すると、以降の実際の閉じダブルクォートを取りこぼしてクォート状態が誤って `'` のまま持ち越され、後続の unquoted `$OPTS` を見逃す。この遷移は現在 `quote` が空（unquoted 状態）のときのみ許可する。
 
-根拠: `hooks/auto-approve-readonly.sh:166-209`, `hooks/auto-approve-readonly.sh:509-523`, `hooks/auto-approve-readonly.sh:877-1078`
+根拠: `hooks/auto-approve-readonly.sh:166-209`, `hooks/auto-approve-readonly.sh:559-573`, `hooks/auto-approve-readonly.sh:927-1128`
 
 ### `xargs` / `find -exec`: ラップされたコマンドの再帰検証（issue #254）
 
@@ -238,7 +238,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 **`-delete`/`-fls`/`-fprint`/`-fprintf` は対象外のまま:** これらはコマンドをラップせず、ファイルの削除・書き込みを `find` 自身が直接行うため、`-exec` 系とは異なる性質を持つ。したがって再帰検証の対象にはならず、従来通り無条件拒否を維持する。
 
-根拠: `hooks/auto-approve-readonly.sh:495-535`（`_top_level_tokens`）, `hooks/auto-approve-readonly.sh:562-610`（`_xargs_wrapped_command`）, `hooks/auto-approve-readonly.sh:624-663`（`_find_exec_clauses_are_safe`）, `hooks/auto-approve-readonly.sh:1381-1404`（`is_safe_segment` の find/xargs 分岐）, issue #254
+根拠: `hooks/auto-approve-readonly.sh:545-585`（`_top_level_tokens`）, `hooks/auto-approve-readonly.sh:612-660`（`_xargs_wrapped_command`）, `hooks/auto-approve-readonly.sh:674-713`（`_find_exec_clauses_are_safe`）, `hooks/auto-approve-readonly.sh:1431-1454`（`is_safe_segment` の find/xargs 分岐）, issue #254
 
 ### session-approved tool category
 
@@ -252,7 +252,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 destructive guard に該当する操作は category があっても block する。
 
-根拠: `hooks/auto-approve-readonly.sh:610-651`, `hooks/lib/approval-safety.sh`
+根拠: `hooks/auto-approve-readonly.sh:660-701`, `hooks/lib/approval-safety.sh`
 
 ## 複合 command
 
@@ -268,7 +268,7 @@ newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 
 
 **スコープ外（意図的にフォールスルー）:** C-style `for ((i=0;i<n;i++))` は `is_safe_for_in_list` の `in` 必須パターンに一致しないため対象外のまま通常確認へ戻る（`split_shell_segments` は算術コンテキスト内の `;` を認識せず、対応した場合ヘッダーを誤分割してしまうため）。`while`/`until`/`case`/`select`、および `in` を省略した `for VAR; do ...; done`（暗黙の `"$@"` 参照）も同様に未対応のまま。
 
-根拠: `hooks/auto-approve-readonly.sh:400-421`, `hooks/auto-approve-readonly.sh:950-965`, issue #224
+根拠: `hooks/auto-approve-readonly.sh:439-460`, `hooks/auto-approve-readonly.sh:1000-1015`, issue #224
 
 ### `$()` subshell の評価
 
@@ -323,7 +323,7 @@ ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認�
 - 未対応のshell構文
 - 1つでも未許可のsegmentを含む複合command
 
-根拠: `hooks/auto-approve-readonly.sh:144-147`, `hooks/auto-approve-readonly.sh:274-367`, `hooks/auto-approve-readonly.sh:553-607`, `hooks/auto-approve-readonly.sh:1083-1093`
+根拠: `hooks/auto-approve-readonly.sh:144-147`, `hooks/auto-approve-readonly.sh:274-398`, `hooks/auto-approve-readonly.sh:603-657`, `hooks/auto-approve-readonly.sh:1133-1143`
 
 ## decision とログ
 
@@ -343,7 +343,7 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 
 `detail` は `cut -c1-120` で切り詰めてからログへ書き込む。`cut -c` は non-UTF-8-aware なロケール（`LC_ALL=C` 等）ではバイト単位に振る舞うため、日本語などマルチバイト文字を含む command を境界で切ると不正な UTF-8 バイト列を生成し、`grep` 等ロケール依存ツールがログをバイナリ扱いして検索に失敗する原因になっていた。`truncate_utf8_safe()` は `cut` の直後に `iconv -f UTF-8 -t UTF-8 -c` を通し、切り詰め境界に残った不完全なマルチバイトシーケンスを除去する（`iconv` 不在時は切り詰め結果をそのまま返すフォールバック）。
 
-根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:530-574`
+根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:580-624`
 
 ## 動的防御（Working Repo Dynamic Defense）
 
@@ -403,7 +403,7 @@ After:
   user_prompt
 ```
 
-根拠: `hooks/auto-approve-readonly.sh:718-1093`
+根拠: `hooks/auto-approve-readonly.sh:768-1143`
 
 ### `rm [-f] <literal-path>` の自動承認（issue #248）と保護対象パス（issue #250）
 
@@ -465,6 +465,7 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 202a7eb refactor(#257): extract _heredoc_skip_end_index and make subshell span scanner heredoc-aware
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
@@ -474,9 +475,3 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
 - 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
 - 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands
-- 15877ae feat(#238): add strings/readlink/ss/apt-cache/desktop-file-validate/man/diff/sleep to the auto-approve hook's read-only tools allowlist
-- d3b2129 fix(#231): add sha256sum to the auto-approve hook's read-only tools allowlist
-- d5a823a feat(#224): add for/do/done allow-shape to auto-approve-readonly.sh
-- 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
-- 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
-- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file

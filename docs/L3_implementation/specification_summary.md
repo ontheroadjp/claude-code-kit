@@ -130,7 +130,7 @@ PreToolUse hook。Read、session temp / session-listed file、read-only Bash、`
 
 安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）は、hook がコマンドテキストを実行せずに値を検証できないため、read-only な解決ステップ → リテラル値埋め込みという2段階（resolve-then-embed、`CLAUDE.md` に規約化）に分けることをエージェントに求める。hook はリテラル引数のみを `is_rm_protected_path`/`is_in_working_repo` と照合する（issue #248, #250）。
 
-根拠: `hooks/auto-approve-readonly.sh:1-1582`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
+根拠: `hooks/auto-approve-readonly.sh:1-1632`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
 
 ### `hooks/lib/approval-safety.sh`
 
