@@ -479,6 +479,8 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
+- f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
 - 202a7eb refactor(#257): extract _heredoc_skip_end_index and make subshell span scanner heredoc-aware
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
@@ -487,5 +489,3 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect
 - b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
-- 3a10d2c feat(#234): add narrow allow-shape for read-only gresource subcommands
-- 80f5a32 feat(#233): add narrow allow-shape for read-only dpkg query subcommands
