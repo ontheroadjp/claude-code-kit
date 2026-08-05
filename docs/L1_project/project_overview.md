@@ -16,7 +16,8 @@
 | docs あり実装 | `commands/task.md` | issue 確認/生成、プラン承認、実装、L3 per-file doc、`/docs-sync`・`/git-pr` 引き継ぎ | `commands/task.md:30-184` |
 | 軽微修正 | `commands/patch.md` | docs 変更不要な修正を branch + commit で完了し、必要時 task へエスカレーション | `commands/patch.md:1-111` |
 | docs 同期 | `commands/docs-sync.md` | `git diff main...HEAD` を事実として docs/README を最小更新・commit し、結果を session temp へ記録 | `commands/docs-sync.md:1-173` |
-| docs 初期化 | `commands/init-docs.md` | repo 再観測、repo profile 生成、L0-L3 docs 生成、整合性検証、ユーザー確認後の draft PR | `commands/init-docs.md:1-420` |
+| docs 初期化 | `commands/init-docs.md` | repo 再観測、repo profile 生成、L0-L3 docs 生成（L0 は存在しない場合のみ）、整合性検証、ユーザー確認後の draft PR | `commands/init-docs.md:1-423` |
+| L0 昇格 | `commands/concept-maker.md` | `docs/.ai/l0_candidates.md` の L0 昇格候補をユーザーとの壁打ちと明示的承認を経て `docs/L0_concept/` へ追記する唯一の経路。branch + commit → ユーザーが ff-merge | `commands/concept-maker.md:1-92` |
 | review 対応 | `commands/review-resolve.md` | PR review コメント取得、対応方針選択、実装/返信/push | `commands/review-resolve.md:1-175` |
 | issue トリアージ | `commands/triage-issues.md` | open issue を stale/inconsistent/duplicated/unclear/ready に分類し、ユーザー承認後に各アクションを実行するスタンドアロン入口 | `commands/triage-issues.md:1-178` |
 | issue 作成 | `commands/new-issue.md` | 漠然としたアイデアから issue を作成する任意 pre-step | `commands/new-issue.md:1-126` |
@@ -42,6 +43,7 @@
 - PR review コメント対応は `/review-resolve #N`。根拠: `commands/review-resolve.md:1-6`
 - idea から issue を作る任意入口は `/new-issue`。根拠: `commands/new-issue.md:1-9`
 - open issue を整理する任意入口は `/triage-issues`。根拠: `commands/triage-issues.md:1-9`
+- `/docs-sync` が L0 昇格候補ありを案内した場合の任意入口は `/concept-maker`。L0（`docs/L0_concept/`）への唯一の AI 書き込み経路（`/init-docs` の初回新規作成を除く）。根拠: `commands/concept-maker.md:1-92`
 - VitePress site の CI entry は `.github/workflows/deploy.yml` の `npm run docs:build`。根拠: `.github/workflows/deploy.yml:31-37`
 - アプリケーション runtime の `main.*` / `server.*` / `app.*` は存在しない。実行入口は Markdown commands、shell installers/tests、VitePress npm scripts、GitHub Actions である。根拠: `rg --files -uu -g '!.git/**'`、`site/package.json:4-8`、`.github/workflows/deploy.yml:17-52`
 

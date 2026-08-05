@@ -20,7 +20,8 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | `/docs-sync` | Syncs `docs/*` and README from `git diff`, auto-updates L3 per-file doc change history, then writes Docs Sync Result to session temp for `/git-pr`. |
 | `/git-commit` | Normalizes WIP commits when needed, checks staged changes, and creates a Conventional Commit. |
 | `/git-pr` | Reads PR title/body/docs-sync-result from session temp and creates a ready PR. This is the end of the `/work`/`/task` flow — further review and merge are manual. |
-| `/init-docs` | Re-observes the repository and reconstructs project design docs. |
+| `/init-docs` | Re-observes the repository and reconstructs project design docs. Creates `docs/L0_concept/` only if it does not already exist; never modifies existing L0 content. |
+| `/concept-maker` | Standalone entry point that processes L0 promotion candidates queued in `docs/.ai/l0_candidates.md` by `/docs-sync`, iterating on wording with the user until explicit approval, then appends to `docs/L0_concept/`. The only AI-facing write path to L0 besides `/init-docs`'s first-time creation. |
 | `/coding-general` | Language-independent coding principles. |
 | `/coding-py` | Python-specific coding conventions. |
 | `/coding-js` | JavaScript-specific coding conventions. |
@@ -108,6 +109,7 @@ shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_mod
 - `/docs-sync` makes minimal updates and escalates to `/init-docs` when the structure can no longer be explained locally.
 - `~/.claude/` and `~/.codex/` are symlink-only; this repository remains the source of truth.
 - Workspace cleanup uses stash; destructive git operations require explicit human control.
+- `docs/L0_concept/` is 100% user-controlled; the only AI write path is `/concept-maker`'s per-candidate wording review and explicit approval, besides `/init-docs`'s first-time creation.
 
 ## Repository Structure
 

@@ -4,6 +4,7 @@
 
 - **実装ファイルへの変更は一切行わない**
 - docs/* および README.md の最小更新のみを行う
+- **`docs/L0_concept/`（concept.md, policy.md）には一切書き込まない**。L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` へ候補を追記するに留める（L0 への実際の追記はユーザー承認を経て `/concept-maker` が行う）
 - 判断の根拠: `git diff main...HEAD`（事実）+ セッション temp の `pr-body.md`（補助）
 - 作業完了後、docs sync 結果をセッション temp の `pr-docs-sync-result.md` に書き出す
 - push・PR 作成は `/git-pr` が担う
@@ -86,9 +87,9 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
     - 事実更新（パス/設定値/コマンド/型/エンドポイント）
     - 手順更新（setup/run/test）
     - 仕様サマリ更新（specification_summary は該当箇所のみ）
-- **L0_concept の扱い**: `/docs-sync` では L0_concept（concept.md / policy.md）を更新しない
+- **L0_concept の扱い**: `/docs-sync` では L0_concept（concept.md / policy.md）を一切更新しない
     - L0 は「意思決定の記録」であり、git diff から機械的に追従できる性質ではないため
-    - L0 の更新が必要と判断した場合は、その旨をユーザーに報告して /init-docs を促す
+    - L0 相当の記述を検知した場合の扱いは Phase 3 Step 2b（L0 昇格候補のキューイング）を参照。`/init-docs` へは促さない（`/init-docs` は L0 が存在しない場合の新規作成のみを行い、既存 L0 の更新経路ではない）
 - docs/.ai/repo.profile.json 更新要否を判定する
     - 原則更新しない
     - .github/workflows / 実行定義 / lockfile 変更がある場合のみ差分更新を検討する
@@ -163,6 +164,17 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 - 存在しない場合: スキップ（L3 doc の新規作成は `/task` が担う）
 - `docs/` 配下のファイル（`docs/L3_implementation/` を含む）はこのステップの対象外とする
 
+#### Step 2b: L0 昇格候補の検知（L0 ファイル自体は変更しない）
+
+Step 2 で変更履歴を更新した各 L3 doc について、`git diff main...HEAD -- <L3 docのパス>` でこの PR による追加分を確認し、「重要な設計判断」セクションに追加された記述が `docs/L0_concept/policy.md` の既存カテゴリ（技術選定ポリシー・セキュリティ方針・運用/性能方針・禁止事項・整合性方針）に類する project-wide な決定と読めるかを判断する。
+
+該当する場合:
+- `docs/.ai/l0_candidates.md` が存在しない場合は新規作成する（ヘッダーのみの空ファイルは事前生成しない。最初の候補追加時に作成する）
+- 1 候補につき1行で追記する: `- <L3 docのパス>:<行範囲> — <一行要約> (issue #<関連issue番号>)`
+- **`docs/L0_concept/concept.md`・`policy.md` には一切書き込まない。** このステップの唯一の出力はキューへの追記であり、L0 への昇格判断・追記は `/concept-maker` がユーザー承認を経て行う
+
+該当しない場合、または L3 doc の変更履歴更新自体が発生しなかった場合はこのステップをスキップする。この判定はキューへの追記のみが結果であり L0 を直接変更しないため、Phase 2 の「確認不要/確認必要」分類の対象外（常に確認不要相当）として扱う。
+
 #### Step 3: コミットと結果書き出し
 
 **docs 変更があった場合:**
@@ -194,7 +206,8 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 ### Phase 4: 最終報告
 
 A. 更新した docs ファイル一覧と更新内容サマリ（更新なしの場合はその旨）
-B. 次のステップ: `/git-pr` が自動実行される（または手動で `/git-pr` を実行する）
+B. `docs/.ai/l0_candidates.md` が存在し中身が空でない場合: 「N件の L0 昇格候補があります。`/concept-maker` を実行してください」と案内する（`/concept-maker` をこのフローから自動実行しない）
+C. 次のステップ: `/git-pr` が自動実行される（または手動で `/git-pr` を実行する）
 
 ---
 

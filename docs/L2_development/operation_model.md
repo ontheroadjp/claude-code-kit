@@ -38,17 +38,25 @@ issue 番号がある場合は最初に exact `report` label を判定する。
 
 ## docs-sync flow
 
-`docs-sync.md` は main 以外の branch で `git diff main...HEAD` を事実として HARD STOP を判定し、docs/README と既存 L3 per-file doc の変更履歴を最小更新・commit する。push と PR 作成は行わず、結果を session temp に書いて `/git-pr` へ渡す。
+`docs-sync.md` は main 以外の branch で `git diff main...HEAD` を事実として HARD STOP を判定し、docs/README と既存 L3 per-file doc の変更履歴を最小更新・commit する。push と PR 作成は行わず、結果を session temp に書いて `/git-pr` へ渡す。`docs/L0_concept/` には一切書き込まず、L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` に候補を積んで `/concept-maker` の実行を最終報告で案内するのみ。
 
-根拠: `commands/docs-sync.md:1-10`, `commands/docs-sync.md:13-173`
+根拠: `commands/docs-sync.md:1-11`, `commands/docs-sync.md:13-217`
 
 ## init-docs flow
 
-`init-docs.md` は repo 再観測、local tooling 観測、repo profile 生成、L0-L3 docs 生成、整合性検証、README scaffold 確認、CLAUDE.md / AGENTS.md 更新を行い、最後にユーザー確認後だけ commit と draft PR 作成へ進む。
+`init-docs.md` は repo 再観測、local tooling 観測、repo profile 生成、L0-L3 docs 生成、整合性検証、README scaffold 確認、CLAUDE.md / AGENTS.md 更新を行い、最後にユーザー確認後だけ commit と draft PR 作成へ進む。`docs/L0_concept/`（concept.md, policy.md）は既に存在する場合、再実行時も一切変更しない（存在しない場合のみ新規作成する）。
 
 local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints を確認し、環境依存の注意を `CLAUDE.md` に出力する。`AGENTS.md` は原則として `CLAUDE.md` への symlink として作成する。
 
-根拠: `commands/init-docs.md:21-370`
+根拠: `commands/init-docs.md:21-423`
+
+## concept-maker flow
+
+`concept-maker.md` は `/work` から独立したスタンドアロン入口で、`docs/.ai/l0_candidates.md` に溜まった L0 昇格候補を処理する。候補ごとにソース文脈を Read し、`concept.md`/`policy.md` のどちらに追記すべきかを提示した上で、ドラフト提示 → ユーザー修正 → 再提示を繰り返し、明示的な承認を得てから追記する。承認された候補は `concept/<YYYYMMDD>` branch 上で commit され、issue・PR は作らずユーザーが ff-merge する（`patch` flow と同じ完結パターン）。キューが空、または承認候補が 0 件の場合は該当 Step をスキップする。
+
+L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以外から一切書き込まれない。
+
+根拠: `commands/concept-maker.md:1-92`
 
 ## review-resolve flow
 

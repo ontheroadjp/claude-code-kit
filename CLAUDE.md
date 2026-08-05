@@ -12,7 +12,7 @@
 
 ## Custom / Command の使い分け（AI向けルール）
 
-**重要: PR レビューコメントへの対話対応は `/review-resolve`、それ以外の全作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。**
+**重要: PR レビューコメントへの対話対応は `/review-resolve`、それ以外の全作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。`/docs-sync` が L0 昇格候補ありを案内した場合のみ任意で `/concept-maker` を使う。**
 
 - **review-resolve.md**: PR レビューコメント対応専用のエントリポイント。`/work` を経由せず自己完結（checkout → 実装 → commit → push → 返信）。ユーザーが `/review-resolve #N` で直接呼び出す。
 - **work.md**: review-resolve 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
@@ -25,12 +25,14 @@
 - **codex-review.md**: Codex CLI で PR をレビューし、`CODEX_REVIEW_TOKEN` がある場合に approve/request-changes を投稿する。変更要求時は `/review-resolve` へ引き継ぐ。
 - **task.md**: ドキュメント変更を伴う実装に特化。issue 自動生成〜実装〜ドラフト PR 作成まで。docs/* は変更しない。
 - **patch.md**: ドキュメント変更を伴わない軽微な修正に特化。issue/PR 不要。branch + commit → ユーザーが main へマージ。スコープが広がった場合は /task へエスカレーション。
-- **docs-sync.md**: git diff を事実として docs を最小更新し、ドラフト PR を公開する。HARD STOP 時は /init-docs を要求して終了する。
-- **init-docs.md**: repo の実態把握と設計ドキュメント再構築。重い初期化。docs-sync が説明不能になった時点でここに戻る。
+- **docs-sync.md**: git diff を事実として docs を最小更新し、ドラフト PR を公開する。HARD STOP 時は /init-docs を要求して終了する。L0（`docs/L0_concept/`）には書き込まず、L0 相当の記述を検知した場合は候補を `docs/.ai/l0_candidates.md` に積んで /concept-maker の実行を案内するに留める。
+- **init-docs.md**: repo の実態把握と設計ドキュメント再構築。重い初期化。docs-sync が説明不能になった時点でここに戻る。L0（`docs/L0_concept/`）は存在しない場合のみ新規作成し、既に存在する場合は再実行時も一切変更しない。
+- **concept-maker.md**: `docs/.ai/l0_candidates.md` に溜まった L0 昇格候補を、ユーザーとの壁打ちと明示的承認を経て L0 へ追記する唯一の経路。スタンドアロン入口で `/docs-sync` が候補ありを案内した時にユーザーが呼び出す。
 
 ## 重要な設計原則
 
 - **symlink-only 原則**: `~/.claude/`・`~/.codex/` 配下には実体ファイルを置かず、全て本リポジトリへの symlink とする。このリポジトリが single source of truth。
+- **L0（`docs/L0_concept/`）は 100% ユーザー管理**: AI が L0 に直接書き込むことはない。唯一の書き込み経路は `/concept-maker` によるユーザー承認付き追記であり、`/init-docs` は L0 が存在しない場合の初回作成のみを行う（既存 L0 は再実行時も変更しない）。
 - ルーティング判定は単一質問: 「この変更で `docs/*` への追加・変更・削除が必要か？」
 - 実装 issue は task フローで扱い、report issue は report-review フローで read-only 評価する（patch フローには issue 不要）
 - task フローのコミット形式: `<type>(#<issue number>): <short description>` (Conventional Commits)

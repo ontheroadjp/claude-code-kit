@@ -20,6 +20,8 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 - 起動方法・主要エントリポイントが変わった疑いがある
 - 新しいレイヤ（apps / packages / infra 等）が導入された
 
+**例外（L0）**: `docs/L0_concept/concept.md`・`policy.md` は上記トリガーによる再観測・再構築の対象外である。既に存在する場合、このコマンドは L0 に一切触れない（存在しない場合のみ新規作成する）。理由は下記「Phase 3: docs/L0_concept/」を参照。
+
 ---
 
 ## 実行前提ゲート（必須）
@@ -151,17 +153,18 @@ Node.js runtime manager のヒントとして、存在する場合のみ以下�
 以下の構成を基本とし、検出された構成に応じて追加する。
 
 #### docs/L0_concept/（プロダクトコンセプト・設計ポリシー）
-生成条件: 常に生成する（全リポジトリ共通）。
+
+**生成条件: `docs/L0_concept/concept.md` と `policy.md` が両方とも存在しない場合のみ新規作成する。どちらか一方でも既に存在する場合、このフェーズは L0 に一切触れない（内容の追記・書き換え・再生成のいずれも行わない）。**
 
 - `concept.md`: プロダクトの目的・解決する問題・対象ユーザー・設計上の制約
 - `policy.md`: 技術選定ポリシー・セキュリティ方針・パフォーマンス要件・禁止事項
 
-記載ルール:
+記載ルール（新規作成時のみ適用）:
 - 「なぜこの設計か」を記述する（WHY 層）。「何を・どう実装するか」は L1〜L3 に委ねる
 - 実体から確認できる事実のみ記述する。推測は禁止
 - AI はコード変更の判断前に L0 を参照し、ポリシーと矛盾しないかを確認する
 
-更新トリガー: `/init-docs` 再実行時、または設計方針の根本的変更があった場合。`/docs-sync` での部分更新は行わない（L0 は事実の差分追従ではなく意思決定の記録のため）。
+**なぜ `/init-docs` の再実行でも更新しないか**: L0 はプロジェクトの最も核となる意思決定の記録であり、100% ユーザーが管理する。AI が git diff や再観測結果から機械的に L0 を書き換えると、ユーザーの本来の意図とは異なる解釈が意思決定の記録として上書きされてしまうリスクがある。既存 L0 への追記が必要な場合は、`/docs-sync` が候補を `docs/.ai/l0_candidates.md` に積み、`/concept-maker` がユーザーとの壁打ちと明示的な承認を経て追記する唯一の経路である。`/docs-sync` は L0 ファイル自体を直接更新しない（候補のキューイングのみ）。
 
 #### docs/L1_project/（プロジェクト全体像）
 - `project_overview.md`: プロジェクトの目的・技術スタック・主要機能の一覧
@@ -208,7 +211,7 @@ L1・L3 のファイルが実際に生成されたことを確認した上で、
 
 #### 4-1. docs → 実体 の検証（必須）
 
-生成・更新した docs 内から以下をすべて抽出し検証する:
+生成・更新した docs 内から以下をすべて抽出し検証する（L0 は Phase 3 で既存の場合は生成・更新の対象外のため、この検証にも含めない）:
 
 検証対象:
 - ファイルパス / ディレクトリパス
@@ -379,7 +382,7 @@ main ブランチ上である場合は、commit・push・PR 作成を中止し�
 ```
 docs: initialize project documentation (init-docs)
 
-- Add docs/L0_concept/{concept,policy}.md
+- Add docs/L0_concept/{concept,policy}.md (only if newly created; omit this line if L0 already existed)
 - Add/update docs/L1_project/{project_overview,repository_structure}.md
 - Add docs/L2_development/{operation_model,consistency_checks,test}.md
 - Add docs/L3_implementation/{api,database,specification_summary}.md
