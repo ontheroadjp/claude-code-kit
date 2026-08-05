@@ -23,3 +23,11 @@ Claude Code の statusLine コマンドとして登録されるスクリプト�
 
 - `date -r` (BSD/macOS) と `date -d` (GNU/Linux) の両方を `||` で試すことで reset 時刻表示の OS 差異を吸収している
 - 配列インデックスのループ (`for i in "${!parts[@]}"`) で区切り文字を挿入する箇所は、ShellCheck (SC2086) の指摘に従い `[ "$i" -gt 0 ]` とダブルクオートしている（`$i` は常に数値だが、意図しない word splitting / globbing を防ぐため明示的にクオートする）
+
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
+- 0f5a648 fix: use current_usage for ctx pct and show n/a when unavailable
+- 1986a8d fix: fallback ctx percentage calc when used_percentage is 0
+- c1c36b3 fix: calculate ctx percentage from raw tokens when used_percentage is absent
+- 31e84ad chore: add statusline.sh script for Claude Code status line display

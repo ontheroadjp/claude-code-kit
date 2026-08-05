@@ -23,3 +23,10 @@
 
 - 各モードの AWK スクリプトは変数（`PARSE_AWK` 等）に単一引用符で代入している。AWK 側のフィールド参照 (`$1` 等) をシェルに展開させないための意図的な書き方であり、ShellCheck SC2016 の誤検知対象のためファイル先頭（`set -euo pipefail` の前）に file-wide directive で抑制している
 - `printf '%115s' | tr ' ' '─'`（引数なしで `%Ns` を評価し、空文字列を N 文字にパディングして罫線を作る）は ShellCheck SC2183 の誤検知対象のため同様に抑制している
+
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
+- c8a445c feat(#43): add session name and cost_usd to token log, extend show script with cost analytics
+- eda8e56 feat: add model/turns/branch/cwd/cache_ratio to token usage log and show script
+- df12f0e feat(#29): add scripts/show-token-usage.sh to view token usage log

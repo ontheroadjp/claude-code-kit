@@ -47,6 +47,7 @@ Stop hook。`hooks/log-access-prompt.sh` / `hooks/log-access-tool.sh` が `STATE
 
 ## 変更履歴（git log より自動生成）
 
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
 - deb5360 feat(#83): add token usage summary to access log for redundant-access detection
 - 761866d fix(#81): accumulate access log state across turns per /work session

@@ -25,3 +25,11 @@
 
 - `set -euo pipefail` を宣言しているが、Slack 通知の失敗が hook 全体の失敗にならないよう `curl` 呼び出しは `|| true` で握り潰し、末尾で明示的に `exit 0` する
 - `text=$(printf '*%s*\n%s\n...' ...)` の `printf` フォーマット文字列は意図的に単一引用符（`$` を展開させない）にしている。ShellCheck の SC2016 誤検知のため、該当行直前に `# shellcheck disable=SC2016` を付与した
+
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
+- fa587bc chore: restore notify-slack.sh and register in install.sh
+- 5b3ee20 chore: remove notify-slack.sh hook
+- 3425c31 fix(hooks): rename env var to CLAUDE_CODE_KIT_WAIT_NOTIFY_SLACK_WEBHOOK_URL
+- a879c9f feat(#65): add notify-slack hook for input-wait states

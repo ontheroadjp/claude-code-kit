@@ -27,3 +27,12 @@ PostToolUse hook。tool アクセス順序と重複、修正したファイル�
 
 - `set -euo pipefail` を宣言している。guard 節（`[ -z "$file_path" ] && exit 0` 等）は `&&` list の一部であるため `set -e` と衝突しない
 - `$HOME` の正規化は以前 `echo "$file_path" | sed "s|${HOME}|~|g"` だったが、ShellCheck (SC2001) の指摘に従いパラメータ展開 `${file_path//$HOME/\~}` に置き換えた。`$HOME` が通常のパス文字列である前提では両者は等価
+
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
+- 761866d fix(#81): accumulate access log state across turns per /work session
+- 5b554ea fix: resolve symlink in BASH_SOURCE and move state init to UserPromptSubmit
+- fca17ed feat(#67): track file access order and duplicates in access log hooks
+- 3251527 feat(#48): extend phase tracking to docs-sync and init-docs commands
+- c66082e feat(#48): add hooks to log file access per phase during work/task/patch execution

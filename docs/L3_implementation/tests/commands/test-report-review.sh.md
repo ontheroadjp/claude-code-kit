@@ -35,4 +35,10 @@ Markdown workflow は直接実行可能なプログラムではないため、�
 
 `assert_contains` に渡す期待値文字列はドキュメントの日本語抜粋を単一引用符でそのまま埋め込んでいる（`` `report` `` 等のバッククォートを含む）。ShellCheck SC2016 の誤検知対象のため、ファイル先頭（`set -euo pipefail` の前）に file-wide directive で抑制している（issue #267）。
 
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
+- 27660a1 docs(#126): document report review catalogs
+- 0297a81 feat(#126): add report review workflow
+
 根拠: `tests/commands/test-report-review.sh:40-72`

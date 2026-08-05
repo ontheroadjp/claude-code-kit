@@ -42,6 +42,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
 - af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
 - f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
@@ -51,4 +52,3 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect
-- b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands

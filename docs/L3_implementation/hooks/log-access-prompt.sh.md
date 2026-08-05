@@ -26,3 +26,10 @@ UserPromptSubmit hook。ユーザーの最新プロンプトをセッション�
 
 - `set -euo pipefail` の下で動作する。`[ -z "$session_id" ] && exit 0` のような guard 節は、失敗した左辺のコマンドが `&&`/`||` list の一部であるため `set -e` を発火させない（bash の仕様どおり）
 - 孤立 `*.pending` の flush は `_get_log_file` が repo 内 `logs/access/` を都度 `mkdir -p` して解決する
+
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
+- 761866d fix(#81): accumulate access log state across turns per /work session
+- 5b554ea fix: resolve symlink in BASH_SOURCE and move state init to UserPromptSubmit
+- c66082e feat(#48): add hooks to log file access per phase during work/task/patch execution

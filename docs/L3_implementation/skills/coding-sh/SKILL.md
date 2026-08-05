@@ -21,3 +21,7 @@ Codex CLI 向けの薄い wrapper。`commands/coding-sh.md` を Source of Truth 
 
 - このスキルから `commands/coding-sh.md` / `commands/coding-general.md` を編集しない
 - いずれかのファイルが見つからない・読めない場合は、復元されるまで coding-sh ワークフローを実行できない旨を報告する
+
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts

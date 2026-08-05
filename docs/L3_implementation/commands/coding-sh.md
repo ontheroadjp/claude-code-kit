@@ -41,3 +41,7 @@
 ## 注意事項・既知の制限
 
 - coding-py/js/ts と異なり本ファイル自体にテストフレームワークの規定はない（このリポジトリの shell test は独自の assert 関数によるスクリプトであり、外部テストフレームワークを採用していないため）
+
+## 変更履歴（git log より自動生成）
+
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts

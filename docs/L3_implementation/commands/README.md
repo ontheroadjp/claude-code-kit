@@ -30,6 +30,7 @@ report label の issue は read-only `/report-review` へ、それ以外は issu
 
 ## 変更履歴（git log より自動生成）
 
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - c25b25a docs(#126): add pr-review to catalogs
 - 27660a1 docs(#126): document report review catalogs
