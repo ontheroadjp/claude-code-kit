@@ -130,7 +130,7 @@ PreToolUse hook。Read、session temp / session-listed file、read-only Bash、`
 
 安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）は、hook がコマンドテキストを実行せずに値を検証できないため、read-only な解決ステップ → リテラル値埋め込みという2段階（resolve-then-embed、`CLAUDE.md` に規約化）に分けることをエージェントに求める。hook はリテラル引数のみを `is_rm_protected_path`/`is_in_working_repo` と照合する（issue #248, #250）。
 
-根拠: `hooks/auto-approve-readonly.sh:1-1373`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
+根拠: `hooks/auto-approve-readonly.sh:1-1582`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
 
 ### `hooks/lib/approval-safety.sh`
 
@@ -192,7 +192,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 `tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp 配下の Write/Edit approval、session temp 範囲外や symlink session temp の prompt fallback、cleanup hook による current session temp directory 削除、write-effect / ambiguous command の prompt fallback、`guard-destructive-cmd.sh` の JSON block output を検証する。Bash boundary coverage は safe な sed / awk / curl / Git 操作と、`sed e/w`、pipe-based `awk getline`、unsafe curl option cluster、Git force variants の両面を含む。複数 segment の無関係な `-d` / `-f` を forced branch deletion と誤認しないことも固定する。また working repo dynamic defense として、Write / Edit / apply_patch / rm -rf の repo 内パス承認・WIP commit 作成・repo 外 prompt fallback・repo root / .git / 複数パス / 変数展開の除外・clean tree での WIP commit 非作成を検証する。`rm [-f] <literal-path>`（issue #248）については、repo 内パスへの承認（WIP commit あり）を positive case、repo root 自体・`.git` 配下・変数参照・複数トークン・グロブ・`-rf`（対象外）・session-approved ファイル自身（保護対象、issue #250）を negative case として固定する。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-995`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1046`
 
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 

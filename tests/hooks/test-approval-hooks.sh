@@ -409,6 +409,52 @@ for command in \
     assert_no_output "$output"
 done
 
+# xargs / find -exec: recursively validate the wrapped command instead of
+# always prompting (issue #254). Read-only wrapped commands are approved,
+# including through a full pipeline and the batching (+) terminator and
+# multiple -exec clauses in one find command.
+for command in \
+    'find logs/auto-approve -name "*.log" | head -1 | xargs -I{} tail -20 {}' \
+    'xargs -I{} tail -20 {}' \
+    'xargs -I {} cat {}' \
+    'xargs -0 grep -l TODO' \
+    'xargs -n1 -P4 echo' \
+    'xargs -- cat' \
+    'xargs cat' \
+    'find . -type f -exec cat {} \;' \
+    'find . -name "*.log" -execdir head -5 {} \;' \
+    'find . -type f -exec grep -l TODO {} +' \
+    'find . -exec echo start \; -exec cat {} \;'; do
+    output=$(run_auto "$command")
+    assert_json_decision "$output" "approve"
+done
+
+# Unsafe wrapped commands, a missing terminator, one unsafe clause among
+# several, an unrecognized xargs option (long option or clustered short
+# flags), a wrapped command the hook doesn't otherwise recognize (sh -c), and
+# variable-expansion smuggling of the wrapped command must all prompt
+# fallback.
+for command in \
+    'xargs -I{} rm {}' \
+    'xargs rm -rf' \
+    'xargs --max-args=1 cat' \
+    'xargs -rt cat' \
+    'find . -type f -exec rm {} \;' \
+    'find . -exec cat {}' \
+    'find . -exec cat {} \; -exec rm {} \;' \
+    'find . -exec sh -c "rm {}" \;' \
+    "XARGSOPT='-I{} rm'; xargs \$XARGSOPT {}" \
+    "FINDEXEC='-exec rm {} \\;'; find . \$FINDEXEC"; do
+    output=$(run_auto "$command")
+    assert_no_output "$output"
+done
+
+# -fprintf writes to a file directly and doesn't wrap a command, so it stays
+# unconditionally rejected like -delete (tested above) even though
+# -exec/-execdir/-ok/-okdir are no longer a blanket reject.
+output=$(run_auto 'find . -fprintf out.txt "%p\n"')
+assert_no_output "$output"
+
 # $() with read-only content → approve
 for command in \
     'PR_BODY=$(cat /tmp/file)' \
