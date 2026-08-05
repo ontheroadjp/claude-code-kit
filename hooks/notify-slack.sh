@@ -32,6 +32,7 @@ case "$event" in
     ;;
 esac
 
+# shellcheck disable=SC2016  # printf format string; $ must stay literal
 text=$(printf '*%s*\n%s\n`%s` @ `%s` (session %s)' \
   "$title" "$body" "$project" "$branch" "$session_short")
 

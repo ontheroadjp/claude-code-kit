@@ -44,6 +44,7 @@ skills/
 | `coding-py/` | `commands/coding-py.md` | Python コーディングルール |
 | `coding-js/` | `commands/coding-js.md` | JavaScript コーディングルール |
 | `coding-ts/` | `commands/coding-ts.md` | TypeScript コーディングルール |
+| `coding-sh/` | `commands/coding-sh.md` | Shell script コーディングルール（ShellCheck） |
 
 ## 使い方
 

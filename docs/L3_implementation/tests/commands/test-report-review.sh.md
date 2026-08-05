@@ -33,4 +33,6 @@ Markdown workflow は直接実行可能なプログラムではないため、�
 
 静的検査であり、GitHub API を使った end-to-end routing は実行しない。workflow 文面変更時は同じ意味を保持したまま assertion も更新する必要がある。
 
+`assert_contains` に渡す期待値文字列はドキュメントの日本語抜粋を単一引用符でそのまま埋め込んでいる（`` `report` `` 等のバッククォートを含む）。ShellCheck SC2016 の誤検知対象のため、ファイル先頭（`set -euo pipefail` の前）に file-wide directive で抑制している（issue #267）。
+
 根拠: `tests/commands/test-report-review.sh:40-72`

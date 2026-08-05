@@ -43,6 +43,7 @@ Stop hook。`hooks/log-access-prompt.sh` / `hooks/log-access-tool.sh` が `STATE
 
 - `$EPOCHREALTIME` 非対応の bash（5.0未満）では該当呼び出し分が `"NA"` として `hook_durations_ms` に記録され、`scripts/analyze_access.py` 側の数値集計から除外される
 - `hook_durations_ms` はセッションが `PENDING_FILE` として flush されるまで無制限に増え続ける。通常のセッション長（数十〜百数十ターン程度）では実用上問題にならない想定だが、上限は設けていない
+- `set -euo pipefail` を宣言している（issue #267。以前は宣言しておらず `hooks/log-token-usage.sh` と規約が揺れていた）。`{ ... } > "$PENDING_FILE"` ブロック内で失敗すると `PENDING_FILE` が部分的に書き込まれた状態で終了し得るが、ブロック開始前（`accesses_count`/`duplicates`/`phases` 算出）で使う jq クエリは同じ `$state` に対する決定的なクエリであり、そこを通過できる状態であればブロック内で失敗する可能性は実用上低いと判断した
 
 ## 変更履歴（git log より自動生成）
 

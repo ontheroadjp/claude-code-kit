@@ -65,6 +65,7 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
     - Python (.py): `commands/coding-py.md`
     - JavaScript (.js / .jsx): `commands/coding-js.md`
     - TypeScript (.ts / .tsx): `commands/coding-ts.md`
+    - Shell script (.sh): `commands/coding-sh.md`
     - その他の言語: `commands/coding-general.md`
 - 変更を実施する（ユーザー確認不要）
 - コミットは複数回でも可。各コミットで `/git-commit` を実行する

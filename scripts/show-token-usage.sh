@@ -1,4 +1,6 @@
 #!/bin/bash
+# shellcheck disable=SC2016  # AWK scripts below are single-quoted intentionally; $ must stay literal
+# shellcheck disable=SC2183  # printf '%Ns' with no argument is the intentional zero-arg padding idiom
 set -euo pipefail
 
 LOG_FILE="$HOME/.claude/token-usage.log"

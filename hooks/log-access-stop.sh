@@ -1,5 +1,6 @@
 #!/bin/bash
 # Stop: write formatted log to pending file (not main log); keep state alive across turns
+set -euo pipefail
 
 # Captured before any payload processing so duration_ms reflects this hook's
 # own wall-clock cost (the jq transcript re-aggregation below can be slow on

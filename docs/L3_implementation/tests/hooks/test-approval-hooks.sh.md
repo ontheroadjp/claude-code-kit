@@ -38,6 +38,8 @@
 
 isolated `TMP_DIR` 上での直接実行による静的検証であり、実際の Claude Code / Codex CLI セッションを介した end-to-end 検証ではない。`hooks/auto-approve-readonly.sh` の判定ロジックを変更した場合は、対応する positive / negative case をこのファイルに追加してから `/git-commit` すること。
 
+ファイル内の test fixture 文字列（例: `'for f in README.md CLAUDE.md; do ...; done'`）は意図的に単一引用符で書かれており、`$` をシェルに展開させず auto-approve hook への入力として渡している。ShellCheck SC2016 の誤検知対象のため、ファイル先頭（`set -euo pipefail` の前）に file-wide directive で抑制している（issue #267）。
+
 ## 変更履歴（git log より自動生成）
 
 - 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh

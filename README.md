@@ -25,6 +25,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | `/coding-py` | Python-specific coding conventions. |
 | `/coding-js` | JavaScript-specific coding conventions. |
 | `/coding-ts` | TypeScript-specific coding conventions. |
+| `/coding-sh` | Shell script-specific coding conventions (ShellCheck). |
 
 ## Installation
 
@@ -87,6 +88,7 @@ cd site && npm run docs:preview
 ```
 
 CI runs `npm ci` and `npm run docs:build` in `site/` on push to `main` and on manual workflow dispatch.
+A separate CI workflow runs ShellCheck against every `*.sh` file on push and pull request.
 
 Local verification commands:
 
@@ -95,6 +97,7 @@ bash tests/hooks/test-approval-hooks.sh
 bash tests/commands/test-report-review.sh
 bash tests/install/test-install.sh
 python3 -m pytest tests/scripts/
+shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_modules/*" -not -path "./.git/*" -iname "*.sh")
 ```
 
 ## Design Principles
@@ -108,7 +111,8 @@ python3 -m pytest tests/scripts/
 ## Repository Structure
 
 ```text
-.github/workflows/deploy.yml  GitHub Actions for VitePress -> GitHub Pages
+.github/workflows/deploy.yml      GitHub Actions for VitePress -> GitHub Pages
+.github/workflows/shellcheck.yml  GitHub Actions running ShellCheck against all *.sh
 commands/                     Markdown command specifications (includes /git-commit, /git-pr)
 hooks/                        Claude Code / Codex hook scripts and shared helpers
 skills/                       Codex skill wrappers around commands/*.md
