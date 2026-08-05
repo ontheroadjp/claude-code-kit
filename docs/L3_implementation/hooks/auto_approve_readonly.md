@@ -45,7 +45,9 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 これにより、`commands/git-pr.md`・`commands/new-issue.md`・`commands/triage-issues.md` が使う `gh pr create --body-file - <<'EOF' ... EOF` のような形の PR/issue 本文が、`split_shell_segments` によって改行ごとに個別の「コマンド」として分割され、read-only / session-approved のどのパターンにも一致せず毎回通常許可フローへ戻ってしまっていた問題（本文が session-approved の `tool:gh_pr_write`/`tool:gh_issue_write` で明示的に許可済みでも発生していた）を解消する。`log_decision` は判定用ではなく元の `$command`（マスキング前）を記録するため、ログには実際に実行されたコマンドがそのまま残る。
 
-根拠: `hooks/auto-approve-readonly.sh`（`_mask_quoted_heredoc_bodies`、`command_for_analysis`）, issue #246
+**境界検出ロジックの共有化（issue #257）:** ヒアドキュメントの境界（delimiter・終端行・resume位置）を判定する処理は `_heredoc_skip_end_index()` という単一の helper に抽出されており、`_mask_quoted_heredoc_bodies` と `_find_top_level_subshell_spans`（後述の統一 tokenizer）の両方がこれを共有する。以前は heredoc 境界検出ロジックが `_mask_quoted_heredoc_bodies` の中だけに単独実装されていたが、これは「grammar の定義箇所が複数箇所に分散し、一方だけに fix が入ってもう一方に反映されないドリフト」という、統一 tokenizer 自体が過去に解消した問題（下記「統一 tokenizer」節参照）と同じ再発リスクを抱えていたため、この issue で一本化した。`_mask_quoted_heredoc_bodies` 自身の外部から見た挙動（マスク対象・プレースホルダーへの置換結果）はこのリファクタリングにより一切変わっていない。
+
+根拠: `hooks/auto-approve-readonly.sh`（`_mask_quoted_heredoc_bodies`、`_heredoc_skip_end_index`、`command_for_analysis`）, issue #246, issue #257
 
 ## 判定順序
 
@@ -297,6 +299,18 @@ newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 
 ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認識であり、以前は `$'...'` が単なる `'...'` として扱われ、その中の `\'`（ANSI-C クォート内では実際にエスケープされた `'` だが、通常のシングルクォートには存在しない）が閉じクォートと誤認され、以降の本物の `$(...)` が誤ったクォート状態の下で見過ごされていた。統一 tokenizer は `$'` を独立したクォート種別として認識し、エスケープを適用しつつ `$(...)` や入れ子クォートを認識しないという ANSI-C 固有の規則を正しく適用する。
 
 `_find_top_level_subshell_spans` は depth が 0 に戻った時点でのみ span を出力するため、万一まだ未知のクォート/エスケープ相互作用で depth desync が再発した場合も、誤った境界の内容を出力するのではなく該当 span を出力しないという性質は変わらない。ただしこれは今回の2件の bypass を閉じる直接の修正ではなく、`_subshells_are_safe` が抽出0件のまま vacuous に safe を返す既存の弱点（issue #200 で defense-in-depth backstop 案として言及）自体を解消するものではない — 今回のスコープでは2件の既知 bypass の解消と回帰テストの追加に限定し、backstop の追加は見送った。
+
+#### heredoc 本体のスキップ（issue #257）
+
+`_find_top_level_subshell_spans` は、`quote==""`（現在のネストレベルで未クォート）の位置に `_heredoc_skip_end_index()` が認識するヒアドキュメント（`_mask_quoted_heredoc_bodies` と同じ narrow な形状: `<<'DELIM'`/`<<"DELIM"`、`<<-` 非対応）が現れた場合、その本文と終端行の文字を一切クォート/括弧追跡に使わずスキップするようになった。
+
+**なぜ必要か:** ヒアドキュメント本文は inert data であり、コミットメッセージや PR 本文にありがちな `don't` のようなアポストロフィや `(#123)` のような括弧を自由に含みうる。もしこの関数がそれらの文字を通常のクォート/括弧として追跡してしまうと、本文の内容次第で `$(...)` の終端位置検出そのものが破綻しうる。
+
+**なぜ `_mask_quoted_heredoc_bodies` を先に呼ぶのではなく同一パスに統合したか:** `_mask_quoted_heredoc_bodies` を前処理として先に呼び、その結果に対して `_find_top_level_subshell_spans` を呼ぶ、という2パス構成は循環依存になり成立しない。`_mask_quoted_heredoc_bodies` 自身がダブルクォート内の `$(...)` に現れる heredoc を認識するには `$(...)` のネスト境界（`_find_top_level_subshell_spans` が提供する情報）が必要であり、かつ `_find_top_level_subshell_spans` を生テキスト（heredoc本体マスク前）に対して呼ぶと、本文中の未対応クォート・括弧文字がその関数自身の追跡を破壊しうる。この issue はこの循環を解く前段として、まず `_find_top_level_subshell_spans` 単体を heredoc-aware にする（本体を持つ限り、常に単一パスでその本体をスキップできる）リファクタリングのみを行う。
+
+**この issue 単体での到達可能性:** 現在の呼び出し経路（`command_for_analysis = _mask_quoted_heredoc_bodies(command)` が最初に走り、`_find_top_level_subshell_spans` はそれ以降の判定でのみ呼ばれる）では、この関数が生の（マスク前の）ヒアドキュメント本体を受け取ることは無い。したがってこの変更はこの issue の時点では外部から観測可能な挙動を一切変えない（`tests/hooks/test-approval-hooks.sh` の全既存アサーションが無変更のまま green であることで検証済み）。ダブルクォート付き `$(...)` に nest した heredoc（`git commit -m "$(cat <<'EOF' ... EOF)"`）を実際に認識・マスクできるようにする変更は issue #258 で行う。
+
+根拠: `hooks/auto-approve-readonly.sh`（`_find_top_level_subshell_spans`、`_heredoc_skip_end_index`）, issue #200, issue #257
 
 ### 常時ブロックする構文
 
