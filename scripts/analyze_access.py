@@ -8,6 +8,7 @@ delimited by a line containing only "---", with fixed [section] headers.
 from __future__ import annotations
 
 import re
+import statistics
 import sys
 from pathlib import Path
 from typing import TypedDict
@@ -18,10 +19,12 @@ from lib.analyze_common import (  # noqa: E402
     build_arg_parser,
     emit_json,
     log_files_for_months,
+    percentile,
     resolve_target_months,
 )
 
 TOP_N = 10
+P95_PERCENTILE = 95
 
 SECTION_HEADERS = [
     "日時",
@@ -30,6 +33,7 @@ SECTION_HEADERS = [
     "フェーズ別アクセス順序",
     "修正したファイル",
     "トークン使用量",
+    "Hook処理時間",
 ]
 BLOCK_SPLIT_RE = re.compile(r"^---$", re.MULTILINE)
 SECTION_RE = re.compile(
@@ -65,6 +69,7 @@ class Session(TypedDict):
     duplicates: list[dict[str, object]]
     modified_files: list[str]
     token_usage: TokenUsage | None
+    hook_durations_ms: list[str]
 
 
 def split_blocks(text: str) -> list[str]:
@@ -90,6 +95,16 @@ def parse_summary(text: str) -> tuple[int, list[dict[str, object]]]:
 
 def parse_modified_files(text: str) -> list[str]:
     return MODIFIED_FILE_RE.findall(text) if text.strip() else []
+
+
+def parse_hook_durations(text: str) -> list[str]:
+    """Split the comma-separated `[Hook処理時間]` section into raw tokens.
+
+    Tokens are kept as strings ("NA" included) so callers decide how to treat
+    non-numeric samples, mirroring analyze_auto_approve.py's duration_ms handling.
+    """
+    stripped = text.strip()
+    return [token.strip() for token in stripped.split(",")] if stripped else []
 
 
 def parse_token_usage(text: str) -> TokenUsage | None:
@@ -124,6 +139,7 @@ def parse_session(sections: dict[str, str]) -> Session | None:
         "duplicates": duplicates,
         "modified_files": parse_modified_files(sections.get("修正したファイル", "")),
         "token_usage": parse_token_usage(sections.get("トークン使用量", "")),
+        "hook_durations_ms": parse_hook_durations(sections.get("Hook処理時間", "")),
     }
 
 
@@ -199,6 +215,38 @@ def redundant_access_waste(sessions: list[Session]) -> dict[str, object]:
     }
 
 
+def duration_ms_stats(sessions: list[Session]) -> dict[str, object]:
+    """Pool every session's hooks/log-access-stop.sh invocation durations.
+
+    Unlike total_accesses/duplicates (per-session facts), duration_ms is a
+    per-Stop-invocation measurement, so samples are pooled across all sessions
+    rather than reduced to one value per session.
+    """
+    all_tokens = [token for session in sessions for token in session["hook_durations_ms"]]
+    durations = [int(token) for token in all_tokens if token.isdigit()]
+    excluded_count = len(all_tokens) - len(durations)
+
+    if not durations:
+        return {
+            "sample_count": 0,
+            "excluded_count": excluded_count,
+            "avg_ms": 0.0,
+            "median_ms": 0.0,
+            "p95_ms": 0.0,
+            "max_ms": 0.0,
+        }
+
+    sorted_durations = sorted(durations)
+    return {
+        "sample_count": len(durations),
+        "excluded_count": excluded_count,
+        "avg_ms": round(sum(durations) / len(durations), 2),
+        "median_ms": statistics.median(durations),
+        "p95_ms": percentile(sorted_durations, P95_PERCENTILE),
+        "max_ms": max(durations),
+    }
+
+
 def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
     session_count = len(sessions)
     total_accesses = sum(s["total_accesses"] for s in sessions)
@@ -227,6 +275,7 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
         "sessions_with_duplicates_ratio": round(sessions_with_duplicates / session_count, 3) if session_count else 0,
         "top_redundant_sessions": top_redundant_sessions(sessions, TOP_N),
         "redundant_access_waste": redundant_access_waste(sessions),
+        "duration_ms_stats": duration_ms_stats(sessions),
     }
 
 

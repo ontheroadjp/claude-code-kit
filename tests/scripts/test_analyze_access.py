@@ -83,6 +83,9 @@ SESSION_3 = textwrap.dedent(
       #5  Read  /path/a
 
     [修正したファイル]
+
+    [Hook処理時間]
+    45,120,NA
     """
 )
 
@@ -124,6 +127,14 @@ def test_parse_session_handles_no_duplicates_and_no_token_usage() -> None:
     assert session["duplicates"] == []
     assert session["modified_files"] == []
     assert session["token_usage"] is None
+    assert session["hook_durations_ms"] == []
+
+
+def test_parse_session_extracts_hook_durations() -> None:
+    block = analyze_access.split_blocks(LOG_CONTENT)[2]
+    session = analyze_access.parse_session(analyze_access.split_sections(block))
+    assert session is not None
+    assert session["hook_durations_ms"] == ["45", "120", "NA"]
 
 
 def test_aggregate_across_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -170,6 +181,35 @@ def test_aggregate_tracks_redundant_reads_per_session(
     assert top_redundant_sessions[0]["modified"] is False
     assert top_redundant_sessions[1]["timestamp"] == "2026.08.01 18.49"
     assert top_redundant_sessions[1]["modified"] is True
+
+
+def test_duration_ms_stats_pools_across_sessions_and_excludes_na(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(analyze_common, "repo_root", lambda: tmp_path)
+    write_log(tmp_path, "2026-08", LOG_CONTENT)
+
+    sessions = analyze_access.load_sessions(["2026-08"])
+    result = analyze_access.aggregate(["2026-08"], sessions)
+
+    stats = result["duration_ms_stats"]
+    assert stats["sample_count"] == 2
+    assert stats["excluded_count"] == 1
+    assert stats["avg_ms"] == 82.5
+    assert stats["median_ms"] == 82.5
+    assert stats["max_ms"] == 120
+
+
+def test_duration_ms_stats_all_missing_returns_zeroed_stats() -> None:
+    result = analyze_access.duration_ms_stats([])
+    assert result == {
+        "sample_count": 0,
+        "excluded_count": 0,
+        "avg_ms": 0.0,
+        "median_ms": 0.0,
+        "p95_ms": 0.0,
+        "max_ms": 0.0,
+    }
 
 
 def test_main_prints_valid_json(

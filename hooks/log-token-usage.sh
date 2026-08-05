@@ -1,6 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
+# Captured before any payload processing so duration_ms reflects this hook's
+# own wall-clock cost (the jq transcript re-aggregation below can be slow on
+# large transcripts). Empty on bash < 5.0, where EPOCHREALTIME is unsupported.
+HOOK_START_TIME="${EPOCHREALTIME:-}"
+
+_SCRIPT="${BASH_SOURCE[0]}"
+[ -L "$_SCRIPT" ] && _SCRIPT="$(readlink "$_SCRIPT")"
+REPO_DIR="$(cd "$(dirname "$_SCRIPT")/.." && pwd)"
+# shellcheck source=hooks/lib/hook-timing.sh
+. "${REPO_DIR}/hooks/lib/hook-timing.sh"
+
 payload=$(cat)
 transcript_path=$(echo "$payload" | jq -r '.transcript_path // empty')
 session_id=$(echo "$payload" | jq -r '.session_id // "unknown"')
@@ -59,15 +70,13 @@ total=$(echo "$data"        | jq -r '.total')
 cache_ratio=$(echo "$data"  | jq -r '.cache_ratio')
 cost_usd=$(echo "$data"     | jq -r '.cost_usd')
 
-_SCRIPT="${BASH_SOURCE[0]}"
-[ -L "$_SCRIPT" ] && _SCRIPT="$(readlink "$_SCRIPT")"
-REPO_DIR="$(cd "$(dirname "$_SCRIPT")/.." && pwd)"
 log_file="${REPO_DIR}/logs/token-usage/$(date '+%Y-%m').log"
 mkdir -p "$(dirname "$log_file")"
 timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+duration_ms=$(hook_duration_ms "$HOOK_START_TIME")
 
-printf '[%s] session=%-36s  name=%-20s  model=%-30s  turns=%3d  input=%6d  output=%6d  cache_read=%7d  cache_create=%6d  total=%7d  cache_ratio=%5.1f  cost_usd=%8.4f  branch=%-20s  cwd=%s\n' \
+printf '[%s] session=%-36s  name=%-20s  model=%-30s  turns=%3d  input=%6d  output=%6d  cache_read=%7d  cache_create=%6d  total=%7d  cache_ratio=%5.1f  cost_usd=%8.4f  branch=%-20s  cwd=%-20s  duration_ms=%s\n' \
   "$timestamp" "$session_id" "$session_name" "$model" "$turns" \
   "$input" "$output" "$cache_read" "$cache_create" "$total" \
-  "$cache_ratio" "$cost_usd" "$branch" "$cwd" \
+  "$cache_ratio" "$cost_usd" "$branch" "$cwd" "$duration_ms" \
   >> "$log_file"

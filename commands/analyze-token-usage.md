@@ -47,6 +47,7 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 - 低キャッシュ効率セッション率 `low_cache_sessions_ratio`（目標: 低いほど良い）
 - 高トークン密度セッション率 `high_density_sessions_ratio`（目標: 低いほど良い）
 - セッションあたり平均コスト `avg_cost_usd_per_session`
+- hook 処理時間 `duration_ms_stats.avg_ms` / `duration_ms_stats.p95_ms`（`hooks/log-token-usage.sh` 自体の実行時間。`"NA"`（`$EPOCHREALTIME` 非対応の bash < 5.0）およびフィールド欠損の旧ログ行は `duration_ms_stats.excluded_count` として数値集計から除外される。ターンごとの生ログ行から集計するため、他の累積値指標と異なり dedupe しない）
 
 **裏付けデータ（Evidence）**:
 - 対象月（`months`）、セッション数（`session_count`）、総コスト（`total_cost_usd`）、総トークン数（`total_tokens`）
@@ -55,12 +56,13 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 - 日別コスト推移（`daily_cost_trend`）
 - コスト上位セッション（`top_expensive_sessions`）
 - 低キャッシュ効率セッションの詳細（`low_cache_sessions`）、高トークン密度セッションの詳細（`high_density_sessions`）
+- hook 処理時間の分布（`duration_ms_stats.sample_count` / `median_ms` / `max_ms`）
 
 ### Step 3: 所見の抽出
 
 Facts のみを根拠に、統計そのものではなく「何が改善できるか」を主役として整理する:
 
-- **主要な発見（Key Findings）**: KPI・Evidence から読み取れる重要な所見を優先度順に列挙する。各所見には根拠となる具体的な数値をインラインで引用する（例:「`avg_cache_ratio` が42%と低く、`low_cache_sessions_ratio` も18%…」）。コスト集中度（特定プロジェクト・モデルへの偏り）、日別推移から読み取れる変化にも言及する
+- **主要な発見（Key Findings）**: KPI・Evidence から読み取れる重要な所見を優先度順に列挙する。各所見には根拠となる具体的な数値をインラインで引用する（例:「`avg_cache_ratio` が42%と低く、`low_cache_sessions_ratio` も18%…」）。コスト集中度（特定プロジェクト・モデルへの偏り）、日別推移から読み取れる変化にも言及する。`duration_ms_stats.avg_ms` / `p95_ms` を用いて hook 処理時間が有意な水準か（判断基準の例: 数百 ms 未満は無視できる水準、秒単位に近い場合は要注意）を必ず言及する
 - 各発見に対応する **Proposal**（改善提案）を最低1つ添える。優先度（高/中/低）・理由・実施した場合の見込み効果を記す（例: 低キャッシュ効率セッションの原因調査、高コストセッションのパターン分析 等）
 - **Opinion**（Facts からの推測）は所見に含めてよいが、事実と明確に書き分ける
 - **Risks and Unknowns**: サンプル数が少ない・偏りがある等、解釈の限界を別枠でまとめる
