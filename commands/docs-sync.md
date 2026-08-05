@@ -81,6 +81,7 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 ### Phase 2: 更新対象の特定（docs/* および README.md）
 
 - 変更領域に対応する更新対象 docs を根拠付きで列挙する
+- **ファイル名パターンによる決定論的ルール**: `.github/workflows/*` の追加・削除・変更を検出した場合は、解釈の余地なく `docs/L2_development/cicd.md` と `docs/L2_development/consistency_checks.md` を更新対象タスクへ追加する（プローズ判断のみに委ねない）。この更新は通常、workflow ファイルの内容をそのまま転記する「事実更新」（確認不要）に分類される
 - 最小更新方針を確定する:
     - 事実更新（パス/設定値/コマンド/型/エンドポイント）
     - 手順更新（setup/run/test）

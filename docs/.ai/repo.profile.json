@@ -93,6 +93,15 @@
           "shellcheck -x <all *.sh files>"
         ],
         "purpose": "Run ShellCheck against every *.sh file in the repository"
+      },
+      {
+        "file": ".github/workflows/test.yml",
+        "trigger": "push to main and pull_request",
+        "runtime": "ubuntu-latest, timeout-minutes: 10",
+        "commands": [
+          "bash tests/hooks/test-approval-hooks.sh"
+        ],
+        "purpose": "Run the PreToolUse approval hook safety test suite"
       }
     ]
   },

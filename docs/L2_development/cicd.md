@@ -2,15 +2,19 @@
 
 ## 対象 workflow
 
-このリポジトリで確認できる CI/CD 定義は `.github/workflows/deploy.yml` の 1 件である。workflow 名は `Deploy VitePress site to GitHub Pages` で、`main` への push と手動実行 (`workflow_dispatch`) で起動する。
+このリポジトリには CI/CD 定義が3件ある。
 
-根拠: `.github/workflows/deploy.yml:1-7`
+- `.github/workflows/deploy.yml`（`Deploy VitePress site to GitHub Pages`）: `main` への push と手動実行 (`workflow_dispatch`) で起動し、VitePress site を GitHub Pages へ deploy する。
+- `.github/workflows/shellcheck.yml`（`ShellCheck`）: `main` への push と `pull_request` で起動し、`node_modules`・`.git` を除く全 `*.sh` に `shellcheck -x` を実行する。
+- `.github/workflows/test.yml`（`Approval Hooks Test`）: `main` への push と `pull_request` で起動し、`tests/hooks/test-approval-hooks.sh`（PreToolUse hook の安全性を検証する最重要テスト）を実行する。`timeout-minutes: 10`（ローカル実測で約4分）。
+
+根拠: `.github/workflows/deploy.yml:1-7`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/test.yml:1-18`
 
 ## 権限と同時実行制御
 
-GitHub Pages へ公開するため、workflow は `contents: read`、`pages: write`、`id-token: write` を要求する。concurrency group は `pages` で、進行中の deploy を中断しない設定である。
+`deploy.yml` は GitHub Pages へ公開するため `contents: read`、`pages: write`、`id-token: write` を要求する。concurrency group は `pages` で、進行中の deploy を中断しない設定である。`shellcheck.yml`・`test.yml` は追加の権限宣言を持たない（デフォルトの `contents: read` のみ）。
 
-根拠: `.github/workflows/deploy.yml:8-15`
+根拠: `.github/workflows/deploy.yml:8-15`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/test.yml:1-18`
 
 ## build job
 
@@ -26,6 +30,18 @@ GitHub Pages へ公開するため、workflow は `contents: read`、`pages: wri
 
 根拠: `.github/workflows/deploy.yml:44-53`
 
+## shellcheck job
+
+`shellcheck` job は `ubuntu-latest` で実行される。手順は checkout の後、`node_modules`・`site/node_modules`・`.git` を除く全 `*.sh` を `find` で列挙し、`shellcheck -x` を実行する。
+
+根拠: `.github/workflows/shellcheck.yml:8-18`
+
+## approval-hooks job
+
+`approval-hooks` job（`test.yml`）は `ubuntu-latest` で `timeout-minutes: 10` の制限付きで実行される。手順は checkout の後 `bash tests/hooks/test-approval-hooks.sh` を実行するのみである。このテストは `hooks/auto-approve-readonly.sh`・`hooks/guard-destructive-cmd.sh`・`hooks/cleanup-session.sh` の安全性契約を検証する（詳細: `docs/L2_development/test.md`）。ローカル実測では約4分で完了する。
+
+根拠: `.github/workflows/test.yml:8-18`, `tests/hooks/test-approval-hooks.sh:1-1163`
+
 ## ローカルでの同等確認
 
 CI の build と同等の主要検証は次のコマンドで行う。
@@ -35,12 +51,17 @@ cd site && npm ci
 cd site && npm run docs:build
 ```
 
-`npm run docs:build` は `site/package.json` の `docs:build` script で `vitepress build` を実行する。
+`npm run docs:build` は `site/package.json` の `docs:build` script で `vitepress build` を実行する。shellcheck job と approval-hooks job の同等確認は以下である。
 
-根拠: `.github/workflows/deploy.yml:31-37`, `site/package.json:4-8`
+```bash
+find . -not -path "./node_modules/*" -not -path "./site/node_modules/*" -not -path "./.git/*" -iname "*.sh" -print0 | xargs -0 shellcheck -x
+bash tests/hooks/test-approval-hooks.sh
+```
+
+根拠: `.github/workflows/deploy.yml:31-37`, `site/package.json:4-8`, `.github/workflows/shellcheck.yml:15-18`, `.github/workflows/test.yml:15-18`
 
 ## 未確認事項
 
-CI に専用 test job はない。repository には shell tests が存在するが、この workflow は VitePress build だけを実行する。ローカル test 手順は `docs/L2_development/test.md` に分離する。
+`tests/hooks/test-approval-hooks.sh` は CI（`approval-hooks` job）で実行されるが、`tests/commands/test-report-review.sh`・`tests/install/test-install.sh`・`tests/scripts/`（pytest）は依然として CI に登録されておらずローカル検証のみである。ローカル test 手順は `docs/L2_development/test.md` に分離する。
 
-根拠: `tests/` 実体一覧、`site/package.json:4-14`, `.github/workflows/deploy.yml:17-53`
+根拠: `tests/` 実体一覧、`.github/workflows/test.yml:1-18`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/deploy.yml:1-53`

@@ -51,9 +51,9 @@ Repo Profile の commands はすべて実体に対応する。
 
 ## CI 定義との整合性
 
-CI の最優先事実は `.github/workflows/deploy.yml` である。Node.js 24、npm cache、`site/package-lock.json`、`site/` での `npm ci` と `npm run docs:build`、`site/.vitepress/dist` upload、GitHub Pages deploy を docs と README に反映した。shell tests と pytest は CI job に含まれない。
+CI 定義は `.github/workflows/` に3件存在する: `deploy.yml`（Node.js 24、npm cache、`site/package-lock.json`、`site/` での `npm ci` と `npm run docs:build`、`site/.vitepress/dist` upload、GitHub Pages deploy）、`shellcheck.yml`（全 `*.sh` への `shellcheck -x`）、`test.yml`（`tests/hooks/test-approval-hooks.sh` を実行する `approval-hooks` job）。この3件を docs と README に反映した。`tests/commands/test-report-review.sh`・`tests/install/test-install.sh`・pytest（`tests/scripts/`）は依然として CI job に含まれない。
 
-根拠: `.github/workflows/deploy.yml:17-53`, `README.md:80-98`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
+根拠: `.github/workflows/deploy.yml:1-53`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/test.yml:1-18`, `README.md:80-98`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
 
 ## README / AGENTS / CLAUDE
 
@@ -68,7 +68,7 @@ CI の最優先事実は `.github/workflows/deploy.yml` である。Node.js 24�
 ## 未確認事項
 
 - coverage collection / threshold は定義されていない。確認先: `tests/`、`.github/workflows/`。
-- shell tests と pytest は CI で実行されない。確認先: `.github/workflows/deploy.yml`。
+- `tests/hooks/test-approval-hooks.sh` は CI（`test.yml`）で実行されるが、`tests/commands/test-report-review.sh`・`tests/install/test-install.sh`・pytest は引き続き CI で実行されない。確認先: `.github/workflows/test.yml`。
 - Python / pytest の version pin と dependency manifest は存在しない。確認先: repository root の package・runtime 定義（現時点では未検出）。ローカル観測値は Python 3.12.3、pytest 9.1.1。
 
 ## Done Criteria

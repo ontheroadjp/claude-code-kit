@@ -2,19 +2,19 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が3本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はなく、GitHub Actions もこれらのテストを実行しないため、現状はローカル検証である。
+このリポジトリには Bash で直接実行する shell tests が3本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はない。`tests/hooks/test-approval-hooks.sh` は `.github/workflows/test.yml` の `approval-hooks` job で CI 実行されるが、`tests/commands/test-report-review.sh`・`tests/install/test-install.sh`・pytest は現状ローカル検証のみである。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
 
 ## Hook safety test
 
-`tests/hooks/test-approval-hooks.sh` は destructive command block、read-only/session approval、session temp boundary、cleanup、working repo dynamic defense、guard JSON output を検証する。実行には `jq` と git repository が必要である。
+`tests/hooks/test-approval-hooks.sh` は destructive command block、read-only/session approval、session temp boundary、cleanup、working repo dynamic defense、guard JSON output を検証する。実行には `jq` と git repository が必要である。CI（`.github/workflows/test.yml`）では `main` への push と `pull_request` のたびに自動実行される（`timeout-minutes: 10`、ローカル実測で約4分）。
 
 ```bash
 bash tests/hooks/test-approval-hooks.sh
 ```
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-1142`, `tests/README.md`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1163`, `tests/README.md`, `.github/workflows/test.yml:1-18`
 
 ## Command workflow contract tests
 
@@ -66,5 +66,5 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- shell tests は CI に登録されていない。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-report-review.sh`, `test-install.sh`）と pytest は CI に登録されていない。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。
