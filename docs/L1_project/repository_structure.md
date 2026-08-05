@@ -58,9 +58,9 @@ issue、PR、README scaffold の template 実体を置く。`install.sh` は各�
 
 ### `docs/`
 
-`/init-docs` が生成・更新する L0-L3 設計 docs と `docs/.ai/repo.profile.json` を置く。`primary_docs` は調査入口として `docs/L3_implementation/specification_summary.md` と `docs/L1_project/repository_structure.md` を指す。
+`/init-docs` が生成・更新する L0-L3 設計 docs と `docs/.ai/repo.profile.json` を置く。`primary_docs` は調査入口として `docs/L3_implementation/specification_summary.md` と `docs/L1_project/repository_structure.md` を指す。`docs/L0_concept/`（concept.md, policy.md）は `/init-docs` が存在しない場合のみ新規作成し、以後は `/concept-maker` によるユーザー承認付き追記でのみ更新される。`docs/.ai/l0_candidates.md` は `/docs-sync` が積む L0 昇格候補のキューで、候補がある場合のみ存在する（`/concept-maker` が消化するたびに減り、空になると削除される）。
 
-根拠: `commands/init-docs.md:75-219`, `docs/.ai/repo.profile.json`
+根拠: `commands/init-docs.md:75-219`, `docs/.ai/repo.profile.json`, `commands/docs-sync.md`, `commands/concept-maker.md`
 
 ### `site/`
 
