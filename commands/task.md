@@ -155,15 +155,21 @@ Phase 3: 最終報告
 
 #### Step 1. PR 本文・タイトルの準備
 
-セッション temp ディレクトリを特定する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決する）:
+セッション temp ディレクトリを特定する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決する）。`mkdir -p` の対象に変数参照を残すと `hooks/auto-approve-readonly.sh` が静的判定できず確認プロンプトに落ちるため、CLAUDE.md の resolve-then-embed 規約に従い、解決ステップとリテラル値埋め込みを別の Bash 呼び出しに分ける。
+
+解決ステップ（read-only）:
 ```bash
 SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
 if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
     SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
 fi
 SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
-mkdir -p "$SESSION_TMP_DIR"
+echo "/tmp/claude-code-kit/${SESSION_ID}"
+```
+
+出力された絶対パスを以降 `SESSION_TMP_DIR` として使用する。実行ステップでは変数ではなくリテラル文字列として埋め込む:
+```bash
+mkdir -p "<上記で得た絶対パス>"
 ```
 
 - `${TEMPLATES_DIR}/pr.md` をもとに PR 本文を作成する
