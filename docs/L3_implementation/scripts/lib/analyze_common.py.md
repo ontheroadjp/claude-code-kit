@@ -38,4 +38,5 @@
 
 ## 変更履歴（git log より自動生成）
 
+- a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

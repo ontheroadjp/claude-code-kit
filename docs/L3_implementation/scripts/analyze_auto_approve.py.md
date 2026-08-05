@@ -65,6 +65,8 @@
 
 ## 変更履歴（git log より自動生成）
 
+- a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
+- ac0a68a feat(#218): add duration_ms aggregation and reporting to /analyze-auto-approve
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

@@ -31,3 +31,7 @@
 
 - `$EPOCHREALTIME` は bash 5.0+ のビルトイン変数。呼び出し側スクリプトは `HOOK_START_TIME="${EPOCHREALTIME:-}"` を **payload 処理より前**（`payload=$(cat)` 等の前）に置く必要がある。後段に置くと計測対象からその分の処理時間が漏れる
 - サブプロセスベースの代替計測（`date +%s%3N` 等）は行わない。`$EPOCHREALTIME` が使えない環境では計測不能を正直に `"NA"` として記録する方針
+
+## 変更履歴（git log より自動生成）
+
+- a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands

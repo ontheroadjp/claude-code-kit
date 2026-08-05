@@ -40,3 +40,12 @@ Stop hook。transcript 全体を再集計し、セッションの累積トーク
 
 - `set -euo pipefail` の下で動作するため、`hook_duration_ms` 呼び出しやその前段の `source` が失敗すると hook 全体が異常終了する。ただし `hooks/lib/hook-timing.sh` は純粋な bash 演算のみで外部コマンドに依存しないため、通常運用でこの経路が失敗することは想定していない
 - `$EPOCHREALTIME` 非対応の bash（5.0未満）では `duration_ms=NA` となり、`scripts/analyze_token_usage.py` 側の集計から除外される
+
+## 変更履歴（git log より自動生成）
+
+- a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
+- 5b554ea fix: resolve symlink in BASH_SOURCE and move state init to UserPromptSubmit
+- 381715b feat(#69): consolidate hook log outputs under logs/ directory
+- c8a445c feat(#43): add session name and cost_usd to token log, extend show script with cost analytics
+- eda8e56 feat: add model/turns/branch/cwd/cache_ratio to token usage log and show script
+- 653dd85 feat(#15): add Stop hook to log token usage per session

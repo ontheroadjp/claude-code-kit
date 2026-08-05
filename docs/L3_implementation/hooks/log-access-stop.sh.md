@@ -43,3 +43,14 @@ Stop hook。`hooks/log-access-prompt.sh` / `hooks/log-access-tool.sh` が `STATE
 
 - `$EPOCHREALTIME` 非対応の bash（5.0未満）では該当呼び出し分が `"NA"` として `hook_durations_ms` に記録され、`scripts/analyze_access.py` 側の数値集計から除外される
 - `hook_durations_ms` はセッションが `PENDING_FILE` として flush されるまで無制限に増え続ける。通常のセッション長（数十〜百数十ターン程度）では実用上問題にならない想定だが、上限は設けていない
+
+## 変更履歴（git log より自動生成）
+
+- a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
+- deb5360 feat(#83): add token usage summary to access log for redundant-access detection
+- 761866d fix(#81): accumulate access log state across turns per /work session
+- 5b554ea fix: resolve symlink in BASH_SOURCE and move state init to UserPromptSubmit
+- 381715b feat(#69): consolidate hook log outputs under logs/ directory
+- fca17ed feat(#67): track file access order and duplicates in access log hooks
+- 3251527 feat(#48): extend phase tracking to docs-sync and init-docs commands
+- c66082e feat(#48): add hooks to log file access per phase during work/task/patch execution
