@@ -11,6 +11,7 @@ per-session totals get counted once per turn instead of once per session.
 from __future__ import annotations
 
 import re
+import statistics
 import sys
 from pathlib import Path
 from typing import TypedDict
@@ -21,6 +22,7 @@ from lib.analyze_common import (  # noqa: E402
     build_arg_parser,
     emit_json,
     log_files_for_months,
+    percentile,
     resolve_target_months,
 )
 
@@ -29,7 +31,11 @@ LOW_CACHE_MIN_TURNS = 2
 LOW_CACHE_RATIO_PCT = 50.0
 HIGH_DENSITY_TOKENS_PER_TURN = 20000
 TIMESTAMP_DATE_LENGTH = 10  # "YYYY-MM-DD"
+P95_PERCENTILE = 95
 
+# `duration_ms` is absent on log lines written before this field existed;
+# LINE_RE treats it as optional so both formats parse identically (same
+# backward-compat approach as scripts/analyze_auto_approve.py's LINE_RE).
 LINE_RE = re.compile(
     r"^\[(?P<timestamp>[^\]]+)\]\s+"
     r"session=(?P<session>\S+)\s+"
@@ -44,7 +50,9 @@ LINE_RE = re.compile(
     r"cache_ratio=\s*(?P<cache_ratio>[\d.]+)\s+"
     r"cost_usd=\s*(?P<cost_usd>[\d.]+)\s+"
     r"branch=(?P<branch>.*?)\s+"
-    r"cwd=(?P<cwd>\S+)\s*$"
+    r"cwd=(?P<cwd>\S+)"
+    r"(?:\s+duration_ms=(?P<duration_ms>\S+))?"
+    r"\s*$"
 )
 
 
@@ -63,6 +71,7 @@ class Record(TypedDict):
     cost_usd: float
     branch: str
     cwd: str
+    duration_ms: str | None
 
 
 def parse_line(line: str) -> Record | None:
@@ -84,6 +93,7 @@ def parse_line(line: str) -> Record | None:
         "cost_usd": float(match.group("cost_usd")),
         "branch": match.group("branch"),
         "cwd": match.group("cwd"),
+        "duration_ms": match.group("duration_ms"),
     }
 
 
@@ -105,6 +115,45 @@ def dedupe_last_per_session(records: list[Record]) -> list[Record]:
     for record in records:
         latest[record["session"]] = record
     return list(latest.values())
+
+
+def numeric_duration_ms(record: Record) -> int | None:
+    value = record["duration_ms"]
+    if value is None or not value.isdigit():
+        return None
+    return int(value)
+
+
+def duration_ms_stats(records: list[Record]) -> dict[str, object]:
+    """Pool every raw line's hooks/log-token-usage.sh invocation duration.
+
+    Unlike cost/tokens (cumulative-per-session, so aggregate() dedupes to the
+    last line), duration_ms is a per-Stop-invocation measurement: this must run
+    on the raw `records` list, not the deduped `sessions` list, or all but the
+    last turn's duration per session would be silently dropped.
+    """
+    durations = [d for d in (numeric_duration_ms(r) for r in records) if d is not None]
+    excluded_count = len(records) - len(durations)
+
+    if not durations:
+        return {
+            "sample_count": 0,
+            "excluded_count": excluded_count,
+            "avg_ms": 0.0,
+            "median_ms": 0.0,
+            "p95_ms": 0.0,
+            "max_ms": 0.0,
+        }
+
+    sorted_durations = sorted(durations)
+    return {
+        "sample_count": len(durations),
+        "excluded_count": excluded_count,
+        "avg_ms": round(sum(durations) / len(durations), 2),
+        "median_ms": statistics.median(durations),
+        "p95_ms": percentile(sorted_durations, P95_PERCENTILE),
+        "max_ms": max(durations),
+    }
 
 
 def model_breakdown(sessions: list[Record]) -> list[dict[str, object]]:
@@ -231,6 +280,7 @@ def aggregate(months: list[str], records: list[Record]) -> dict[str, object]:
         "low_cache_sessions_ratio": round(len(low_cache) / session_count, 3) if session_count else 0,
         "high_density_sessions": high_density,
         "high_density_sessions_ratio": round(len(high_density) / session_count, 3) if session_count else 0,
+        "duration_ms_stats": duration_ms_stats(records),
     }
 
 

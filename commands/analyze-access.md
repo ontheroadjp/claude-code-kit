@@ -45,17 +45,19 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 - 重複発生セッション率 `sessions_with_duplicates_ratio`
 - 総無駄読み込み回数 `redundant_accesses_total`
 - 推定損失トークン `redundant_access_waste.estimated_wasted_tokens` / 推定損失コスト `redundant_access_waste.estimated_wasted_cost_usd`
+- hook 処理時間 `duration_ms_stats.avg_ms` / `duration_ms_stats.p95_ms`（`hooks/log-access-stop.sh` 自体の実行時間。重複読み込みロスとは別軸の、ログ記録パイプライン自体の負荷診断指標。`"NA"`（`$EPOCHREALTIME` 非対応の bash < 5.0）は `duration_ms_stats.excluded_count` として数値集計から除外される）
 
 **裏付けデータ（Evidence）**:
 - 対象月（`months`）、セッション数（`session_count`）、総アクセス数、セッションあたり平均アクセス数
 - 重複アクセス上位ファイル（`top_duplicate_files`、全セッション横断の合算）
 - 無駄な再読み込みが多いセッション上位（`top_redundant_sessions`。各要素は日時・指示内容・無駄な再読み込み回数・重複ファイル一覧・そのセッションで実際にファイルを修正したか（`modified`）を持つ）
+- hook 処理時間の分布（`duration_ms_stats.sample_count` / `median_ms` / `max_ms`）
 
 ### Step 3: 所見の抽出
 
 Facts のみを根拠に、統計そのものではなく「何が改善できるか」を主役として整理する:
 
-- **主要な発見（Key Findings）**: KPI・Evidence から読み取れる重要な所見を優先度順に列挙する。各所見には根拠となる具体的な数値をインラインで引用する（例:「`estimated_waste_ratio_pct` が12%、うち `/path/to/file` への重複が最多で…」）。`top_redundant_sessions` のうち `modified: false`（変更につながらなかった＝純粋なロス）のセッションは優先的に取り上げる
+- **主要な発見（Key Findings）**: KPI・Evidence から読み取れる重要な所見を優先度順に列挙する。各所見には根拠となる具体的な数値をインラインで引用する（例:「`estimated_waste_ratio_pct` が12%、うち `/path/to/file` への重複が最多で…」）。`top_redundant_sessions` のうち `modified: false`（変更につながらなかった＝純粋なロス）のセッションは優先的に取り上げる。`duration_ms_stats.avg_ms` / `p95_ms` を用いて hook 処理時間が有意な水準か（判断基準の例: 数百 ms 未満は無視できる水準、秒単位に近い場合は要注意）を必ず言及する
 - 各発見に対応する **Proposal**（改善提案）を最低1つ添える。優先度（高/中/低）・理由・実施した場合の見込み効果を記す（例: 頻出アクセスファイルを `docs/.ai/repo.profile.json` の investigation 起点に加える 等）
 - **Opinion**（Facts からの推測）は所見に含めてよいが、事実と明確に書き分ける
 - **Risks and Unknowns**: サンプル数が少ない・偏りがある等、解釈の限界を別枠でまとめる

@@ -25,6 +25,7 @@ from lib.analyze_common import (  # noqa: E402
     build_arg_parser,
     emit_json,
     log_files_for_months,
+    percentile,
     resolve_target_months,
 )
 
@@ -148,13 +149,6 @@ def numeric_duration_ms(decision: Decision) -> int | None:
     if value is None or not value.isdigit():
         return None
     return int(value)
-
-
-def percentile(sorted_values: list[int], pct: int) -> float:
-    if len(sorted_values) == 1:
-        return float(sorted_values[0])
-    quantiles = statistics.quantiles(sorted_values, n=100, method="inclusive")
-    return round(quantiles[pct - 1], 2)
 
 
 def top_slow_patterns(decisions: list[Decision], n: int) -> list[dict[str, object]]:

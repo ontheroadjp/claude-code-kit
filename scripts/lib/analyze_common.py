@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import statistics
 import sys
 from pathlib import Path
 
@@ -67,3 +68,10 @@ def log_files_for_months(log_type: str, months: list[str]) -> list[Path]:
 def emit_json(data: dict[str, object]) -> None:
     json.dump(data, sys.stdout, ensure_ascii=False, indent=2, sort_keys=False)
     sys.stdout.write("\n")
+
+
+def percentile(sorted_values: list[int], pct: int) -> float:
+    if len(sorted_values) == 1:
+        return float(sorted_values[0])
+    quantiles = statistics.quantiles(sorted_values, n=100, method="inclusive")
+    return round(quantiles[pct - 1], 2)

@@ -31,7 +31,7 @@
 - `routine_ops_breakdown()` は `classify_routine_op` で分類できた判定のみを対象に、パターンごとの result 内訳を集計し、`user_prompt_count > 0` のパターンを `user_prompt_count` 降順で `patterns_needing_approval` として抽出する
 - `monthly_trend()` は `timestamp` の先頭 `MONTH_PATTERN_LENGTH`（7文字 = `YYYY-MM`）を月キーとして `decisions` をグルーピングする
 - `numeric_duration_ms(decision)` は `duration_ms` が数字のみ（`str.isdigit()`）の場合にのみ `int` を返し、`None` および `"NA"` は `None` として扱う（例外送出ではなく判定で除外する設計）
-- `duration_ms_stats(decisions, n)` は `numeric_duration_ms` で数値化できた `duration_ms` のみを対象に `avg_ms` / `median_ms`（`statistics.median`）/ `p95_ms`（`percentile()`、`statistics.quantiles(..., method="inclusive")`）/ `max_ms` を計算し、`top_slow_patterns(decisions, n)`（`(tool, detail)` 別の平均処理時間 `avg_ms` 降順 TOP `n`、`top_blocked_patterns` と同じグルーピング様式）を添える。数値サンプルが1件のみの場合は `percentile()` がそのまま単一値を返す（`statistics.quantiles` は2件未満で例外を送出するため）。数値サンプルが0件の場合は `sample_count=0`・数値系フィールドは全て `0.0`・`top_slow_patterns=[]` を返す（`ratio()` が `total=0` を `0.0` で扱う既存の設計と揃えている）
+- `duration_ms_stats(decisions, n)` は `numeric_duration_ms` で数値化できた `duration_ms` のみを対象に `avg_ms` / `median_ms`（`statistics.median`）/ `p95_ms`（`lib.analyze_common.percentile()`、`statistics.quantiles(..., method="inclusive")`）/ `max_ms` を計算し、`top_slow_patterns(decisions, n)`（`(tool, detail)` 別の平均処理時間 `avg_ms` 降順 TOP `n`、`top_blocked_patterns` と同じグルーピング様式）を添える。数値サンプルが1件のみの場合は `percentile()` がそのまま単一値を返す（`statistics.quantiles` は2件未満で例外を送出するため）。数値サンプルが0件の場合は `sample_count=0`・数値系フィールドは全て `0.0`・`top_slow_patterns=[]` を返す（`ratio()` が `total=0` を `0.0` で扱う既存の設計と揃えている）
 
 根拠: `scripts/analyze_auto_approve.py:35-60`, `scripts/analyze_auto_approve.py:129-207`
 
@@ -45,11 +45,13 @@
 
 `duration_ms_stats` は「hook 自体の実行時間が体感レイテンシに寄与しているか」を数値で判断できるようにするために追加した（issue #218）。集計手段として標準ライブラリ `statistics` を採用し、独自の百分位計算ロジックは実装していない — 統計ロジックの正しさを自前で検証・保守するコストを避けるため。`"NA"` は bash < 5.0 で `$EPOCHREALTIME` が使えず計測できなかったことを表す欠損値であり、0 として扱うと平均値が不当に下がるため `excluded_count` として分離し数値集計から完全に除外する設計にした。
 
+`percentile()` はもともとこのファイルの内部関数だったが、`scripts/analyze_access.py` / `scripts/analyze_token_usage.py` にも同一の hook 処理時間集計（`duration_ms_stats`）を追加した際、ロジックを複製せず `scripts/lib/analyze_common.py` へ移した（issue #252）。挙動・シグネチャは変更していない。
+
 ## 統合ポイント
 
 - 入力: `logs/auto-approve/<YYYY-MM>.log`（`hooks/auto-approve-readonly.sh` が生成）
 - 分類ロジックの参照元: `hooks/auto-approve-readonly.sh` の `check_session_approved()`（`tool:git_write` / `tool:gh_issue_write` / `tool:gh_pr_write`）
-- 共通処理: `scripts/lib/analyze_common.py`（`MONTH_PATTERN_LENGTH` を月グルーピングに再利用）
+- 共通処理: `scripts/lib/analyze_common.py`（`MONTH_PATTERN_LENGTH` を月グルーピングに再利用、`percentile()` を `duration_ms_stats` の p95 計算に再利用）
 - 呼び出し元: `commands/analyze-auto-approve.md`
 - テスト: `tests/scripts/test_analyze_auto_approve.py`
 
@@ -63,6 +65,8 @@
 
 ## 変更履歴（git log より自動生成）
 
+- a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
+- ac0a68a feat(#218): add duration_ms aggregation and reporting to /analyze-auto-approve
 - 13987a8 feat(#219): add duration_ms timing to auto-approve-readonly.sh decision log
 - 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

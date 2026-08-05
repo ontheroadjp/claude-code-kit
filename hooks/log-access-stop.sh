@@ -1,6 +1,17 @@
 #!/bin/bash
 # Stop: write formatted log to pending file (not main log); keep state alive across turns
 
+# Captured before any payload processing so duration_ms reflects this hook's
+# own wall-clock cost (the jq transcript re-aggregation below can be slow on
+# large transcripts). Empty on bash < 5.0, where EPOCHREALTIME is unsupported.
+HOOK_START_TIME="${EPOCHREALTIME:-}"
+
+_SCRIPT="${BASH_SOURCE[0]}"
+[ -L "$_SCRIPT" ] && _SCRIPT="$(readlink "$_SCRIPT")"
+REPO_DIR="$(cd "$(dirname "$_SCRIPT")/.." && pwd)"
+# shellcheck source=hooks/lib/hook-timing.sh
+. "${REPO_DIR}/hooks/lib/hook-timing.sh"
+
 payload=$(cat)
 session_id=$(echo "$payload"      | jq -r '.session_id // empty')
 transcript_path=$(echo "$payload" | jq -r '.transcript_path // empty')
@@ -118,5 +129,15 @@ phases=$(echo "$state" | jq -r '
       printf '\n'
     fi
   fi
+
+  # Persist this invocation's duration into state (kept alive across turns,
+  # same as accesses/modified_files) so the flushed block reports the full
+  # session's Stop-hook overhead, not just the latest call.
+  hook_duration_ms_value=$(hook_duration_ms "$HOOK_START_TIME")
+  state=$(echo "$state" | jq --arg d "$hook_duration_ms_value" \
+    '.hook_durations_ms = ((.hook_durations_ms // []) + [$d])')
+  printf '%s' "$state" > "$STATE_FILE"
+  hook_durations=$(echo "$state" | jq -r '.hook_durations_ms | join(",")')
+  printf '[Hook処理時間]\n%s\n\n' "$hook_durations"
 } > "$PENDING_FILE"
 # State is kept alive; pending file is flushed to main log when next /work starts

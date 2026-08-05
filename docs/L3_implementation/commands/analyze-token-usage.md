@@ -25,7 +25,7 @@ Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提�
 
 - `logs/token-usage/*.log` はセッションごとに Stop イベントのたびに**その時点までの累積値**が追記される形式である。`scripts/analyze_token_usage.py` がセッションIDごとに最終行のみを集計に用いるため、この command は生ログを直接読まず、スクリプトの重複排除後の JSON のみを根拠とする
 - スクリプトの出力には `raw_line_count`（生の行数）と `session_count`（重複排除後）の両方が含まれ、両者を混同しないことを Step 1 で明示する
-- **Primary KPI** は `avg_cache_ratio`（セッション横断のキャッシュ効率平均。高いほど良い）。**Supporting KPI** は `low_cache_sessions_ratio` / `high_density_sessions_ratio`（いずれも低いほど良い）、`avg_cost_usd_per_session`
+- **Primary KPI** は `avg_cache_ratio`（セッション横断のキャッシュ効率平均。高いほど良い）。**Supporting KPI** は `low_cache_sessions_ratio` / `high_density_sessions_ratio`（いずれも低いほど良い）、`avg_cost_usd_per_session`、`duration_ms_stats.avg_ms` / `duration_ms_stats.p95_ms`（`hooks/log-token-usage.sh` 自体の実行時間）
 
 根拠: `commands/analyze-token-usage.md:16-29`, `commands/analyze-token-usage.md:33-46`
 
@@ -34,6 +34,8 @@ Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提�
 累積値ログをそのまま合算すると同一セッションの値を毎ターン重複計上してしまう（既存の `scripts/show-token-usage.sh --sum` はこの重複排除を行っていない）。この command 系列では正しい月次コストを示すため、セッションIDごとの最終値のみを合算する方式を採用した。
 
 以前は Facts（統計テーブル）がレポートの主役で、分析は付け足しだった。目的は「トークン利用を最適化する」というチューニングであり、統計はそのためのエビデンスに過ぎないため、KPIダッシュボード → Key Findings & Proposals をメインコンテンツとし、Facts は Evidence として補助セクションに格下げした（issue #216）。3コマンド（`/analyze-access` / `/analyze-auto-approve` / `/analyze-token-usage`）で同一のレポート構成（KPIダッシュボード → Key Findings & Proposals → Evidence → Risks and Unknowns）に統一している。
+
+`duration_ms_stats` は `/analyze-auto-approve` が既に持つ「hook 自体の実行時間が体感レイテンシに寄与しているか」という診断軸を、`hooks/log-token-usage.sh` にも揃えるために追加した（issue #252）。ただし `duration_ms` はコスト・トークンと違い累積値ではなく Stop hook 呼び出し単位の値であるため、`scripts/analyze_token_usage.py` 側の集計はセッション単位に重複排除する前の生ログ行を対象にする（詳細は `docs/L3_implementation/scripts/analyze_token_usage.py.md`）。
 
 ## 統合ポイント
 
@@ -50,5 +52,6 @@ Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提�
 
 ## 変更履歴（git log より自動生成）
 
+- a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
 - 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands
