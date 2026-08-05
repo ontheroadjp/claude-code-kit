@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016  # assertion strings below are single-quoted literal doc excerpts; $ must stay literal
 
 set -euo pipefail
 

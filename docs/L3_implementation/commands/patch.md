@@ -49,7 +49,7 @@ work.md の調査結果を引き継ぎ、プラン確認に必要な情報が不
 ### Step 3: 実行
 
 1. `git checkout -b patch/<slug>` でブランチを作成する
-2. ソースコードを修正する場合は言語対応の coding コマンド（`commands/coding-*.md`）を Read する
+2. ソースコードを修正する場合は言語対応の coding コマンド（`commands/coding-*.md`）を Read する。拡張子別の対応表に `.sh` → `commands/coding-sh.md` を明示している（issue #267。以前は他言語に該当しない全てが `commands/coding-general.md` のみだった）
 3. 変更を実施する（ユーザー確認不要）
 4. `/git-commit` を実行する（`issue_number=none`, `allowed_types=[fix, refactor, chore, style, test, docs]`、`feat` は不可）
 
@@ -120,6 +120,7 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 
 ## 変更履歴（git log より自動生成）
 
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 27f1861 feat(#76): install templates for claude and codex
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
@@ -129,4 +130,3 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 - dd29feb feat(#129): store session approvals per session
 - 4e742c9 fix(#118): guard session-approved against mid-session scope expansion
 - 83374dc feat(#108): add session-based approval to eliminate double-confirmation prompts
-- 6b6ddeb feat(#96): add coding skill usage instruction to task.md and patch.md

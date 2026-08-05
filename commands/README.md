@@ -44,6 +44,7 @@ PR レビューコメント対応は `/review-resolve`（`review-resolve.md`）�
 | `coding-py.md` | `/coding-py` | Python 固有のコーディングルール |
 | `coding-js.md` | `/coding-js` | JavaScript 固有のコーディングルール |
 | `coding-ts.md` | `/coding-ts` | TypeScript 固有のコーディングルール |
+| `coding-sh.md` | `/coding-sh` | Shell script 固有のコーディングルール（ShellCheck） |
 
 ## 使い方
 

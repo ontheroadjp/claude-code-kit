@@ -1,5 +1,6 @@
 #!/bin/bash
 # PostToolUse: track file access order and duplicates per phase (work/task/patch)
+set -euo pipefail
 
 payload=$(cat)
 session_id=$(echo "$payload" | jq -r '.session_id // empty')
@@ -24,7 +25,7 @@ esac
 [ -z "$file_path" ] && exit 0
 
 # Normalize home directory
-file_path=$(echo "$file_path" | sed "s|${HOME}|~|g")
+file_path=${file_path//$HOME/\~}
 basename_file=$(basename "$file_path")
 
 # State file is initialized by log-access-prompt.sh on UserPromptSubmit

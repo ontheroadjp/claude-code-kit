@@ -96,9 +96,9 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ### `/coding-*` (`commands/coding-*.md`)
 
-`coding-general` は言語非依存の原則を定義し、`coding-py`、`coding-js`、`coding-ts` はそれぞれ言語固有ルールを追加する。`coding-ts` は `coding-general` と `coding-js` を先に参照する。
+`coding-general` は言語非依存の原則を定義し、`coding-py`、`coding-js`、`coding-ts`、`coding-sh` はそれぞれ言語固有ルールを追加する。`coding-ts` は `coding-general` と `coding-js` を先に参照する。`coding-sh` は shell script 向けに ShellCheck 準拠・`set -euo pipefail`・quoting・パラメータ展開優先を定義し、`.github/workflows/shellcheck.yml` が CI で機械的に強制する。
 
-根拠: `commands/coding-general.md:1-3`, `commands/coding-py.md:1-4`, `commands/coding-js.md:1-4`, `commands/coding-ts.md:1-12`
+根拠: `commands/coding-general.md:1-3`, `commands/coding-py.md:1-4`, `commands/coding-js.md:1-4`, `commands/coding-ts.md:1-12`, `commands/coding-sh.md:1-92`
 
 ### `/git-commit` (`commands/git-commit.md`)
 
@@ -114,7 +114,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` は general など依存する command も読む構造を持つ。現存する skill wrapper は19件で、commands と対応する。`report-review` skill および `analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skill は read-only 境界を保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` / `coding-sh` は general など依存する command も読む構造を持つ。現存する skill wrapper は20件で、commands と対応する。`report-review` skill および `analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skill は read-only 境界を保持する。
 
 根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/` 実体一覧
 

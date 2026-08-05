@@ -1,5 +1,6 @@
 #!/bin/bash
 # UserPromptSubmit: save latest prompt for session correlation; flush orphaned pending logs
+set -euo pipefail
 
 payload=$(cat)
 session_id=$(echo "$payload" | jq -r '.session_id // empty')

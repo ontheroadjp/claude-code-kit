@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2016  # test fixtures below are single-quoted command strings; $ must stay literal
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

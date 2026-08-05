@@ -125,19 +125,19 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 注意事項
 
-- ソースコードを修正する場合は修正前に言語対応の coding コマンド（`commands/coding-*.md`）を Read する
+- ソースコードを修正する場合は修正前に言語対応の coding コマンド（`commands/coding-*.md`）を Read する。拡張子別の対応表に `.sh` → `commands/coding-sh.md` を明示している（issue #267。以前は他言語に該当しない全てが `commands/coding-general.md` のみだった）
 - `session-approved` に L3 per-file doc パスを含めないと hook がブロックするため、Step 2 で必ず含める
 - task.md は docs-sync.md を自動実行し（Phase 2 Step 1）、完了後に git-pr.md を自動実行する。docs-sync の HARD STOP 時はユーザーへ報告して終了し、git-pr は実行しない
 
 ## 変更履歴（git log より自動生成）
 
+- d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
+- e4b3d18 fix: apply resolve-then-embed to task.md session tmp dir mkdir
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
+- 27f1861 feat(#76): install templates for claude and codex
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
 - 7f30935 feat(#161): defer issue creation to after plan approval in task flow
 - 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
-- aeb0dc4 docs: remove environment-specific cli notes
-- 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
-- 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows

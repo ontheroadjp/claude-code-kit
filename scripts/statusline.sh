@@ -77,7 +77,7 @@ if [ ${#parts[@]} -gt 0 ]; then
     SEP="${DIM} | ${RESET}"
     result=""
     for i in "${!parts[@]}"; do
-        [ $i -gt 0 ] && result+="$SEP"
+        [ "$i" -gt 0 ] && result+="$SEP"
         result+="${parts[$i]}"
     done
     echo -e "$result"

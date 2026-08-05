@@ -40,6 +40,7 @@
     "commands/coding-py.md",
     "commands/coding-js.md",
     "commands/coding-ts.md",
+    "commands/coding-sh.md",
     "commands/git-commit.md",
     "commands/git-pr.md"
   ],
@@ -83,6 +84,15 @@
         ],
         "working_directory": "site",
         "purpose": "Build VitePress site in site/ and deploy site/.vitepress/dist to GitHub Pages"
+      },
+      {
+        "file": ".github/workflows/shellcheck.yml",
+        "trigger": "push to main and pull_request",
+        "runtime": "ubuntu-latest (preinstalled shellcheck)",
+        "commands": [
+          "shellcheck -x <all *.sh files>"
+        ],
+        "purpose": "Run ShellCheck against every *.sh file in the repository"
       }
     ]
   },
@@ -111,6 +121,7 @@
     "skills/coding-py/SKILL.md",
     "skills/coding-js/SKILL.md",
     "skills/coding-ts/SKILL.md",
+    "skills/coding-sh/SKILL.md",
     "skills/git-commit/SKILL.md",
     "skills/git-pr/SKILL.md"
   ],

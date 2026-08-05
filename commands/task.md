@@ -25,6 +25,7 @@ Phase 3: 最終報告
 - Python (.py): `commands/coding-py.md`
 - JavaScript (.js / .jsx): `commands/coding-js.md`
 - TypeScript (.ts / .tsx): `commands/coding-ts.md`
+- Shell script (.sh): `commands/coding-sh.md`
 - その他の言語: `commands/coding-general.md`
 
 ---

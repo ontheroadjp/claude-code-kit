@@ -9,7 +9,8 @@ core-toolkit-for-claude/
 ├── README.md                    # 人間向け概要、インストール、利用手順
 ├── install.sh                   # commands/hooks/skills/templates symlink と Claude/Codex hook settings 登録
 ├── setup_statusline.sh          # status line symlink と settings 登録
-├── .github/workflows/deploy.yml # VitePress site を GitHub Pages へ deploy
+├── .github/workflows/deploy.yml     # VitePress site を GitHub Pages へ deploy
+├── .github/workflows/shellcheck.yml # 全 *.sh に ShellCheck を実行
 ├── commands/                    # Claude/Codex が読む Markdown command 仕様（README.md あり）
 ├── docs/                        # /init-docs が管理する L0-L3 設計 docs
 ├── hooks/                       # Claude Code / Codex hook scripts（README.md あり）
@@ -21,7 +22,7 @@ core-toolkit-for-claude/
 └── templates/                   # issue / PR / README templates（README.md あり）
 ```
 
-根拠: `rg --files -uu`, `.github/workflows/deploy.yml:1-53`, `site/package.json:1-14`
+根拠: `rg --files -uu`, `.github/workflows/deploy.yml:1-53`, `.github/workflows/shellcheck.yml:1-19`, `site/package.json:1-14`
 
 ## ディレクトリ責務
 
