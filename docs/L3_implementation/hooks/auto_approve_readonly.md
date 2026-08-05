@@ -338,8 +338,12 @@ ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認�
 | 結果 | Claude | Codex |
 |---|---|---|
 | approve | `{"decision":"approve"}` | `{"decision":"allow"}` |
-| prompt fallback | stdoutなし | stdoutなし |
+| prompt fallback | stdoutなし | `{}` |
 | destructive block | reason付きblock JSON | reason付きblock JSON |
+
+**prompt fallback が Claude と Codex で異なる理由（issue #265）:** Claude Code は stdout が空の場合「hook は判定しない」と解釈し、通常の許可フローへ委ねる。Codex CLI の hook engine はこれと異なり、PreToolUse hook 呼び出しごとに有効な JSON を要求し、空 stdout は `hook returned invalid pre-tool-use JSON output` エラーとして扱われる（この repo にインストール済みの Codex CLI バイナリの文字列解析で、PreToolUse の `decision` フィールドが受理する値が `approve`/`block`/`allow` の3種類のみであることを確認済み。`decision`/`hookSpecificOutput` キーを持たない `{}` は「hook は判定しない」と等価に解釈され、通常の許可フローへ委ねられる）。`emit_fallback()`（`is_codex_invocation` の場合のみ `{}` を出力する）が全ての prompt fallback 経路（7箇所）で呼ばれる。Claude 側の挙動（stdoutなし）は変更していない。
+
+根拠: `hooks/auto-approve-readonly.sh`（`emit_fallback`）, issue #265
 
 decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する。process fallback の session は `n/a` とする。
 
