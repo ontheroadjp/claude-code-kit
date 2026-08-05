@@ -1043,4 +1043,36 @@ assert_no_output "$output"
 output=$(run_auto $'gh pr create --title "feat: add x" --body-file - <<EOF\n## Summary\n- did a thing\nEOF')
 assert_no_output "$output"
 
+# --- Heredoc nested inside a quoted $(...) (issue #257 / #258) ---
+# Before this fix, _mask_quoted_heredoc_bodies had no $(...)-nesting
+# awareness, so a heredoc opened inside a double-quoted $(...) (the shape
+# this repo's own commit convention uses for multi-line messages) was never
+# recognized: its literal body newlines survived into split_shell_segments,
+# fragmenting the command into pieces that matched no allow-shape. The
+# unconditional free-pass shape for `git commit -m "..."` already covers
+# this once the subshell reduces to `-m "__SUBSHELL_SAFE__"`, so no
+# tool:git_write session grant is needed here.
+output=$(run_auto $'git commit -m "$(cat <<\'EOF\'\nSome commit message here.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nEOF\n)"')
+assert_json_decision "$output" "approve"
+
+# A heredoc body containing characters that would desync a non-heredoc-aware
+# quote/paren tracker (an apostrophe, unbalanced-looking parens) must not
+# break $(...) span detection now that _find_top_level_subshell_spans skips
+# heredoc bodies from its own tracking (issue #257).
+output=$(run_auto $'git commit -m "$(cat <<\'EOF\'\nFix the thing that wasn\x27t working (#123).\nEOF\n)"')
+assert_json_decision "$output" "approve"
+
+# An unquoted-delimiter heredoc nested inside a quoted $(...) is left
+# unrecognized, matching the existing top-level unquoted-delimiter behavior
+# (known limitation, not a regression) -- falls through to a user prompt.
+output=$(run_auto $'git commit -m "$(cat <<EOF\nSome message\nEOF\n)"')
+assert_no_output "$output"
+
+# Masking a heredoc nested inside a quoted $(...) must not create a blanket
+# bypass for content that follows the heredoc terminator within the same
+# $(...): a destructive command placed there is still recursively validated
+# (via _subshells_are_safe on the unmasked remainder) and rejected.
+output=$(run_auto $'git commit -m "$(cat <<\'EOF\'\nmessage\nEOF\n; rm -rf /)"')
+assert_no_output "$output"
+
 printf 'approval hook tests passed\n'
