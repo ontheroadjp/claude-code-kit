@@ -14,7 +14,7 @@
 bash tests/hooks/test-approval-hooks.sh
 ```
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-407`, `tests/README.md`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1142`, `tests/README.md`
 
 ## Command workflow contract tests
 
@@ -68,11 +68,3 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 - coverage collection と threshold の定義は存在しない。
 - shell tests は CI に登録されていない。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。
-
-## Dependency audit observation
-
-2026-08-02 の `npm audit --json` は current lockfile に total 4 vulnerabilities（moderate 2、high 2）を報告した。direct dependency では VitePress 1.6.4 が transitive Vite の影響を受け、transitive packages は Vite、esbuild、PostCSS である。npm は PostCSS に fix available、Vite / esbuild / VitePress には fix unavailable と報告した。
-
-この観測は依存更新の許可を意味しない。再評価時は `site/package-lock.json` と最新の `npm audit --json` を確認し、upgrade は別 task としてユーザー承認を得る。
-
-根拠: `site/package-lock.json`、2026-08-02 実行の `npm audit --json`

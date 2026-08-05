@@ -1,84 +1,83 @@
 # Consistency Checks
 
-最終実行: 2026-08-02
+最終実行: 2026-08-05
 
 ## docs → 実体
 
 ### Command / skill paths
 
 - `commands/` には README を除いて19個の command specification が存在する。
-- `skills/` には19個の `SKILL.md` が存在し、`report-review` を含め command と1:1で対応する。
-- `/work` が参照する `commands/report-review.md`、`commands/task.md`、`commands/patch.md` はすべて存在する。
+- `skills/` には19個の `SKILL.md` が存在し、command basename と1:1で対応する。
+- `docs/.ai/repo.profile.json` の `active_commands` と `skills` は、この19件を漏れなく列挙する。
 
-根拠: `rg --files commands -g '*.md'`、`rg --files skills -g 'SKILL.md'`、`commands/work.md:53-115`
+根拠: `commands/` 実体一覧、`skills/` 実体一覧、`docs/.ai/repo.profile.json:active_commands`、`docs/.ai/repo.profile.json:skills`
 
 ### Hooks
 
-`install.sh` が `hooks/*.sh` として symlink する top-level script は9本である。Notification / Stop の Slack 通知を含む event registration は存在する。`hooks/lib/approval-safety.sh` は top-level symlink 対象ではなく、approval hooks が source する共有 helper である。
+`install.sh` が symlink 対象とする top-level hook script は9本で、Repo Profile の `hooks` と一致する。`hooks/lib/` の3 helper は top-level 配置対象ではない。
 
-根拠: `install.sh:33-45`, `install.sh:158-187`, `hooks/` 実体一覧、`hooks/lib/approval-safety.sh`
+根拠: `install.sh:20-45`, `hooks/` 実体一覧、`docs/.ai/repo.profile.json:hooks`
 
-### Tests
+### Runtime / build / test commands
 
-次の3 command は実ファイルに対応し、Bash で実行可能である。
+Repo Profile の commands はすべて実体に対応する。
 
-| command | target |
-|---|---|
-| `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
-| `bash tests/commands/test-report-review.sh` | report-review declarative contract |
-| `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract |
+| 分類 | Repo Profile の command | 実体 |
+|---|---|---|
+| install | `./install.sh` | executable installer |
+| statusline | `./setup_statusline.sh` | executable installer |
+| site | `cd site && npm ci` | CI install step |
+| site | `cd site && npm run docs:dev` | `site/package.json:scripts.docs:dev` |
+| site | `cd site && npm run docs:build` | package script and CI build step |
+| site | `cd site && npm run docs:preview` | `site/package.json:scripts.docs:preview` |
+| analyze | `python3 scripts/analyze_access.py --all` | access log aggregator |
+| analyze | `python3 scripts/analyze_auto_approve.py --all` | auto-approve log aggregator |
+| analyze | `python3 scripts/analyze_token_usage.py --all` | token-usage log aggregator |
+| shell test | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
+| shell test | `bash tests/commands/test-report-review.sh` | report-review contract |
+| shell test | `bash tests/install/test-install.sh` | installer contract |
+| Python test | `python3 -m pytest tests/scripts/` | analysis-script contract |
 
-根拠: `tests/` 実体一覧、`docs/.ai/repo.profile.json:commands`
-
-### Runtime / build commands
-
-| command | 実体 |
-|---|---|
-| `./install.sh` | executable installer |
-| `./setup_statusline.sh` | executable statusline installer |
-| `cd site && npm ci` | CI install step |
-| `cd site && npm run docs:dev` | `site/package.json:scripts.docs:dev` |
-| `cd site && npm run docs:build` | package script and CI build step |
-| `cd site && npm run docs:preview` | `site/package.json:scripts.docs:preview` |
-
-根拠: `install.sh`, `setup_statusline.sh`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-42`
+根拠: `docs/.ai/repo.profile.json:commands`, `site/package.json:4-8`, `.github/workflows/deploy.yml:31-37`, `commands/analyze-access.md:27-35`, `commands/analyze-auto-approve.md:28-36`, `commands/analyze-token-usage.md:27-35`, `tests/` 実体一覧
 
 ## repo.profile.json ↔ docs
 
-- `doc_roots` の4 directory は実在する。
+- `doc_roots` の4 directory は実在し、L0、L1、L2、L3 の生成済み構造と一致する。
 - `primary_docs.investigation` と `primary_docs.structure` は実在する。
-- `active_commands` は command specifications 17件と一致する。
-- `skills` は skill wrappers 17件と一致する。
-- `hooks` は installer が配置する top-level hook scripts 9件と一致する。
-- `commands` の install / site / 4 test commands は `operation_model.md`、`test.md`、`cicd.md` で説明される。
+- `commands` の全13項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
+- `active_commands` 19件、`skills` 19件、`hooks` 9件は実体一覧と一致する。
 
-根拠: `docs/.ai/repo.profile.json`、`docs/L2_development/operation_model.md`、`docs/L2_development/test.md`、`docs/L2_development/cicd.md`
+根拠: `docs/.ai/repo.profile.json`, `docs/L2_development/operation_model.md`, `docs/L2_development/test.md`, `docs/L2_development/cicd.md`
 
 ## CI 定義との整合性
 
-CI の事実は `.github/workflows/deploy.yml` を優先した。Node.js 24、npm cache、`site/package-lock.json`、`site/` での `npm ci` と `npm run docs:build`、`site/.vitepress/dist` upload、GitHub Pages deploy を docs に反映している。shell tests は CI job に含まれないことを明示した。
+CI の最優先事実は `.github/workflows/deploy.yml` である。Node.js 24、npm cache、`site/package-lock.json`、`site/` での `npm ci` と `npm run docs:build`、`site/.vitepress/dist` upload、GitHub Pages deploy を docs と README に反映した。shell tests と pytest は CI job に含まれない。
 
-根拠: `.github/workflows/deploy.yml:17-53`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
+根拠: `.github/workflows/deploy.yml:17-53`, `README.md:80-98`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
 
-## AGENTS / CLAUDE
+## README / AGENTS / CLAUDE
 
-`AGENTS.md` は `CLAUDE.md` への symlink である。Claude Code と Codex CLI は同じ AI 運用情報を参照する。
+- README は template が要求する Features、Installation、Usage、Design Principles を持つ。
+- README の Features は19 command のうち内部委譲用を含む全 command を列挙する。
+- repository root に license file は存在しないため、根拠のない license 名は README に記載しない。
+- `AGENTS.md` は `CLAUDE.md` への symlink であり、両 agent は同じ AI 運用情報を参照する。
+- `CLAUDE.md` の local tooling は 2026-08-05 の観測値（gh 2.96.0、Node.js v24.16.0、npm 11.13.0、mise hint）と一致する。
 
-根拠: `readlink AGENTS.md` の結果 `CLAUDE.md`
+根拠: `templates/readme.md:5-21`, `README.md`, `readlink AGENTS.md` の結果 `CLAUDE.md`, `CLAUDE.md:95-106`
 
 ## 未確認事項
 
-- shell tests の coverage collection / threshold は定義されていない。確認先: `tests/`、`.github/workflows/`。
-- shell tests は CI で実行されない。確認先: `.github/workflows/deploy.yml`。
-- npm audit findings の解消 version は一部未提供である。確認先: `site/package-lock.json` と再実行時の `npm audit --json`。
+- coverage collection / threshold は定義されていない。確認先: `tests/`、`.github/workflows/`。
+- shell tests と pytest は CI で実行されない。確認先: `.github/workflows/deploy.yml`。
+- Python / pytest の version pin と dependency manifest は存在しない。確認先: repository root の package・runtime 定義（現時点では未検出）。ローカル観測値は Python 3.12.3、pytest 9.1.1。
 
 ## Done Criteria
 
 | 条件 | 判定 | 理由 |
 |---|---|---|
-| docs の事実が実体と矛盾しない | yes | path、command、workflow、dependency を再観測した |
-| repo profile と docs が相互に説明可能 | yes | command/skill/hook/4 test lists と説明先を突合した |
+| docs の事実が実体と矛盾しない | yes | path、command、workflow、dependency、entry point を再観測した |
+| Repo Profile と docs が相互に説明可能 | yes | 13 commands、19 command/skill、9 hooks を双方向に突合した |
 | CI と docs が一致する | yes | Node.js 24 と site npm build/deploy を CI から採用した |
-| 未確認事項が分離されている | yes | coverage と CI test 非登録を明記した |
+| 未確認事項が分離されている | yes | coverage、CI test 非登録、Python dependency pin 不在を明記した |
 
 判定: 完了。

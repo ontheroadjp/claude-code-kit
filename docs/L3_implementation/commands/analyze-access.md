@@ -19,7 +19,7 @@ Step 4: logs/reports/access/<target>_<timestamp>.html を新規作成（KPIダ�
 Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提示
 ```
 
-根拠: `commands/analyze-access.md:16-90`
+根拠: `commands/analyze-access.md:16-87`
 
 ## 主要な判定ロジック・フロー
 

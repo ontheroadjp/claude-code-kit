@@ -74,13 +74,13 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 open issue が溜まったタイミングで実行するスタンドアロンのトリアージ入口。`gh issue list` で全 open issue を取得し、`docs/.ai/repo.profile.json` および `docs/L3_implementation/specification_summary.md` と照合して stale / inconsistent / duplicated / unclear / ready の 5 カテゴリに分類する。分類結果をユーザーに提示し、issue ごとに推奨アクション（close / comment / edit / label / skip）を「理由 + 推奨アクション」付きで提示してユーザー承認後のみ実行する。`/work`・`/task`・`/new-issue`・`/review-resolve` とは独立しており、既存コマンドの振る舞いは変更しない。
 
-根拠: `commands/triage-issues.md:1-187`
+根拠: `commands/triage-issues.md:1-178`
 
 ### `/new-issue` (`commands/new-issue.md`)
 
 実装を伴わず、rough idea から issue draft を作成して `gh issue create` する任意 pre-`/work` flow。scope 分割はユーザー選択必須で、issue 本文は実行 agent に応じて `~/.claude/templates/issue.md` または `~/.codex/templates/issue.md` を使う。
 
-根拠: `commands/new-issue.md:1-129`
+根拠: `commands/new-issue.md:1-126`
 
 ### `/review-resolve` (`commands/review-resolve.md`)
 
@@ -110,7 +110,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 `git push` と `gh pr create` を担うスラッシュコマンド。`/task` Phase 2 から `/docs-sync` 完了後に自動呼び出しされる。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-title.txt`（タイトル）・`pr-body.md`（本文）・`pr-docs-sync-result.md`（docs sync 結果）を参照し、存在しない場合は git diff / テンプレートから生成する。PR は ready for review として直接作成し、Step 7 の URL 報告でフローは完結する（作成後の自動 review・merge は行わない）。
 
-根拠: `commands/git-pr.md:1-73`
+根拠: `commands/git-pr.md:1-70`
 
 ## Skills
 
@@ -148,11 +148,11 @@ PreToolUse hook で共有する Bash safety helper。system directory 破壊、b
 
 PreToolUse Bash guard の互換 wrapper。Bash 以外は何も出力せず終了する。Bash の場合は `hooks/lib/approval-safety.sh` を読み込み、破壊的操作に該当する場合のみ JSON block decision を返す。平文 stdout は出力しない。
 
-根拠: `hooks/guard-destructive-cmd.sh:1-25`, `hooks/lib/approval-safety.sh:1-87`
+根拠: `hooks/guard-destructive-cmd.sh:1-24`, `hooks/lib/approval-safety.sh:1-119`
 
 ### `hooks/cleanup-session.sh`
 
-Stop hook。`hooks/lib/session-id.sh` を source してセッション ID を解決し、現在の hook セッションに対応する `session-approved` を削除し、空になった session directory のみ削除する。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）は削除しない。Stop hook はターン終了ごとに発火するため、スキル間（`/task` → `/docs-sync` → `/git-pr`）で temp ファイルが消えてしまう問題を避けるため。`/tmp` の自動クリーンアップ（OS 再起動 / tmpfiles.d）に委ねる。
+Stop hook。`hooks/lib/session-id.sh` を source してセッション ID を解決し、現在の hook セッションに対応する `session-approved` を削除し、空になった session directory のみ削除する。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）は削除しない。Stop hook はターン終了ごとに発火するため、スキル間（`/task` → `/docs-sync` → `/git-pr`）で temp ファイルが消えてしまう問題を避けるためである。SESSION_TMP_DIR の保持期間と削除時期は host OS の `/tmp` policy に依存し、repository からは確定できない。
 
 根拠: `hooks/cleanup-session.sh:1-24`
 
@@ -190,9 +190,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 ## Tests
 
-`tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp 配下の Write/Edit approval、session temp 範囲外や symlink session temp の prompt fallback、cleanup hook による current session temp directory 削除、write-effect / ambiguous command の prompt fallback、`guard-destructive-cmd.sh` の JSON block output を検証する。Bash boundary coverage は safe な sed / awk / curl / Git 操作と、`sed e/w`、pipe-based `awk getline`、unsafe curl option cluster、Git force variants の両面を含む。複数 segment の無関係な `-d` / `-f` を forced branch deletion と誤認しないことも固定する。また working repo dynamic defense として、Write / Edit / apply_patch / rm -rf の repo 内パス承認・WIP commit 作成・repo 外 prompt fallback・repo root / .git / 複数パス / 変数展開の除外・clean tree での WIP commit 非作成を検証する。`rm [-f] <literal-path>`（issue #248）については、repo 内パスへの承認（WIP commit あり）を positive case、repo root 自体・`.git` 配下・変数参照・複数トークン・グロブ・`-rf`（対象外）・session-approved ファイル自身（保護対象、issue #250）を negative case として固定する。
+`tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp boundary、working repo dynamic defense、quoted heredoc と nested subshell の走査、`guard-destructive-cmd.sh` の JSON block output を検証する。`rm [-f] <literal-path>` は repo 内 path を positive case、repo root・`.git`・変数・glob・session-approved 自身を negative case として固定する。さらに issue #261 の回帰防止として、absent な session-approved への初回実承認 write は通り、exists-empty から実内容への拡張は block される Write-handler state transition を固定する。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-1046`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1142`
 
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 

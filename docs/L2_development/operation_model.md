@@ -66,7 +66,13 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 `triage-issues.md` は open issue を取得し、repo profile と仕様サマリに照らして stale / inconsistent / duplicated / unclear / ready に分類する。close / comment / edit / label などの issue 操作はユーザー承認後のみ実行する。
 
-根拠: `commands/triage-issues.md:1-187`
+根拠: `commands/triage-issues.md:1-178`
+
+## analyze flows
+
+`analyze-access.md`、`analyze-auto-approve.md`、`analyze-token-usage.md` は、それぞれ repository-local な月次ログを Python 集計 script で読み、KPI / Evidence / Key Findings / Proposals / Opinions / Risks and Unknowns と HTML report を生成する。対象月は `--month YYYY-MM`、全期間は `--all`、省略時は最新月である。
+
+根拠: `commands/analyze-access.md:16-87`, `commands/analyze-auto-approve.md:17-92`, `commands/analyze-token-usage.md:16-92`, `scripts/lib/analyze_common.py:30-77`
 
 ## ローカル・CI コマンド
 
@@ -78,9 +84,13 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 | `cd site && npm run docs:dev` | VitePress dev server | `site/package.json:4-8` |
 | `cd site && npm run docs:build` | VitePress build。CI でも実行 | `site/package.json:4-8`, `.github/workflows/deploy.yml:35-37` |
 | `cd site && npm run docs:preview` | built site preview | `site/package.json:4-8` |
+| `python3 scripts/analyze_access.py --all` | access logs の全期間集計 | `commands/analyze-access.md:27-35` |
+| `python3 scripts/analyze_auto_approve.py --all` | auto-approve logs の全期間集計 | `commands/analyze-auto-approve.md:28-36` |
+| `python3 scripts/analyze_token_usage.py --all` | token-usage logs の全期間集計 | `commands/analyze-token-usage.md:27-35` |
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
 | `bash tests/commands/test-report-review.sh` | report-review workflow contract | `tests/commands/test-report-review.sh` |
 | `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract | `tests/install/test-install.sh` |
+| `python3 -m pytest tests/scripts/` | log analysis scripts の parse / aggregate / CLI contract | `tests/scripts/` |
 
 ## CI/CD
 
