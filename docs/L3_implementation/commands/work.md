@@ -18,6 +18,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 重要な設計判断
 
+- 現状調査における候補ファイルの Read は、対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合、その doc の `根拠: <file>:<line-range>` citation を先に確認し、候補ファイル本体は該当行範囲の対象読み（`offset`/`limit`）に絞る。L3 doc がない、または対象箇所を特定できない場合のみ従来通り直接 Read する。`/analyze-access` の集計で、L3 doc を持つ大きいファイル（例: `hooks/auto-approve-readonly.sh`）がセッション内で繰り返しフル Read され、重複読み込みロスの大半を占めていたことが判明したための対処（issue #269）。
 - report 判定は label name の完全一致とし、類似名による read-only workflow への誤配送を避ける。
 - report routing を実装向け現状調査より前に置き、評価だけを求める issue に implementation planning を適用しない。
 - label 取得に失敗した場合は推測で既存 flow に進まず、安全に停止する。
@@ -28,7 +29,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
     - 対処として `rm -f` への回帰も検討したが不採用とした。commit 87ce937（fix #250）は `session-approved` を `rm -f` の自動承認対象から明示的に除外している（`is_rm_protected_path`）。これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴（過去に許可された実際のスコープを、確認なしに削除→再構築で置き換える）を塞ぐためのものであり、G-0 を `rm -f` に戻すとこの抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。同じ理由で、hook 側の Write ハンドラを「既存内容が空なら absent と同等に扱う」よう変更する案（`Write` 経由で同種の抜け穴が開く）も不採用とした。
     - 最終的に、G-0 の防御的クリア自体を削除する方針を採った。Stop hook が正常に動作している通常ケースでは `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして無条件承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）のみ、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする（新しい自動承認ロジックは追加しない）。
 
-根拠: `commands/work.md:9-13`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定）, issue #210, issue #227, issue #248, issue #250, issue #261
+根拠: `commands/work.md:9-13`, `commands/work.md:71`, `commands/work.md:130`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定）, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269
 
 ## 統合ポイント
 
