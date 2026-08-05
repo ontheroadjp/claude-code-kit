@@ -136,7 +136,7 @@ PreToolUse hook。Read、session temp / session-listed file、read-only Bash、`
 
 安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）は、hook がコマンドテキストを実行せずに値を検証できないため、read-only な解決ステップ → リテラル値埋め込みという2段階（resolve-then-embed、`CLAUDE.md` に規約化）に分けることをエージェントに求める。hook はリテラル引数のみを `is_rm_protected_path`/`is_in_working_repo` と照合する（issue #248, #250）。
 
-根拠: `hooks/auto-approve-readonly.sh:1-1679`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
+根拠: `hooks/auto-approve-readonly.sh:1-1699`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
 
 ### `hooks/lib/approval-safety.sh`
 
@@ -198,11 +198,11 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 `tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp boundary、working repo dynamic defense、quoted heredoc と nested subshell の走査、`guard-destructive-cmd.sh` の JSON block output を検証する。`rm [-f] <literal-path>` は repo 内 path を positive case、repo root・`.git`・変数・glob・session-approved 自身を negative case として固定する。さらに issue #261 の回帰防止として、absent な session-approved への初回実承認 write は通り、exists-empty から実内容への拡張は block される Write-handler state transition を固定する。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-1142`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1163`
 
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 
-根拠: `tests/commands/test-report-review.sh:1-72`
+根拠: `tests/commands/test-report-review.sh:1-73`
 
 `tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、Claude Code と Codex CLI の両 template directory に repository source への個別 symlink が作られること、旧 target が作成されないこと、再実行が冪等であることを検証する。
 

@@ -6,9 +6,9 @@
 
 ### Command / skill paths
 
-- `commands/` には README を除いて19個の command specification が存在する。
-- `skills/` には19個の `SKILL.md` が存在し、command basename と1:1で対応する。
-- `docs/.ai/repo.profile.json` の `active_commands` と `skills` は、この19件を漏れなく列挙する。
+- `commands/` には README を除いて21個の command specification が存在する。
+- `skills/` には21個の `SKILL.md` が存在し、command basename と1:1で対応する。
+- `docs/.ai/repo.profile.json` の `active_commands` と `skills` は、この21件を漏れなく列挙する。
 
 根拠: `commands/` 実体一覧、`skills/` 実体一覧、`docs/.ai/repo.profile.json:active_commands`、`docs/.ai/repo.profile.json:skills`
 
@@ -45,7 +45,7 @@ Repo Profile の commands はすべて実体に対応する。
 - `doc_roots` の4 directory は実在し、L0、L1、L2、L3 の生成済み構造と一致する。
 - `primary_docs.investigation` と `primary_docs.structure` は実在する。
 - `commands` の全13項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
-- `active_commands` 19件、`skills` 19件、`hooks` 9件は実体一覧と一致する。
+- `active_commands` 21件、`skills` 21件、`hooks` 9件は実体一覧と一致する。
 
 根拠: `docs/.ai/repo.profile.json`, `docs/L2_development/operation_model.md`, `docs/L2_development/test.md`, `docs/L2_development/cicd.md`
 
