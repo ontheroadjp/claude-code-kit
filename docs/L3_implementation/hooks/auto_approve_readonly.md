@@ -10,7 +10,7 @@
 
 この分類に確信を持てない操作は出力なしで終了し、クライアントの通常許可フローへ戻す。破壊的操作は allowlist より先に評価し、session-approved が存在しても block する。
 
-根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:759-1143`, `hooks/lib/approval-safety.sh`
+根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:806-1190`, `hooks/lib/approval-safety.sh`
 
 ## セッションと実行元の解決
 
@@ -45,9 +45,17 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 これにより、`commands/git-pr.md`・`commands/new-issue.md`・`commands/triage-issues.md` が使う `gh pr create --body-file - <<'EOF' ... EOF` のような形の PR/issue 本文が、`split_shell_segments` によって改行ごとに個別の「コマンド」として分割され、read-only / session-approved のどのパターンにも一致せず毎回通常許可フローへ戻ってしまっていた問題（本文が session-approved の `tool:gh_pr_write`/`tool:gh_issue_write` で明示的に許可済みでも発生していた）を解消する。`log_decision` は判定用ではなく元の `$command`（マスキング前）を記録するため、ログには実際に実行されたコマンドがそのまま残る。
 
-**境界検出ロジックの共有化（issue #257）:** ヒアドキュメントの境界（delimiter・終端行・resume位置）を判定する処理は `_heredoc_skip_end_index()` という単一の helper に抽出されており、`_mask_quoted_heredoc_bodies` と `_find_top_level_subshell_spans`（後述の統一 tokenizer）の両方がこれを共有する。以前は heredoc 境界検出ロジックが `_mask_quoted_heredoc_bodies` の中だけに単独実装されていたが、これは「grammar の定義箇所が複数箇所に分散し、一方だけに fix が入ってもう一方に反映されないドリフト」という、統一 tokenizer 自体が過去に解消した問題（下記「統一 tokenizer」節参照）と同じ再発リスクを抱えていたため、この issue で一本化した。`_mask_quoted_heredoc_bodies` 自身の外部から見た挙動（マスク対象・プレースホルダーへの置換結果）はこのリファクタリングにより一切変わっていない。
+**境界検出ロジックの共有化（issue #257）:** ヒアドキュメントの境界（delimiter・終端行・resume位置）を判定する処理は `_heredoc_skip_end_index()` という単一の helper に抽出されており、`_mask_quoted_heredoc_bodies` と `_find_top_level_subshell_spans`（後述の統一 tokenizer）の両方がこれを共有する。以前は heredoc 境界検出ロジックが `_mask_quoted_heredoc_bodies` の中だけに単独実装されていたが、これは「grammar の定義箇所が複数箇所に分散し、一方だけに fix が入ってもう一方に反映されないドリフト」という、統一 tokenizer 自体が過去に解消した問題（下記「統一 tokenizer」節参照）と同じ再発リスクを抱えていたため、この issue で一本化した。
 
-根拠: `hooks/auto-approve-readonly.sh`（`_mask_quoted_heredoc_bodies`、`_heredoc_skip_end_index`、`command_for_analysis`）, issue #246, issue #257
+**引用符付き `$(...)` にネストされた heredoc の認識（issue #258）:** `_mask_quoted_heredoc_bodies()` は現在、`_find_top_level_subshell_spans()`（issue #257 でheredoc-aware化された統一 tokenizer）が返す top-level `$(...)` span の一覧を使い、入力を「span の外側」と「各 span の中身」に分割して処理する 2 段構成になっている。span の外側は元の単一パス走査（`_mask_quoted_heredoc_bodies_toplevel()`、旧実装そのもの）でマスクし、各 span の中身は実際の bash の挙動（`$(...)` の中は `"..."` の中であっても新しいクォート/heredoc解析コンテキストとして再開する）を反映して `_mask_quoted_heredoc_bodies()` 自身に再帰的に渡す。これにより、`git commit -m "$(cat <<'EOF' ... EOF)"` のようにダブルクォート付きの `$(...)` の中に現れる heredoc も、他の箇所と同様に本文がプレースホルダーへ置換されるようになった。置換後の形（`-m "__SUBSHELL_SAFE__"`）は commit 分岐の無条件許可パターンに元々一致するため、この形の commit は `tool:git_write` のセッション許可なしで自動承認される。
+
+**なぜ #257 の前にはこの実装が成立しなかったか:** `_find_top_level_subshell_spans()` を生（マスク前）のテキストに対して呼ぶには、その関数自身が heredoc 本文の文字（コミットメッセージにありがちな `don't` のアポストロフィや `(#123)` の括弧等）をクォート/括弧追跡に使わずスキップできる必要がある。これを備えていない状態で2段構成を組むと、heredoc 本文の内容次第で `$(...)` の境界検出そのものが壊れる循環依存になっていた（#257 のスコープ・#200 の設計ノート参照）。#257 で `_find_top_level_subshell_spans()` 自身がheredoc-aware になったことで、この循環が解消された。
+
+**マスキングが検証をバイパスしないことの確認:** heredoc の終端行より後、同じ `$(...)` の中に続くテキスト（例: `cat <<'EOF' ... EOF\n; rm -rf /)`）はマスク対象外のまま残り、`is_safe_segment`/`_subshells_are_safe` による通常の再帰検証を受ける。masking は heredoc 本文だけを inert data として除外するものであり、`$(...)` の中身全体を無条件許可するものではない（回帰テストで検証済み、下記「テストと既知の制限」参照）。
+
+**引き続き未対応のまま残る形:** unquoted delimiter の heredoc（`<<EOF`）は、`$(...)` にネストされているか否かに関わらず `_heredoc_skip_end_index()` の対象外であり、既存のトップレベル挙動と同様に通常許可フローへ戻る（回帰ではなく仕様）。
+
+根拠: `hooks/auto-approve-readonly.sh`（`_mask_quoted_heredoc_bodies`、`_mask_quoted_heredoc_bodies_toplevel`、`_heredoc_skip_end_index`、`_find_top_level_subshell_spans`、`command_for_analysis`）, issue #246, issue #257, issue #258
 
 ## 判定順序
 
@@ -69,7 +77,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 13. command を quote-aware に segment 分割する（`>&<fd番号|->` は fd 複製として background operator 扱いしない）。
 14. 全 segment が読み取り専用・narrow な local git write（`git add`/`git commit -m`/`git fetch`）・または session-approved のいずれかの場合のみ承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:759-1143`
+根拠: `hooks/auto-approve-readonly.sh:806-1190`
 
 ## File tool の許可
 
@@ -88,7 +96,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 承認ファイル自身へのスコープ追加は block する。working repo 内の Write / Edit / apply_patch の場合は承認前に WIP commit を作成する。その他は通常許可フローへ戻す。
 
-根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:768-871`
+根拠: `hooks/auto-approve-readonly.sh:83-115`, `hooks/auto-approve-readonly.sh:815-918`
 
 ## Bash command の許可
 
@@ -171,7 +179,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 `curl` の短縮 option は単独形だけでなく結合形も検査する。`-so`、`-sO` のように file output や request body / upload / config を有効化する文字を含む option cluster は通常許可フローへ戻す。`-sSI` のような読み取り専用 cluster は引き続き承認する。
 
-根拠: `hooks/auto-approve-readonly.sh:927-1128`
+根拠: `hooks/auto-approve-readonly.sh:974-1175`
 
 ### write redirect 検出のクォート対応
 
@@ -179,7 +187,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 **副作用として閉じた抜け穴:** この quote-aware 化により、シングルクォート内の `>` を無条件に write redirect とみなしていた旧実装が偶発的に防いでいた `awk` 自身の `print`/`printf` 出力リダイレクト（例: `awk 'BEGIN { print 1 > "/tmp/unsafe" }'`）が、この修正だけでは auto-approve されてしまう状態が一時的に生じた。これは awk 固有 allowlist 側の `\b(print|printf)\b.*>` チェックで別途塞いでいる（上表「常時許可しない mode」参照）。`print`/`printf` キーワードの後にどこかで `>` が現れる segment は無条件に unsafe とする、意図的に粗い判定である（`print "a>b"` のような文字列リテラル内の `>` も誤検知するが、false prompt-fallback は無害であり、file write の見逃しの方が問題であるため）。
 
-根拠: `hooks/auto-approve-readonly.sh:221-258`, `hooks/auto-approve-readonly.sh:1011-1020`
+根拠: `hooks/auto-approve-readonly.sh:221-258`, `hooks/auto-approve-readonly.sh:1058-1067`
 
 ### `>&` の fd 複製認識
 
@@ -187,7 +195,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 **なぜ「数値 fd または `-`」に限定するか:** bash の `>&word` は word が数値または `-` の場合のみ fd 複製であり、それ以外（`>&somefile` 等）は `&>word` と同義のファイル書き込みリダイレクトである。このため判定は狭く保ち、`>&` に続く語が数値/`-` 以外の場合は引き続き background operator 分岐（結果として unsafe な `__UNSUPPORTED_BACKGROUND_OPERATOR__` segment を生成し、複合 command 全体を prompt fallback させる）に落ちる。
 
-根拠: `hooks/auto-approve-readonly.sh:532-547`
+根拠: `hooks/auto-approve-readonly.sh:579-594`
 
 ### variable expansion の除外
 
@@ -207,7 +215,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 クォート文字自体も、それが「他方のクォートの内側ではリテラル文字である」ケースを区別する。ダブルクォート内の `'`（例: `curl --user-agent "foo'bar" $OPTS ...`）はシングルクォート開始とはみなさない — bash はダブルクォート内で `'` に特別な意味を与えないため、無条件に `quote="'"` へ遷移すると、以降の実際の閉じダブルクォートを取りこぼしてクォート状態が誤って `'` のまま持ち越され、後続の unquoted `$OPTS` を見逃す。この遷移は現在 `quote` が空（unquoted 状態）のときのみ許可する。
 
-根拠: `hooks/auto-approve-readonly.sh:166-209`, `hooks/auto-approve-readonly.sh:559-573`, `hooks/auto-approve-readonly.sh:927-1128`
+根拠: `hooks/auto-approve-readonly.sh:166-209`, `hooks/auto-approve-readonly.sh:606-620`, `hooks/auto-approve-readonly.sh:974-1175`
 
 ### `xargs` / `find -exec`: ラップされたコマンドの再帰検証（issue #254）
 
@@ -238,7 +246,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 **`-delete`/`-fls`/`-fprint`/`-fprintf` は対象外のまま:** これらはコマンドをラップせず、ファイルの削除・書き込みを `find` 自身が直接行うため、`-exec` 系とは異なる性質を持つ。したがって再帰検証の対象にはならず、従来通り無条件拒否を維持する。
 
-根拠: `hooks/auto-approve-readonly.sh:545-585`（`_top_level_tokens`）, `hooks/auto-approve-readonly.sh:612-660`（`_xargs_wrapped_command`）, `hooks/auto-approve-readonly.sh:674-713`（`_find_exec_clauses_are_safe`）, `hooks/auto-approve-readonly.sh:1431-1454`（`is_safe_segment` の find/xargs 分岐）, issue #254
+根拠: `hooks/auto-approve-readonly.sh:592-632`（`_top_level_tokens`）, `hooks/auto-approve-readonly.sh:659-707`（`_xargs_wrapped_command`）, `hooks/auto-approve-readonly.sh:721-760`（`_find_exec_clauses_are_safe`）, `hooks/auto-approve-readonly.sh:1478-1501`（`is_safe_segment` の find/xargs 分岐）, issue #254
 
 ### session-approved tool category
 
@@ -252,7 +260,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 destructive guard に該当する操作は category があっても block する。
 
-根拠: `hooks/auto-approve-readonly.sh:660-701`, `hooks/lib/approval-safety.sh`
+根拠: `hooks/auto-approve-readonly.sh:707-748`, `hooks/lib/approval-safety.sh`
 
 ## 複合 command
 
@@ -268,7 +276,7 @@ newline、`;`、`|`、`||`、`&&` を引用符の外側だけで分割し、全 
 
 **スコープ外（意図的にフォールスルー）:** C-style `for ((i=0;i<n;i++))` は `is_safe_for_in_list` の `in` 必須パターンに一致しないため対象外のまま通常確認へ戻る（`split_shell_segments` は算術コンテキスト内の `;` を認識せず、対応した場合ヘッダーを誤分割してしまうため）。`while`/`until`/`case`/`select`、および `in` を省略した `for VAR; do ...; done`（暗黙の `"$@"` 参照）も同様に未対応のまま。
 
-根拠: `hooks/auto-approve-readonly.sh:439-460`, `hooks/auto-approve-readonly.sh:1000-1015`, issue #224
+根拠: `hooks/auto-approve-readonly.sh:486-507`, `hooks/auto-approve-readonly.sh:1047-1062`, issue #224
 
 ### `$()` subshell の評価
 
@@ -323,7 +331,7 @@ ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認�
 - 未対応のshell構文
 - 1つでも未許可のsegmentを含む複合command
 
-根拠: `hooks/auto-approve-readonly.sh:144-147`, `hooks/auto-approve-readonly.sh:274-398`, `hooks/auto-approve-readonly.sh:603-657`, `hooks/auto-approve-readonly.sh:1133-1143`
+根拠: `hooks/auto-approve-readonly.sh:144-147`, `hooks/auto-approve-readonly.sh:274-445`, `hooks/auto-approve-readonly.sh:650-704`, `hooks/auto-approve-readonly.sh:1180-1190`
 
 ## decision とログ
 
@@ -343,7 +351,7 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 
 `detail` は `cut -c1-120` で切り詰めてからログへ書き込む。`cut -c` は non-UTF-8-aware なロケール（`LC_ALL=C` 等）ではバイト単位に振る舞うため、日本語などマルチバイト文字を含む command を境界で切ると不正な UTF-8 バイト列を生成し、`grep` 等ロケール依存ツールがログをバイナリ扱いして検索に失敗する原因になっていた。`truncate_utf8_safe()` は `cut` の直後に `iconv -f UTF-8 -t UTF-8 -c` を通し、切り詰め境界に残った不完全なマルチバイトシーケンスを除去する（`iconv` 不在時は切り詰め結果をそのまま返すフォールバック）。
 
-根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:580-624`
+根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:627-671`
 
 ## 動的防御（Working Repo Dynamic Defense）
 
@@ -403,7 +411,7 @@ After:
   user_prompt
 ```
 
-根拠: `hooks/auto-approve-readonly.sh:768-1143`
+根拠: `hooks/auto-approve-readonly.sh:815-1190`
 
 ### `rm [-f] <literal-path>` の自動承認（issue #248）と保護対象パス（issue #250）
 
@@ -458,6 +466,8 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 `log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
 
 heredoc body のマスキング（issue #246）については、`gh pr create --body-file - <<'EOF' ... EOF` 形（複数行 Markdown 本文、`>`/`->`/`rm -rf /` のような他のスキャナーを誤検知させうる文字列を本文に含む場合を含む）と `<<"EOF"`（ダブルクォート）を `tool:gh_pr_write` 許可済みセッションでの positive case として固定する。演算子より前に実際の危険操作がある `git push --force <<'EOF' ... EOF` は本文の内容に関わらず引き続き block されること、`tool:gh_pr_write` が未承認の場合は同じ heredoc コマンドでも引き続き通常許可フローへ戻ること、および delimiter が unquoted な heredoc（`<<EOF`）は既知の未対応形として引き続き通常許可フローへ戻ること（回帰ではなく仕様）を negative case として固定する。
+
+引用符付き `$(...)` にネストされた heredoc の認識（issue #258）については、`git commit -m "$(cat <<'EOF' ... EOF)"`（複数行コミットメッセージ、`tool:git_write` のセッション許可なしで無条件許可パターンにより承認されること）と、同じ形で heredoc 本文にアポストロフィ（`don't`）・括弧（`(#123)`）を含み `$(...)` 境界検出を壊さないことを positive case として固定する。delimiter が unquoted な heredoc が `$(...)` にネストされた場合は既存のトップレベル unquoted-delimiter 挙動と同様に通常許可フローへ戻ること、および heredoc の終端行より後、同じ `$(...)` の中に続く危険操作（例: heredoc の直後の `rm -rf /`）は masking の影響を受けず引き続き通常許可フローへ戻る（`$(...)` 内容全体を無条件許可しない）ことを negative case として固定する。
 
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 

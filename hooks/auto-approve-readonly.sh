@@ -341,7 +341,15 @@ _heredoc_skip_end_index() {
     printf '%s %s\n' "$after" "$line_end"
 }
 
-_mask_quoted_heredoc_bodies() {
+# Single-level scan: masks quoted-delimiter heredocs that appear directly at
+# THIS text's own top level (quote=="" throughout, no awareness of $(...)
+# nesting). Correct on its own only for text that contains no top-level
+# $(...) — callers must not feed it text containing one, or a heredoc nested
+# inside a quoted "...$(...)..." span would be missed (the bug #257/#258
+# fix). _mask_quoted_heredoc_bodies (below) is the public entry point that
+# handles $(...) nesting by delegating the text outside/inside each span to
+# this function and to itself (recursively), respectively.
+_mask_quoted_heredoc_bodies_toplevel() {
     local input="$1"
     local n="${#input}"
     local i=0 char quote="" escaped=0 result=""
@@ -380,6 +388,45 @@ _mask_quoted_heredoc_bodies() {
         result+="$char"
         i=$((i + 1))
     done
+    printf '%s' "$result"
+}
+
+# Public entry point (issue #258). Recognizes quoted-delimiter heredocs
+# regardless of how deeply they are nested inside $(...) command
+# substitutions -- including the common `git commit -m "$(cat <<'EOF' ...
+# EOF)"` shape, where the heredoc sits inside a $(...) that is itself inside
+# a "..." string.
+#
+# Splices _find_top_level_subshell_spans' span list over $input: text
+# strictly between/around the top-level $(...) spans is masked by the
+# single-level scan above (correct there, since by construction it contains
+# no top-level $(...)); the content of each span is a fresh nested shell
+# context (real bash restarts quoting/heredoc parsing inside $(...), even
+# inside a surrounding "..."), so it is masked by recursing into this same
+# function.
+#
+# Why this works now but didn't before #257: _find_top_level_subshell_spans
+# itself is heredoc-aware (skips a heredoc body's characters from its own
+# quote/paren tracking), so calling it on the raw, not-yet-masked $input is
+# safe -- a heredoc body containing an apostrophe or unbalanced-looking
+# parens (both common in commit-message / PR-body text) can no longer desync
+# span detection. Before #257, doing this would have been circular: the
+# span-finder needed heredoc bodies to already be masked to track quotes
+# reliably, but masking needed the span boundaries to recognize a
+# quote-nested heredoc in the first place.
+_mask_quoted_heredoc_bodies() {
+    local input="$1"
+    local start end pos=0 result=""
+
+    while read -r start end; do
+        result+="$(_mask_quoted_heredoc_bodies_toplevel "${input:pos:start-pos}")"
+        result+="${input:start:2}"
+        result+="$(_mask_quoted_heredoc_bodies "${input:start+2:end-start-2}")"
+        result+="${input:end:1}"
+        pos=$((end + 1))
+    done < <(_find_top_level_subshell_spans "$input")
+
+    result+="$(_mask_quoted_heredoc_bodies_toplevel "${input:pos}")"
     printf '%s' "$result"
 }
 
