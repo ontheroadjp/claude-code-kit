@@ -68,7 +68,7 @@ gh issue view <issue番号> --json labels --jq '.labels[].name'
 
 以下を調査・整理する（ルーティング判定の前に必ず行う）:
 
-- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む。候補ファイルは必ず直接 Read して現在の状態を確認すること。ドキュメントだけでは対象ファイルを特定できない場合のみ Glob/Grep を実行する
+- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む。候補ファイルに対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合は、まずその doc を Read し、関連セクションの `根拠: <file>:<line-range>` citation を確認したうえで、候補ファイル本体の Read は該当行範囲を `offset`/`limit` で指定した対象読みに絞る。L3 doc が存在しない、または対象箇所を特定できない場合は候補ファイルを直接 Read して現在の状態を確認する。同一セッション内で既に読んだ範囲を対象理由なく再度 Read しない。ドキュメントだけでは対象ファイルを特定できない場合のみ Glob/Grep を実行する
 - `primary_docs` が存在しない場合は `active_commands`・`doc_roots`・`deploy` を起点に対象ファイルを絞り込む
 - 変更対象となるファイル・関数・設定を特定する
 - 現在の振る舞いを把握する
@@ -127,7 +127,7 @@ report issue の事前ルーティングに該当しなかった場合、以下�
 
 以下を調査・整理する（開始フェーズ報告の前に必ず行う）:
 
-- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む。候補ファイルは必ず直接 Read して現在の状態を確認すること。ドキュメントだけでは対象ファイルを特定できない場合のみ Glob/Grep を実行する
+- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む。候補ファイルに対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合は、まずその doc を Read し、関連セクションの `根拠: <file>:<line-range>` citation を確認したうえで、候補ファイル本体の Read は該当行範囲を `offset`/`limit` で指定した対象読みに絞る。L3 doc が存在しない、または対象箇所を特定できない場合は候補ファイルを直接 Read して現在の状態を確認する。同一セッション内で既に読んだ範囲を対象理由なく再度 Read しない。ドキュメントだけでは対象ファイルを特定できない場合のみ Glob/Grep を実行する
 - `primary_docs` が存在しない場合は `active_commands`・`doc_roots`・`deploy` を起点に対象ファイルを絞り込む
 - 変更対象となるファイル・関数・設定を特定する
 - 現在の振る舞いを把握する
