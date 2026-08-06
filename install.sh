@@ -73,6 +73,17 @@ for src in "$REPO_DIR"/skills/*/; do
   echo "  ${src}${name} -> ${src}"
 done
 
+echo "Syncing self-referential skill symlinks -> ${REPO_DIR}/.gitignore"
+GITIGNORE_FILE="${REPO_DIR}/.gitignore"
+for src in "$REPO_DIR"/skills/*/; do
+  name="$(basename "$src")"
+  pattern="skills/${name}/${name}"
+  if ! grep -qxF "$pattern" "$GITIGNORE_FILE"; then
+    echo "$pattern" >>"$GITIGNORE_FILE"
+    echo "  Added to .gitignore: ${pattern}"
+  fi
+done
+
 SETTINGS_FILE="${HOME}/.claude/settings.json"
 CODEX_HOOKS_FILE="${HOME}/.codex/hooks.json"
 
