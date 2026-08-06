@@ -63,5 +63,7 @@ hook の許可ルールを直接変更すると read-only 分析の境界を越�
 
 ## 変更履歴（git log より自動生成）
 
+- deecd59 feat(#278): surface unique command samples in auto-approve routine_ops
+- ac0a68a feat(#218): add duration_ms aggregation and reporting to /analyze-auto-approve
 - 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands
