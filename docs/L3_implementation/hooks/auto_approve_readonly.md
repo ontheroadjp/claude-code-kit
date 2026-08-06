@@ -61,6 +61,8 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 
 判定は次の順序で行う。後段の allowlist は前段の block / prompt 判定を上書きしない。
 
+0. `argv[1]` が `--explain` の場合、`payload=$(cat)` による stdin 読み取りをスキップし（`payload='{}'`）、後述の「`--explain` 診断モード」に分岐する。通常の PreToolUse stdin プロトコル（下記1以降）には一切入らない。
+
 1. payload、session、agent、状態パスを解決する。
 2. `Read` は常時承認する。
 3. `Write` は session temp、承認ファイル自身、session-approved file、working repo の順に評価する。
@@ -78,6 +80,18 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 14. 全 segment が読み取り専用・narrow な local git write（`git add`/`git commit -m`/`git fetch`）・または session-approved のいずれかの場合のみ承認する。
 
 根拠: `hooks/auto-approve-readonly.sh:806-1190`
+
+### 実装構造: named allow-shape 関数への分割（issue #283）
+
+`is_safe_segment`（判定順序14の実体）は、以前は約25個の匿名 inline `grep` 分岐を持つ単一の巨大関数だった。どの分岐で承認/拒否されたかを診断する手段がなく、`--explain` 診断モードを実装する前提として、各分岐を `is_safe_<name>_command`（例: `is_safe_sed_command`、`is_safe_curl_command`、`is_safe_gh_command`）という独立した named 関数に切り出した。
+
+- 各 `is_safe_<name>_command` はコマンド名 prefix のチェックも自分自身の内部で行う自己完結した述語であり、対象外のコマンドに対しては単に `1`（非該当）を返す。
+- `is_safe_segment` はこれらを `func "$seg" && return 0` という**フラットな順序非依存の列挙**として呼ぶだけのディスパッチャになった。コマンド名 prefix は互いに排他的なので、どの関数が該当するかは常に一意であり、呼び出し順序は最終結果に影響しない（ある関数が「非該当」で `1` を返しても、後続の別コマンドファミリー向け関数も prefix 不一致で `1` を返し、最終的に session-approved fast path・`return 1` へ同じように到達する）。
+- `is_safe_git_read_command`・`is_safe_local_git_write_command`・`is_safe_dpkg_query_command`（`is_safe_dpkg_command` が prefix チェック付きでラップ）・`is_safe_for_in_list`・`is_safe_test_expression` は元々独立していたためロジック変更なし。
+- これらの named 関数群と `is_safe_segment` 自体は、`check_session_approved` や `split_shell_segments` などと同様に、実行時に呼ばれるより前（`# Always approve Read tool` 以降のランタイム dispatch コードより前）に定義される位置へ移動した。`--explain` の実装（後述）が `payload` 未使用の早い段階でこれらの関数を呼べる必要があるための配置変更であり、判定ロジック自体への変更ではない。
+- リファクタは動作を一切変えない意図で行い、`tests/hooks/test-approval-hooks.sh` の全既存アサーションが無変更のまま green であることで検証済み。
+
+根拠: `hooks/auto-approve-readonly.sh:1236-1602`（named 関数群と `is_safe_segment` ディスパッチャ）, issue #283
 
 ## File tool の許可
 
@@ -358,6 +372,41 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 
 根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:1026-1035`
 
+## `--explain` 診断モード（issue #283）
+
+### 目的
+
+`hooks/auto-approve-readonly.sh --explain "<command>"` は、あるコマンドが自動承認されない理由（またはされる理由）を、ログを手で読まずに調べるためのデバッグ専用エントリポイントである。`logs/auto-approve/*.log` に蓄積される `user_prompt` 行を allowlist 拡張の判断材料にする一連の取り組み（issue #278, #280, #282）の一部で、これまでは `is_safe_segment` の約25分岐のソースを直接読む以外に手段がなかった。
+
+### 到達経路と安全性
+
+- `argv[1]` が `--explain` の場合のみ到達する。通常の Claude/Codex hook 呼び出しは stdin 経由の JSON payload で呼ばれ、`--explain` という引数を渡すことはないため、実運用の PreToolUse 判定には一切影響しない。
+- 検出は `payload=$(cat)` より前で行う（`EXPLAIN_MODE`/`EXPLAIN_COMMAND` を設定し、stdin を読まず `payload='{}'` を使う）。これにより、ターミナルから対話的に実行した際に stdin 待ちでブロックしない。
+- `run_explain`/`_explain_segment` の実装は `check_session_approved`・`is_safe_<name>_command` 群・`split_shell_segments`・`_mask_quoted_heredoc_bodies`・`approval_safety_destructive_reason` など、実際の決定パスと**同じ関数**を呼ぶ。判定ロジックを別実装として複製していないため、`--explain` の出力と実際の decision は構造的に乖離しない。
+- 副作用なし: `do_wip_commit` を呼ばない、`SESSION_APPROVED_FILE` への書き込みを行わない、`log_decision` を呼ばない（decision log には記録されない）。`SESSION_APPROVED_FILE` の**読み取り**のみ行う（現在のセッションの session-approved 状態を反映したレポートを出すため）。
+
+### レポート内容
+
+実際の Bash 判定パス（判定順序7〜14）と同じ順序で、以下を報告する。
+
+1. `command_for_analysis`（heredoc body マスキング後。変化がある場合のみ表示）
+2. session-approved fast path（全 segment が session-approved category に一致する場合、ここで `approve` として打ち切り）
+3. `rm -rf`/`rm -f` の working repo 動的防御（該当すれば `approve` として打ち切り）
+4. destructive guard（該当すれば `block` として打ち切り）
+5. write redirect 検出（該当すれば `user_prompt` として打ち切り）
+6. `split_shell_segments` によるセグメント分割、各セグメントについて `_explain_segment` が以下を報告:
+    - `$(...)` subshell の有無と安全性
+    - pure assignment / 制御構造キーワード / if・for ヘッダー / bare test expression のいずれかに該当するか
+    - 該当すれば、`_EXPLAIN_CHECK_FUNCS`（`is_safe_segment` がディスパッチする named 関数と同じ一覧）のうちどれが一致したか
+    - どれも一致しない場合: session-approved ファイルの有無・列挙されている category・`check_session_approved` の結果
+7. 最終 verdict（`approve`/`block`/`user_prompt`）
+
+### 既知の制限
+
+`check_session_approved` の3 category（`tool:git_write`/`tool:gh_issue_write`/`tool:gh_pr_write`）は named 関数として個別に切り出していないため、`_explain_segment` はこの3つを1つのブラックボックス呼び出しとして扱う。3 category のうちどれが一致したか（例: `git checkout` が `tool:git_write` の checkout/switch 条件で一致したのか、fetch 条件でか）までは分解して報告しない。issue #283 の Scope で検討された (A)/(B) の判断のうち、`is_safe_segment` 側は (A)（named 関数化）を採用したが、`check_session_approved` 側は変更していない（実データ上、この3 category 自体は既に判別できているため優先度が低いと判断）。
+
+根拠: `hooks/auto-approve-readonly.sh`（`EXPLAIN_MODE`, `run_explain`, `_explain_segment`, `_EXPLAIN_CHECK_FUNCS`）, `tests/hooks/test-approval-hooks.sh`（`run_auto_explain` 以降）, issue #283
+
 ## 動的防御（Working Repo Dynamic Defense）
 
 ### コンセプト
@@ -474,9 +523,11 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 引用符付き `$(...)` にネストされた heredoc の認識（issue #258）については、`git commit -m "$(cat <<'EOF' ... EOF)"`（複数行コミットメッセージ、`tool:git_write` のセッション許可なしで無条件許可パターンにより承認されること）と、同じ形で heredoc 本文にアポストロフィ（`don't`）・括弧（`(#123)`）を含み `$(...)` 境界検出を壊さないことを positive case として固定する。delimiter が unquoted な heredoc が `$(...)` にネストされた場合は既存のトップレベル unquoted-delimiter 挙動と同様に通常許可フローへ戻ること、および heredoc の終端行より後、同じ `$(...)` の中に続く危険操作（例: heredoc の直後の `rm -rf /`）は masking の影響を受けず引き続き通常許可フローへ戻る（`$(...)` 内容全体を無条件許可しない）ことを negative case として固定する。
 
+`--explain`（issue #283）については、named 関数に一致する安全なコマンド（`is_safe_unix_read_tool_command` 経由の positive 出力を含む）、どの named 関数にも session-approved にも一致しないコマンド（session-approved ファイル不在の状態も含む）、destructive guard で block されるコマンド、コマンド未指定時の usage メッセージ、session-approved fast path が成立するケース、および fast path は成立しないが session-approved と named 関数の両方の一致経路を1コマンド内で同時に踏むケース（`git status && git checkout foo`）を固定する。出力が PreToolUse JSON プロトコル（`{"decision": ...}`）を一切出力しないことも検証する。
+
 このhookは完全なshell parserではない。安全に分類できない構文を自動承認対象へ広げず、通常許可フローへ戻すことを互換動作とする。任意コードを実行するbuild/test commandも自動承認しない。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-1046`
+根拠: `tests/hooks/test-approval-hooks.sh`
 
 ## 変更履歴（git log より自動生成）
 
