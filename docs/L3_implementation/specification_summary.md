@@ -82,6 +82,12 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 根拠: `commands/auto-approve-hazard-scan.md:1-162`
 
+### `/triage-issues-for-auto-approve` (`commands/triage-issues-for-auto-approve.md`)
+
+`/auto-approve-hazard-scan`（issue #284）が起票した `auto-approve-candidate` label 付き open issue を一覧化し、issue ごとに AI ハザード分析を開示した上で実装に進むかどうかをユーザーに確認する read-only のスタンドアロン入口（issue #285、#282 の一部）。`gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま転記し提示する（要約・言い換えはしない）。見出しが見つからない issue は本文全体をそのまま提示するフォールバックを持つ。承認は issue 単位の yes/no で、yes の場合も `/work` を自身で起動せず「`/work #N` を実行してください」と案内するのみに留める。`gh issue` の編集・close・comment・label 操作、および `hooks/auto-approve-readonly.sh` を含む既存コードの変更は一切行わない。`commands/triage-issues.md`（issue 衛生全般のトリアージ）とは判断基準が異なるため別ファイルとして維持し、`commands/triage-issues.md` 自体は変更しない。
+
+根拠: `commands/triage-issues-for-auto-approve.md:1-91`
+
 ### `/triage-issues` (`commands/triage-issues.md`)
 
 open issue が溜まったタイミングで実行するスタンドアロンのトリアージ入口。`gh issue list` で全 open issue を取得し、`docs/.ai/repo.profile.json` および `docs/L3_implementation/specification_summary.md` と照合して stale / inconsistent / duplicated / unclear / ready の 5 カテゴリに分類する。分類結果をユーザーに提示し、issue ごとに推奨アクション（close / comment / edit / label / skip）を「理由 + 推奨アクション」付きで提示してユーザー承認後のみ実行する。`/work`・`/task`・`/new-issue`・`/review-resolve` とは独立しており、既存コマンドの振る舞いは変更しない。
@@ -126,7 +132,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。framework layerはgeneral → JavaScript → TypeScript → React → Next.jsの依存順を明示する。現存するskill wrapperは24件でcommandsと対応する。`report-review` skillおよび`analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skillはread-only境界を保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。framework layerはgeneral → JavaScript → TypeScript → React → Next.jsの依存順を明示する。現存するskill wrapperは25件でcommandsと対応する。`report-review` skillおよび`analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skillはread-only境界を保持する。
 
 根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/` 実体一覧
 

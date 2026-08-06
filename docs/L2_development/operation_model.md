@@ -88,6 +88,12 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 根拠: `commands/auto-approve-hazard-scan.md:1-162`
 
+## triage-issues-for-auto-approve flow
+
+`triage-issues-for-auto-approve.md` は `gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま開示する（見出しが見つからない場合は本文全体を表示）。issue ごとに「実装に進みますか？（yes/no）」を確認し、yes の場合も `/work` を自身で起動せず「`/work #N` を実行してください」と案内するのみに留める。GitHub issue/label/PR の変更は一切行わない。
+
+根拠: `commands/triage-issues-for-auto-approve.md:1-91`
+
 ## ローカル・CI コマンド
 
 | コマンド | 用途 | 根拠 |
