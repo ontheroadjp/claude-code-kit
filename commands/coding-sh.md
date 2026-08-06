@@ -12,9 +12,9 @@
 
 ## 原則
 
-### 1. shebang は `#!/bin/bash` を使う
+### 1. 対象shellを明示し、その機能だけを使う
 
-新規スクリプトの shebang は `#!/bin/bash` とする。
+POSIX互換が必要なら `#!/bin/sh` とPOSIX構文を使い、配列、`[[`、`pipefail`などBash機能が必要ならBashを明示する。配置環境のshebang方針（固定パスまたは`env`）を優先する。
 
 ```bash
 # 悪い例
@@ -24,9 +24,9 @@
 #!/bin/bash
 ```
 
-### 2. 直接実行するスクリプトは先頭で `set -euo pipefail` を宣言する
+### 2. 直接実行するBashスクリプトはfail-fastを既定にする
 
-エラーの握り潰しを防ぐため、shebang の直後で `set -euo pipefail` を宣言する。
+エラーの握り潰しを防ぐため、直接実行するBashスクリプトではshebang直後の`set -euo pipefail`を既定にする。POSIX `sh` では未定義の`pipefail`を使わない。
 
 ```bash
 # 悪い例

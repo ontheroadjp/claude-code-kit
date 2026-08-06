@@ -125,7 +125,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 注意事項
 
-- ソースコードを修正する場合は修正前に言語対応の coding コマンド（`commands/coding-*.md`）を Read する。拡張子別の対応表に `.sh` → `commands/coding-sh.md` を明示している（issue #267。以前は他言語に該当しない全てが `commands/coding-general.md` のみだった）
+- ソースコードを修正する場合は修正前に言語対応の coding コマンド（`commands/coding-*.md`）を Read する。JSX/TSXではReact layerを追加し、`next` dependencyまたはNext.js configがあるprojectではさらにNext.js layerを追加する。
 - `session-approved` に L3 per-file doc パスを含めないと hook がブロックするため、Step 2 で必ず含める
 - task.md は docs-sync.md を自動実行し（Phase 2 Step 1）、完了後に git-pr.md を自動実行する。docs-sync の HARD STOP 時はユーザーへ報告して終了し、git-pr は実行しない
 

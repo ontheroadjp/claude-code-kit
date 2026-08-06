@@ -49,7 +49,7 @@ work.md の調査結果を引き継ぎ、プラン確認に必要な情報が不
 ### Step 3: 実行
 
 1. `git checkout -b patch/<slug>` でブランチを作成する
-2. ソースコードを修正する場合は言語対応の coding コマンド（`commands/coding-*.md`）を Read する。拡張子別の対応表に `.sh` → `commands/coding-sh.md` を明示している（issue #267。以前は他言語に該当しない全てが `commands/coding-general.md` のみだった）
+2. ソースコードを修正する場合は言語対応の coding コマンド（`commands/coding-*.md`）を Read する。JSX/TSXではReact layerを追加し、`next` dependencyまたはNext.js configがあるprojectではさらにNext.js layerを追加する
 3. 変更を実施する（ユーザー確認不要）
 4. `/git-commit` を実行する（`issue_number=none`, `allowed_types=[fix, refactor, chore, style, test, docs]`、`feat` は不可）
 

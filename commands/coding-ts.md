@@ -4,19 +4,18 @@
 
 ---
 
-## ツールチェーン
+## ツールチェーンの既定値
 
-- **Linter / Formatter**: Biome（lint + format）
-- **テストフレームワーク**: Vitest
-- **型チェッカー**: TypeScript コンパイラ（`strict: true`）
+- 既存プロジェクトの linter、formatter、test runner、`tsconfig.json` を優先する。
+- 新規設定では TypeScript の `strict` mode を既定とし、無効化が必要なら互換性上の理由と移行範囲を明示する。
 
 ---
 
 ## 原則
 
-### 1. `strict: true` を必ず有効にする
+### 1. 新規コードは strict mode を基準にする
 
-`tsconfig.json` の `compilerOptions` には `"strict": true` を明示する。個別フラグ（`noImplicitAny` など）で代替しない。
+新規プロジェクトでは `strict: true` を有効にする。既存プロジェクトで無効な場合、規約適用の副作用として全体を切り替えず、変更箇所の型安全性を保ちながら段階的な有効化を提案する。
 
 ```json
 // 悪い例
@@ -54,9 +53,9 @@ function parse(data: unknown) {
 }
 ```
 
-### 3. 型アサーション（`as`）原則禁止 — 型ガードを使う
+### 3. 根拠のない型アサーションを避ける
 
-`as` による強制キャストは型安全性を破壊する。型ガード関数（`is` 述語）または `in` / `typeof` / `instanceof` で型を絞り込む。
+外部入力を検証せず `as` で目的の型にすることは禁止する。型ガード、schema validation、`satisfies` を優先する。DOM APIなど、実行時条件を確認済みでTypeScriptが表現できない境界では、狭い範囲のアサーションと根拠を許容する。
 
 ```ts
 // 悪い例
@@ -87,9 +86,9 @@ const name = user!.name;
 const name = user?.name ?? '名無し';
 ```
 
-### 5. `enum` 禁止 — `const` + `as const` またはstring ユニオン型を使う
+### 5. `enum` を惰性で導入しない
 
-`enum` はランタイムオブジェクトを生成し、Tree-shaking を妨げる。定数には `const` + `as const`、型には string ユニオンを使う。
+型だけが必要なら string union、値と型の両方が必要なら `as const` objectを優先する。既存APIとの互換、numeric protocol、明示的なruntime objectが必要な場合まで `enum` を禁止しない。
 
 ```ts
 // 悪い例
@@ -109,10 +108,11 @@ type Direction = typeof Direction[keyof typeof Direction];
 type Direction = 'UP' | 'DOWN';
 ```
 
-### 6. オブジェクト形状には `interface`、ユニオン・エイリアスには `type` を使う
+### 6. `interface` と `type` は能力と既存規約で選ぶ
 
-- オブジェクトの構造定義（拡張・実装が想定される）→ `interface`
-- ユニオン型・交差型・プリミティブのエイリアス → `type`
+- declaration mergingや`implements`中心の公開契約には `interface` が適する。
+- union、intersection、mapped type、conditional typeには `type` を使う。
+- 単純なobject shapeはどちらも正しいため、リポジトリ内の一貫性を優先する。
 
 ```ts
 // 悪い例（ユニオンに interface は使えない）
