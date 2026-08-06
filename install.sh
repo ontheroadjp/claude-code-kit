@@ -20,7 +20,7 @@ mkdir -p "$CLAUDE_TEMPLATES_TARGET"
 mkdir -p "$CODEX_TEMPLATES_TARGET"
 
 echo "Linking commands -> ${CLAUDE_HOME}"
-ln -sf "$(basename ${REPO_DIR}/keybindings.json)" "${CLAUDE_HOME}/keybindings.json)"
+ln -sf "${REPO_DIR}/keybindings.json" "${CLAUDE_HOME}/keybindings.json"
 
 echo "Linking commands -> ${COMMANDS_TARGET}"
 for src in "$REPO_DIR"/commands/*.md; do
