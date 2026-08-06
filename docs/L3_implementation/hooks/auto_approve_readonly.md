@@ -531,6 +531,8 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 5748c69 feat(#283): add --explain diagnostic mode to auto-approve-readonly.sh
+- 8d684e6 fix(#280): remove 120-char truncation from auto-approve decision log
 - 0685826 feat(#276): allowlist gh --version and mise current/ls/list in auto-approve hook
 - 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
 - f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
@@ -539,5 +541,3 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
-- 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
-- 199021a feat(#236): add narrow allow-shape for gdbus introspect

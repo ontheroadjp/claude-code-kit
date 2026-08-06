@@ -128,7 +128,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ### `hooks/auto-approve-readonly.sh`
 
-PreToolUse hook。Read、session temp / session-listed file、read-only Bash、`git add`/`git commit -m`/`git fetch` の narrow な allow-shape（ローカルリポジトリ外に影響しないため session-approved 不要）、session-approved tool category を自動承認する。Write / Edit / apply_patch は working repo（Claude/Codex 起動時の PWD が属する git リポジトリ）内であれば WIP commit 後に承認する動的防御を持つ。Bash は quoted-delimiter heredoc body をプレースホルダーに置換した上で、session-approved fast path → repo 内 rm -rf 動的防御 → `rm [-f] <literal-path>`（保護対象パス`is_rm_protected_path`を除く repo 内のみ。session-approved ファイル自身は保護対象のため対象外、issue #250）の自動承認 → destructive guard → write redirect → quote-aware segment 分割 → read-only 判定の順で評価し、分類不能な構文や write mode は通常許可フローへ戻す。`$()` は中身を再帰的に `is_safe_segment` で検証し、全て read-only であれば承認する（backtick と `<()` は常時ブロック）。詳細な許可順序・対象・除外条件は[auto-approve-readonly hook specification](https://github.com/ontheroadjp/core-toolkit-for-claude/blob/main/docs/L3_implementation/hooks/auto_approve_readonly.md)を参照する。decision log は `agent=claude|codex` と `session=<id|n/a>`、および hook 自身の実行時間 `duration_ms=<ms|NA>`（`$EPOCHREALTIME` 計測。bash 5.0 未満では `NA`）を含む。
+PreToolUse hook。Read、session temp / session-listed file、read-only Bash、`git add`/`git commit -m`/`git fetch` の narrow な allow-shape（ローカルリポジトリ外に影響しないため session-approved 不要）、session-approved tool category を自動承認する。Write / Edit / apply_patch は working repo（Claude/Codex 起動時の PWD が属する git リポジトリ）内であれば WIP commit 後に承認する動的防御を持つ。Bash は quoted-delimiter heredoc body をプレースホルダーに置換した上で、session-approved fast path → repo 内 rm -rf 動的防御 → `rm [-f] <literal-path>`（保護対象パス`is_rm_protected_path`を除く repo 内のみ。session-approved ファイル自身は保護対象のため対象外、issue #250）の自動承認 → destructive guard → write redirect → quote-aware segment 分割 → read-only 判定の順で評価し、分類不能な構文や write mode は通常許可フローへ戻す。`$()` は中身を再帰的に `is_safe_segment` で検証し、全て read-only であれば承認する（backtick と `<()` は常時ブロック）。詳細な許可順序・対象・除外条件は[auto-approve-readonly hook specification](https://github.com/ontheroadjp/core-toolkit-for-claude/blob/main/docs/L3_implementation/hooks/auto_approve_readonly.md)を参照する。decision log は `agent=claude|codex` と `session=<id|n/a>`、および hook 自身の実行時間 `duration_ms=<ms|NA>`（`$EPOCHREALTIME` 計測。bash 5.0 未満では `NA`）を含む。デバッグ専用の `--explain "<command>"` エントリポイント（issue #283）があり、通常の PreToolUse 判定パスとは独立して stdin を読まずに動作し、実際の判定関数（`is_safe_<name>_command` 群、`check_session_approved` 等）を再利用しながらコマンドがどのセグメントに分割されどう判定されるかを報告する（副作用なし）。
 
 `sed` の `e` / `w`、external command を pipe する `awk getline`、`awk` の `print`/`printf` 出力リダイレクト、file output 等を含む curl short-option cluster は read-only とみなさない。Git write category は shared predicate により `+refspec` push、forced checkout/switch、forced branch deletion を除外する。write redirect 検出は quote-aware（シングルクォート内の比較演算子としての `>` を誤検知しない）で、`>&<数値fd|->` は fd 複製として background operator 扱いしない。
 
@@ -136,7 +136,7 @@ PreToolUse hook。Read、session temp / session-listed file、read-only Bash、`
 
 安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）は、hook がコマンドテキストを実行せずに値を検証できないため、read-only な解決ステップ → リテラル値埋め込みという2段階（resolve-then-embed、`CLAUDE.md` に規約化）に分けることをエージェントに求める。hook はリテラル引数のみを `is_rm_protected_path`/`is_in_working_repo` と照合する（issue #248, #250）。
 
-根拠: `hooks/auto-approve-readonly.sh:1-1705`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
+根拠: `hooks/auto-approve-readonly.sh:1-2041`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
 
 ### `hooks/lib/approval-safety.sh`
 
