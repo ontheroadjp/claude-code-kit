@@ -8,6 +8,9 @@ hook および各種スクリプトの動作検証スクリプトを置くディ
 tests/
 ├── hooks/
 │   └── test-approval-hooks.sh   ← PreToolUse hook の自動テストスクリプト
+├── commands/
+│   ├── test-report-review.sh    ← report workflow contract
+│   └── test-coding-guidelines.sh ← coding guideline contract
 └── install/
     └── test-install.sh          ← installer symlink contract の自動テストスクリプト
 ```
@@ -40,6 +43,15 @@ bash tests/hooks/test-approval-hooks.sh
 ```
 
 全テスト PASS で終了コード 0 を返す。FAIL があると終了コード 1 で終了し、失敗したテストケース名を表示する。
+
+## command contract tests
+
+`test-report-review.sh` はreport routingとread-only境界、`test-coding-guidelines.sh` はReact/Next.js layerの依存順・routing・repository非依存性を固定文字列で検証する。
+
+```bash
+bash tests/commands/test-report-review.sh
+bash tests/commands/test-coding-guidelines.sh
+```
 
 ## test-install.sh
 

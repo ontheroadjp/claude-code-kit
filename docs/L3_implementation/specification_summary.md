@@ -102,9 +102,9 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ### `/coding-*` (`commands/coding-*.md`)
 
-`coding-general` は言語非依存の原則を定義し、`coding-py`、`coding-js`、`coding-ts`、`coding-sh` はそれぞれ言語固有ルールを追加する。`coding-ts` は `coding-general` と `coding-js` を先に参照する。`coding-sh` は shell script 向けに ShellCheck 準拠・`set -euo pipefail`・quoting・パラメータ展開優先を定義し、`.github/workflows/shellcheck.yml` が CI で機械的に強制する。
+`coding-general` はrepository固有の設定を優先する言語非依存原則を定義し、`coding-py`、`coding-js`、`coding-ts`、`coding-sh` が言語固有ルールを追加する。`coding-react` はJavaScript/TypeScript layerの後にpure render、Hook、state、Effect、identity、accessibility、behavior testのanti-patternを追加し、`coding-nextjs` はさらにserver/client boundary、認可、cache、rendering mode、routing、secret、mutationのanti-patternを追加する。Next.jsのversion依存semanticsは導入済みversionの一次情報で確認する。
 
-根拠: `commands/coding-general.md:1-3`, `commands/coding-py.md:1-4`, `commands/coding-js.md:1-4`, `commands/coding-ts.md:1-12`, `commands/coding-sh.md:1-92`
+根拠: `commands/coding-general.md:1-52`, `commands/coding-py.md:1-93`, `commands/coding-js.md:1-85`, `commands/coding-ts.md:1-129`, `commands/coding-sh.md:1-88`, `commands/coding-react.md:1-43`, `commands/coding-nextjs.md:1-43`
 
 ### `/git-commit` (`commands/git-commit.md`)
 
@@ -120,7 +120,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`coding-py` / `coding-js` / `coding-ts` / `coding-sh` は general など依存する command も読む構造を持つ。現存する skill wrapper は21件で、commands と対応する。`report-review` skill および `analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skill は read-only 境界を保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。framework layerはgeneral → JavaScript → TypeScript → React → Next.jsの依存順を明示する。現存するskill wrapperは23件でcommandsと対応する。`report-review` skillおよび`analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skillはread-only境界を保持する。
 
 根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/` 実体一覧
 
@@ -203,6 +203,10 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 
 根拠: `tests/commands/test-report-review.sh:1-73`
+
+`tests/commands/test-coding-guidelines.sh` はReact/Next.js layerの依存順、代表anti-pattern、task/patch routing、およびcoding commandにlocal absolute pathやrepository名が混入しないことを静的検証する。
+
+根拠: `tests/commands/test-coding-guidelines.sh:1-53`
 
 `tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、Claude Code と Codex CLI の両 template directory に repository source への個別 symlink が作られること、旧 target が作成されないこと、再実行が冪等であることを検証する。
 

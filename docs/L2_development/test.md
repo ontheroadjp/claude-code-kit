@@ -2,9 +2,9 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が3本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はない。`tests/hooks/test-approval-hooks.sh` は `.github/workflows/test.yml` の `approval-hooks` job で CI 実行されるが、`tests/commands/test-report-review.sh`・`tests/install/test-install.sh`・pytest は現状ローカル検証のみである。
+このリポジトリには Bash で直接実行する shell tests が4本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はない。`tests/hooks/test-approval-hooks.sh` は `.github/workflows/test.yml` の `approval-hooks` job で CI 実行されるが、`tests/commands/test-report-review.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest は現状ローカル検証のみである。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh`, `tests/install/test-install.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
 
 ## Hook safety test
 
@@ -27,6 +27,14 @@ bash tests/commands/test-report-review.sh
 `test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、command/skill catalog 整合性を確認する。
 
 根拠: `tests/commands/test-report-review.sh:1-73`
+
+```bash
+bash tests/commands/test-coding-guidelines.sh
+```
+
+`test-coding-guidelines.sh` はReact/Next.js layerの依存順、task/patch routing、代表anti-pattern、local pathやrepository名の混入防止を確認する。
+
+根拠: `tests/commands/test-coding-guidelines.sh:1-53`
 
 ## Installer contract test
 
@@ -66,5 +74,5 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-report-review.sh`, `test-install.sh`）と pytest は CI に登録されていない。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-report-review.sh`, `test-coding-guidelines.sh`, `test-install.sh`）と pytest は CI に登録されていない。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。

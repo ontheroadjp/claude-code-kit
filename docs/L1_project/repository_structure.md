@@ -46,9 +46,9 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 ### `tests/`
 
-shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
+shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/commands/test-coding-guidelines.sh` は coding layerの合成・routing・repository非依存性、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/install/test-install.sh:1-71`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh:1-53`, `tests/install/test-install.sh:1-71`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
 
 ### `templates/`
 
