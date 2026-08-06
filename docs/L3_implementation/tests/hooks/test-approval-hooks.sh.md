@@ -19,8 +19,9 @@
 - session-approved fast path、destructive guard、working repo dynamic defense（WIP commit）
 - `rm [-f] <literal-path>` の自動承認（issue #248）: working repo 内パスへの literal（変数・グロブ・複数トークンなし）な `rm`/`rm -f` の positive case（WIP commit 作成も検証）と、variable 参照・repo root 自体・`.git` 配下・複数トークン・グロブ・`-rf`（recursive、対象外）・保護対象パスを negative case として固定。現在セッションの session-approved ファイル自身への literal `rm`/`rm -f` は `is_rm_protected_path` により保護対象であり、常に negative case（issue #250。issue #248 時点では positive case だった）
 - `xargs`/`find -exec`（issue #254）: read-only な wrapped command を持つ `xargs`（分離/添字形の `-I`、`-0`、`-n`/`-P`、`--` marker、パイプライン経由）と `find -exec`/`-execdir`（`\;`/`+` 終端、複数 `-exec` 節）の positive case、unsafe な wrapped command・終端記号欠落・一部の節だけ unsafe・認識対象外の xargs オプション（long option・クラスタ化）・`sh -c` のような未対応 wrapped command・変数展開による smuggling の negative case。`-fprintf` は `-exec` 系と異なりコマンドをラップしないため既存の `-delete` と同様に無条件拒否のままであることも固定
+- `--explain "<command>"` 診断モード（issue #283）: `run_auto_explain` ヘルパーで argv 経由で起動し、named 関数一致（`is_safe_unix_read_tool_command`）、どの named 関数にも session-approved にも一致しない場合（session-approved ファイル不在の状態も含む）、destructive guard による block、コマンド未指定時の usage メッセージ、session-approved fast path が成立するケース、fast path は不成立だが named 関数一致と `check_session_approved` 一致の両方を1コマンド内で踏むケース（`git status && git checkout foo`）を検証。出力が PreToolUse JSON プロトコル（`{"decision": ...}`）を一切含まないことも固定
 
-根拠: `tests/hooks/test-approval-hooks.sh:22-100`, `tests/hooks/test-approval-hooks.sh:240-360`
+根拠: `tests/hooks/test-approval-hooks.sh:22-100`, `tests/hooks/test-approval-hooks.sh:240-360`, `tests/hooks/test-approval-hooks.sh`（`--explain` 診断モードセクション）
 
 ## 重要な設計判断
 
@@ -42,6 +43,8 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- 5748c69 feat(#283): add --explain diagnostic mode to auto-approve-readonly.sh
+- 8d684e6 fix(#280): remove 120-char truncation from auto-approve decision log
 - 0685826 feat(#276): allowlist gh --version and mise current/ls/list in auto-approve hook
 - d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
@@ -50,5 +53,4 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
-- 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist

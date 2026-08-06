@@ -8,7 +8,25 @@ set -euo pipefail
 # older bash (e.g. macOS default /bin/bash 3.2).
 HOOK_START_TIME="${EPOCHREALTIME:-}"
 
-payload=$(cat)
+# --explain "<command>": debug-only entry point (issue #283) that reports how
+# a Bash command would be segmented and judged, without going through the
+# real PreToolUse stdin protocol. Detected here, before payload=$(cat), so
+# invoking it directly from a terminal never blocks waiting on stdin. The
+# actual report (run_explain) is dispatched later, once every allow-shape
+# function it inspects has been defined — see the EXPLAIN_MODE check right
+# before the normal tool_name dispatch below.
+EXPLAIN_MODE=0
+EXPLAIN_COMMAND=""
+if [ "${1:-}" = "--explain" ]; then
+    EXPLAIN_MODE=1
+    EXPLAIN_COMMAND="${2:-}"
+fi
+
+if [ "$EXPLAIN_MODE" = "1" ]; then
+    payload='{}'
+else
+    payload=$(cat)
+fi
 tool_name=$(echo "$payload" | jq -r '.tool_name // ""')
 
 # Resolve repo root (handles symlink from ~/.claude/hooks/)
@@ -1215,6 +1233,606 @@ is_rm_f_on_safe_literal_path() {
     return 0
 }
 
+# Each is_safe_<name>_command function below is a self-contained allow-shape
+# predicate: it checks the command-name prefix itself, so calling it on a
+# segment that belongs to a different command family simply returns 1 (no
+# match) rather than raising an error. is_safe_segment (dispatcher, below)
+# therefore calls them as a flat, order-independent sequence — the command-
+# name prefixes are mutually exclusive, so which one "claims" a given segment
+# is never ambiguous. This also makes each function independently callable
+# (and independently reportable) for hooks/auto-approve-readonly.sh --explain
+# without touching the allow-shape logic itself (issue #283).
+
+# tee writes to files — block unconditionally regardless of future allowlist additions
+is_blocked_tee_command() {
+    printf '%s' "$1" | grep -qE '^tee(\s|$)'
+}
+
+is_safe_gh_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^gh[[:space:]]+(issue|pr|label|repo|release|run|workflow)[[:space:]]+(list|view|status)(\s|$)' && return 0
+    printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+checks(\s|$)' && return 0
+    printf '%s' "$seg" | grep -qE '^gh[[:space:]]+auth[[:space:]]+status(\s|$)' && return 0
+    if printf '%s' "$seg" | grep -qE '^gh[[:space:]]+api(\s|$)'; then
+        # A variable reference can smuggle -X/-f/-F/etc past this exclusion scan.
+        _has_variable_expansion "$seg" && return 1
+        # -X/-f/-F accept an attached value with no separator (e.g. -XPOST, -fkey=value)
+        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X[^[:space:]]*|-f[^[:space:]]*|-F[^[:space:]]*|--method([=[:space:]]|$)|--field([=[:space:]]|$)|--raw-field([=[:space:]]|$)|--input([=[:space:]]|$))' && return 1
+        return 0
+    fi
+    return 1
+}
+
+is_safe_cd_command() {
+    printf '%s' "$1" | grep -qE '^cd(\s|$)'
+}
+
+# Standard read-only Unix tools (prefer fd over find). These are safe
+# regardless of arguments/flags (see _has_variable_expansion's docstring),
+# so normalizing a known-safe absolute-path prefix here needs no
+# additional variable-expansion guard beyond what already applies to
+# bare-name invocations.
+is_safe_unix_read_tool_command() {
+    printf '%s' "$(normalize_absolute_path_prefix "$1")" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl|sha256sum|strings|readlink|ss|apt-cache|desktop-file-validate|man|diff|sleep)(\s|$)'
+}
+
+is_safe_find_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^find(\s|$)' || return 1
+    # A variable reference can smuggle -delete/-exec/etc past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    # -delete/-fls/-fprint* mutate or write files directly and don't wrap
+    # a command — always reject, no recursive validation applies.
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(delete|fls|fprint|fprintf)([[:space:]]|$)' && return 1
+    # -exec/-execdir/-ok/-okdir wrap an arbitrary command; validate each
+    # clause's wrapped command recursively instead of rejecting outright
+    # (see _find_exec_clauses_are_safe).
+    if printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(exec|execdir|ok|okdir)([[:space:]]|$)'; then
+        _find_exec_clauses_are_safe "$seg" && return 0
+        return 1
+    fi
+    return 0
+}
+
+is_safe_xargs_command() {
+    local seg="$1" xargs_rest xargs_cmd
+    printf '%s' "$seg" | grep -qE '^xargs(\s|$)' || return 1
+    # A variable reference can smuggle a dangerous xargs option or the
+    # wrapped command itself past this scan.
+    _has_variable_expansion "$seg" && return 1
+    xargs_rest=$(printf '%s' "$seg" | sed -E 's/^xargs[[:space:]]*//')
+    xargs_cmd=$(_xargs_wrapped_command "$xargs_rest") || return 1
+    is_safe_segment "$xargs_cmd"
+}
+
+is_safe_sed_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^sed(\s|$)' || return 1
+    # A variable reference can smuggle -i/e/w past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--in-place)([^[:space:]]*|$)' && return 1
+    printf '%s' "$seg" | grep -qE "(^|[^[:alnum:]_-])([0-9,$]+)?[ew]([[:space:]]|['\"]|$)" && return 1
+    return 0
+}
+
+is_safe_sort_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^sort(\s|$)' || return 1
+    # A variable reference can smuggle -o/--output past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-o|--output)([=[:space:]]|$)' && return 1
+    return 0
+}
+
+is_safe_yq_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^yq(\s|$)' || return 1
+    # A variable reference can smuggle -i/--inplace past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--inplace)([=[:space:]]|$)' && return 1
+    return 0
+}
+
+is_safe_awk_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^awk(\s|$)' || return 1
+    # Quote-tracked, so an awk script's single-quoted $1-style field refs
+    # are not flagged — only a genuinely unquoted $ outside the script
+    # rejects. A variable reference could otherwise smuggle system()/
+    # getline past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE 'system[[:space:]]*\(' && return 1
+    printf '%s' "$seg" | grep -qE '\|[[:space:]]*getline([[:space:](;}]|$)' && return 1
+    # awk's own print/printf output-redirect operator (e.g. print $1 >
+    # "file", printf "%s" >> "file") writes files independently of the
+    # shell-level write-redirect check above, which only sees the
+    # single-quoted script as opaque text. Reject the whole segment if a
+    # '>' appears anywhere after a print/printf keyword — deliberately
+    # coarse (it also catches a literal '>' inside a print argument
+    # string, e.g. print "a>b") since a false prompt-fallback here is
+    # harmless but a missed file write is not.
+    printf '%s' "$seg" | grep -qE '\b(print|printf)\b.*>' && return 1
+    return 0
+}
+
+is_safe_env_command() {
+    printf '%s' "$1" | grep -qE '^env[[:space:]]*$'
+}
+
+is_safe_date_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^date(\s|$)' || return 1
+    # A variable reference can smuggle -s/--set past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-s|--set)([=[:space:]]|$)' && return 1
+    return 0
+}
+
+is_safe_hostname_command() {
+    printf '%s' "$1" | grep -qE '^hostname[[:space:]]*$'
+}
+
+# journalctl — read-only log query; exclude maintenance/mutating operations
+is_safe_journalctl_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^journalctl(\s|$)' || return 1
+    # A variable reference can smuggle --vacuum-*/--rotate/etc past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--smart-relinquish-var|--setup-keys|--update-catalog|--force)([=[:space:]]|$)' && return 1
+    return 0
+}
+
+# gsettings — allow read-only introspection subcommands only
+is_safe_gsettings_command() {
+    printf '%s' "$1" | grep -qE '^gsettings[[:space:]]+(get|list-schemas|list-relocatable-schemas|list-keys|list-children|list-recursively|range|describe|writable)(\s|$)'
+}
+
+# gnome-extensions — allow read-only introspection subcommands only
+is_safe_gnome_extensions_command() {
+    printf '%s' "$1" | grep -qE '^gnome-extensions[[:space:]]+(info|list)(\s|$)'
+}
+
+# gdbus — allow read-only introspection subcommand only; call/emit/wait/
+# monitor can invoke arbitrary D-Bus methods with unknowable side effects
+is_safe_gdbus_command() {
+    printf '%s' "$1" | grep -qE '^gdbus[[:space:]]+introspect(\s|$)'
+}
+
+# dpkg — allow read-only query flags only (see is_safe_dpkg_query_command)
+is_safe_dpkg_command() {
+    printf '%s' "$1" | grep -qE '^dpkg(\s|$)' || return 1
+    is_safe_dpkg_query_command "$1"
+}
+
+# gresource — allow read-only introspection subcommands only; compile
+# writes a binary resource bundle to disk and must remain excluded
+is_safe_gresource_command() {
+    printf '%s' "$1" | grep -qE '^gresource[[:space:]]+(list|list-sections)(\s|$)'
+}
+
+# tmux — allow read-only introspection subcommands only; send-keys can
+# inject input into another pane/session and kill-* can terminate them
+is_safe_tmux_command() {
+    printf '%s' "$1" | grep -qE '^tmux[[:space:]]+(display-message|list-windows|list-sessions|list-panes|show-options)(\s|$)'
+}
+
+# Runtime version / help-only invocations
+is_safe_runtime_version_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby|gh)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
+    printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0
+    printf '%s' "$seg" | grep -qE '^go[[:space:]]+version[[:space:]]*$' && return 0
+    printf '%s' "$seg" | grep -qE '^(bash|zsh)[[:space:]]+--version[[:space:]]*$' && return 0
+    printf '%s' "$seg" | grep -qE '^codex[[:space:]]+(--version|--help|-h)[[:space:]]*$' && return 0
+    return 1
+}
+
+# bash -n / node --check: an allowlist of exactly "<cmd> <flag> <file>" with
+# no other tokens, rather than a denylist of dangerous flags. node in
+# particular treats -/_ as interchangeable in long option names and can
+# preload modules via --experimental-config-file, so any denylist of
+# specific flag spellings is provably incomplete; only the single-argument
+# shape is safe to auto-approve.
+# A variable reference — quoted or not — is opaque here: unquoted, bash
+# word-splits it into an arbitrary number of argv entries at execution
+# time; quoted, its resolved value can still itself start with "-" and
+# be parsed as a flag despite the leading-non-dash literal-text check
+# below. Either way it can defeat the single-argument shape these two
+# patterns require, so reject rather than trust the literal-text token.
+is_safe_bash_syntax_check_command() {
+    local seg="$1"
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$'
+}
+
+is_safe_node_syntax_check_command() {
+    local seg="$1"
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$'
+}
+
+# command -v <name>: read-only path/function/alias lookup, equivalent
+# to `type`. Same single-argument shape rationale as bash -n / node
+# --check above — a variable reference could otherwise smuggle extra
+# tokens or a leading-dash flag past a literal-text check.
+is_safe_command_v_command() {
+    local seg="$1"
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '^command[[:space:]]+-v[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$'
+}
+
+# kill -0 <pid...>: signal 0 sends no actual signal — it only tests
+# whether the process exists and is signalable — so this is a read-only
+# liveness check, not a mutation. Deliberately narrow: only digit-only
+# PIDs (no leading '-', which would target a process GROUP instead) and
+# no other signal/flag are accepted; any other `kill` invocation falls
+# through to the normal prompt.
+is_safe_kill_probe_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^kill(\s|$)' || return 1
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '^kill[[:space:]]+-0([[:space:]]+[0-9]+)+[[:space:]]*$'
+}
+
+# mkdir -p restricted to the session tmp directory (or a descendant of
+# it): this repo's own documented convention for AI-agent scratch files
+# (see CLAUDE.md "一時ファイルの作成"). Only the exact `-p <single-path>`
+# shape is accepted — no other flags, no multiple paths — and the target
+# must resolve under SESSION_TMP_DIR, mirroring the Write/Edit tool's
+# existing is_session_tmp_file check.
+is_safe_mkdir_session_tmp_command() {
+    local seg="$1" mk_path
+    printf '%s' "$seg" | grep -qE '^mkdir(\s|$)' || return 1
+    _has_variable_expansion "$seg" && return 1
+    if printf '%s' "$seg" | grep -qE '^mkdir[[:space:]]+-p[[:space:]]+[^[:space:]]+[[:space:]]*$'; then
+        mk_path=$(printf '%s' "$seg" | sed -E 's/^mkdir[[:space:]]+-p[[:space:]]+//; s/[[:space:]]*$//')
+        case "$mk_path" in
+            \"*\") mk_path="${mk_path#\"}"; mk_path="${mk_path%\"}" ;;
+            \'*\') mk_path="${mk_path#\'}"; mk_path="${mk_path%\'}" ;;
+        esac
+        case "$mk_path" in
+            *[\"\'\ ]*) return 1 ;;
+        esac
+        is_session_tmp_dir_or_descendant "$mk_path" && return 0
+    fi
+    return 1
+}
+
+# curl — allow default GET/HEAD requests only; reject writes and custom methods
+is_safe_curl_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^curl(\s|$)' || return 1
+    # A variable reference can smuggle -o/-X/--data/etc past this exclusion scan.
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-[^-[:space:]]*[oOXdFTK][^[:space:]]*|--output|--remote-name|--remote-name-all|--request|--data[^[:space:]]*|--form[^[:space:]]*|--upload-file|--json|--config)([=[:space:]]|$)' && return 1
+    return 0
+}
+
+# npm — allow metadata inspection only; scripts and package mutations require a prompt
+is_safe_npm_command() {
+    local seg="$1"
+    printf '%s' "$seg" | grep -qE '^npm(\s|$)' || return 1
+    printf '%s' "$seg" | grep -qE '^npm[[:space:]]+(view|info|show|search|list|ls|outdated|explain|why|prefix|root|help)([[:space:]]|$)' && return 0
+    printf '%s' "$seg" | grep -qE '^npm[[:space:]]+config[[:space:]]+(get|list|ls)([[:space:]]|$)' && return 0
+    printf '%s' "$seg" | grep -qE '^npm[[:space:]]+run[[:space:]]*$' && return 0
+    return 1
+}
+
+# mise — allow read-only introspection subcommands only (`current`/`ls`/
+# `list` report active/installed tool versions with no destructive flags);
+# `use`/`install`/`settings set`/`trust`/etc. are not matched and fall
+# through to the normal confirmation prompt.
+is_safe_mise_command() {
+    printf '%s' "$1" | grep -qE '^mise[[:space:]]+(current|ls|list)([[:space:]]|$)'
+}
+
+is_safe_segment() {
+    local seg condition
+    seg=$(printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    [ -z "$seg" ] && return 0
+
+    has_unsupported_expansion "$seg" && return 1
+
+    # If the segment contains $(), validate each subshell's content recursively,
+    # then strip them out so the remaining command can be checked against the allowlist.
+    if printf '%s' "$seg" | grep -qE '\$\('; then
+        _subshells_are_safe "$seg" || return 1
+        seg=$(_strip_subshells "$seg")
+    fi
+
+    # Pure variable assignment with a safe RHS (e.g. VAR=$(safe_cmd), VAR="string")
+    _is_pure_assignment "$seg" && return 0
+
+    case "$seg" in
+        then|else|fi|do|done) return 0 ;;
+        then[[:space:]]*) is_safe_segment "${seg#then}" && return 0; return 1 ;;
+        else[[:space:]]*) is_safe_segment "${seg#else}" && return 0; return 1 ;;
+        do[[:space:]]*) is_safe_segment "${seg#do}" && return 0; return 1 ;;
+    esac
+    case "$seg" in
+        if[[:space:]]*)
+            condition="${seg#if}"
+            condition=$(printf '%s' "$condition" | sed 's/^[[:space:]]*//')
+            is_safe_test_expression "$condition" && return 0
+            return 1
+            ;;
+        for[[:space:]]*)
+            is_safe_for_in_list "$seg" && return 0
+            return 1
+            ;;
+    esac
+    is_safe_test_expression "$seg" && return 0
+
+    is_blocked_tee_command "$seg" && return 1
+
+    is_safe_git_read_command "$seg" && return 0
+    is_safe_local_git_write_command "$seg" && return 0
+    is_safe_gh_command "$seg" && return 0
+    is_safe_cd_command "$seg" && return 0
+    is_safe_unix_read_tool_command "$seg" && return 0
+    is_safe_find_command "$seg" && return 0
+    is_safe_xargs_command "$seg" && return 0
+    is_safe_sed_command "$seg" && return 0
+    is_safe_sort_command "$seg" && return 0
+    is_safe_yq_command "$seg" && return 0
+    is_safe_awk_command "$seg" && return 0
+    is_safe_env_command "$seg" && return 0
+    is_safe_date_command "$seg" && return 0
+    is_safe_hostname_command "$seg" && return 0
+    is_safe_journalctl_command "$seg" && return 0
+    is_safe_gsettings_command "$seg" && return 0
+    is_safe_gnome_extensions_command "$seg" && return 0
+    is_safe_gdbus_command "$seg" && return 0
+    is_safe_dpkg_command "$seg" && return 0
+    is_safe_gresource_command "$seg" && return 0
+    is_safe_tmux_command "$seg" && return 0
+    is_safe_runtime_version_command "$seg" && return 0
+    is_safe_bash_syntax_check_command "$seg" && return 0
+    is_safe_node_syntax_check_command "$seg" && return 0
+    is_safe_command_v_command "$seg" && return 0
+    is_safe_kill_probe_command "$seg" && return 0
+    is_safe_mkdir_session_tmp_command "$seg" && return 0
+    is_safe_curl_command "$seg" && return 0
+    is_safe_npm_command "$seg" && return 0
+    is_safe_mise_command "$seg" && return 0
+
+    [ "$SESSION_ID_IS_FALLBACK" = "0" ] && check_session_approved "$seg" && return 0
+
+    return 1
+}
+
+# Named allow-shape functions is_safe_segment dispatches to, in the same
+# order it tries them, plus is_blocked_tee_command. Used by run_explain to
+# report which one (if any) matched a given segment, without re-implementing
+# any allow-shape logic (issue #283).
+_EXPLAIN_CHECK_FUNCS=(
+    is_blocked_tee_command
+    is_safe_git_read_command
+    is_safe_local_git_write_command
+    is_safe_gh_command
+    is_safe_cd_command
+    is_safe_unix_read_tool_command
+    is_safe_find_command
+    is_safe_xargs_command
+    is_safe_sed_command
+    is_safe_sort_command
+    is_safe_yq_command
+    is_safe_awk_command
+    is_safe_env_command
+    is_safe_date_command
+    is_safe_hostname_command
+    is_safe_journalctl_command
+    is_safe_gsettings_command
+    is_safe_gnome_extensions_command
+    is_safe_gdbus_command
+    is_safe_dpkg_command
+    is_safe_gresource_command
+    is_safe_tmux_command
+    is_safe_runtime_version_command
+    is_safe_bash_syntax_check_command
+    is_safe_node_syntax_check_command
+    is_safe_command_v_command
+    is_safe_kill_probe_command
+    is_safe_mkdir_session_tmp_command
+    is_safe_curl_command
+    is_safe_npm_command
+    is_safe_mise_command
+)
+
+# Reports why a single segment does or does not auto-approve. Mirrors
+# is_safe_segment's own control flow step by step (subshell stripping, pure
+# assignment, control keywords, if/for headers, bare test expressions, then
+# the flat named-function dispatch) instead of just calling is_safe_segment
+# once, so each intermediate decision is visible. Returns 0 if the segment
+# is safe, 1 otherwise — same contract as is_safe_segment.
+_explain_segment() {
+    local seg="$1" trimmed
+    trimmed=$(printf '%s' "$seg" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    printf 'segment: %s\n' "$seg"
+
+    if [ -z "$trimmed" ]; then
+        printf '  verdict: safe (empty segment)\n\n'
+        return 0
+    fi
+
+    if has_unsupported_expansion "$trimmed"; then
+        printf '  verdict: user_prompt (backtick / process substitution / unsupported background operator)\n\n'
+        return 1
+    fi
+
+    local check_seg="$trimmed"
+    if printf '%s' "$check_seg" | grep -qE '\$\('; then
+        if _subshells_are_safe "$check_seg"; then
+            check_seg=$(_strip_subshells "$check_seg")
+            # shellcheck disable=SC2016  # literal "$(...)" in the message, not an expansion
+            printf '  subshells: all $(...) content is safe (stripped to a placeholder for the checks below)\n'
+        else
+            # shellcheck disable=SC2016  # literal "$(...)" in the message, not an expansion
+            printf '  verdict: user_prompt ($(...) subshell contains an unsafe command)\n\n'
+            return 1
+        fi
+    fi
+
+    if _is_pure_assignment "$check_seg"; then
+        printf '  matched: _is_pure_assignment (VAR=safe-value)\n  verdict: safe\n\n'
+        return 0
+    fi
+
+    case "$check_seg" in
+        then|else|fi|do|done|then[[:space:]]*|else[[:space:]]*|do[[:space:]]*)
+            printf '  matched: control-structure keyword (then/else/do/fi/done) — body is evaluated as its own segment\n  verdict: safe\n\n'
+            return 0
+            ;;
+    esac
+    case "$check_seg" in
+        if[[:space:]]*)
+            local condition
+            condition=$(printf '%s' "${check_seg#if}" | sed 's/^[[:space:]]*//')
+            if is_safe_test_expression "$condition"; then
+                printf '  matched: is_safe_test_expression (if condition)\n  verdict: safe\n\n'
+                return 0
+            fi
+            printf '  verdict: user_prompt (if condition is not a safe test expression)\n\n'
+            return 1
+            ;;
+        for[[:space:]]*)
+            if is_safe_for_in_list "$check_seg"; then
+                printf '  matched: is_safe_for_in_list (for-header; body is evaluated as its own segment)\n  verdict: safe\n\n'
+                return 0
+            fi
+            printf '  verdict: user_prompt (for-header is not a safe "for VAR in LIST" shape)\n\n'
+            return 1
+            ;;
+    esac
+    if is_safe_test_expression "$check_seg"; then
+        printf '  matched: is_safe_test_expression (bare test)\n  verdict: safe\n\n'
+        return 0
+    fi
+
+    local func matched=""
+    for func in "${_EXPLAIN_CHECK_FUNCS[@]}"; do
+        if "$func" "$check_seg"; then
+            matched="$func"
+            break
+        fi
+    done
+
+    if [ "$matched" = "is_blocked_tee_command" ]; then
+        printf '  matched: is_blocked_tee_command\n  verdict: user_prompt (tee writes files, always blocked)\n\n'
+        return 1
+    fi
+
+    if [ -n "$matched" ]; then
+        printf '  matched: %s\n  verdict: safe\n\n' "$matched"
+        return 0
+    fi
+
+    printf '  matched: none of the %d named allow-shape checks\n' "${#_EXPLAIN_CHECK_FUNCS[@]}"
+
+    if [ "$SESSION_ID_IS_FALLBACK" = "1" ]; then
+        printf '  session-approved: not consulted (no resolvable session id)\n'
+    elif [ ! -f "$SESSION_APPROVED_FILE" ]; then
+        printf '  session-approved: no file at %s\n' "$SESSION_APPROVED_FILE"
+    else
+        local listed_categories
+        listed_categories=$(grep -oE '^tool:[A-Za-z_]+' "$SESSION_APPROVED_FILE" 2>/dev/null | paste -sd, -)
+        printf '  session-approved: %s (listed categories: %s)\n' "$SESSION_APPROVED_FILE" "${listed_categories:-none}"
+        if check_session_approved "$check_seg"; then
+            printf '  matched: check_session_approved\n  verdict: safe\n\n'
+            return 0
+        fi
+        printf '  check_session_approved: no listed category covers this segment\n'
+    fi
+
+    printf '  verdict: user_prompt (no allow-shape or session-approved category matched)\n\n'
+    return 1
+}
+
+# --explain "<command>" report (issue #283). Re-derives command_for_analysis
+# and command_normalized the same way the real Bash decision path does
+# (below), then reports the session fast path / dynamic-defense / destructive
+# guard / write-redirect checks and, for each segment, which named
+# allow-shape function (if any) matched via _explain_segment. Read-only: it
+# calls do_wip_commit nowhere and never touches SESSION_APPROVED_FILE or the
+# decision log, so running it has no side effects on real session state.
+run_explain() {
+    local raw_command="$1"
+    if [ -z "$raw_command" ]; then
+        printf 'usage: %s --explain "<command>"\n' "${0##*/}"
+        return 0
+    fi
+
+    local command_for_analysis command_normalized
+
+    printf '=== hooks/auto-approve-readonly.sh --explain ===\n'
+    printf 'command: %s\n\n' "$raw_command"
+
+    command_for_analysis=$(_mask_quoted_heredoc_bodies "$raw_command")
+    if [ "$command_for_analysis" != "$raw_command" ]; then
+        printf 'command_for_analysis (after heredoc-body masking): %s\n\n' "$command_for_analysis"
+    fi
+
+    # Step 1 (fast path): every segment already covered by a session-approved category
+    if [ "$SESSION_ID_IS_FALLBACK" = "0" ] && [ -f "$SESSION_APPROVED_FILE" ]; then
+        local _sa_norm _sa_all=1 _sa_seg
+        _sa_norm=$(printf '%s' "$command_for_analysis" \
+            | sed 's/\\|/__ESCAPED_PIPE__/g; s/[0-9]*>>\/dev\/null//g; s/[0-9]*>\/dev\/null//g; s/&>>\/dev\/null//g; s/&>\/dev\/null//g')
+        while IFS= read -r _sa_seg; do
+            _sa_seg=$(printf '%s' "$_sa_seg" | sed 's/__ESCAPED_PIPE__/\\|/g; s/^[[:space:]]*//; s/[[:space:]]*$//')
+            [ -z "$_sa_seg" ] && continue
+            check_session_approved "$_sa_seg" || { _sa_all=0; break; }
+        done < <(split_shell_segments "$_sa_norm")
+        if [ "$_sa_all" = "1" ]; then
+            printf 'verdict: approve (session-approved fast path — every segment matches a listed category)\n'
+            return 0
+        fi
+    fi
+
+    # Step 2: rm -rf / rm -f on a working-repo path — dynamic defense
+    if is_rm_rf_on_working_repo_path "$command_for_analysis"; then
+        printf 'verdict: approve (rm -rf on a working-repo path — dynamic defense: WIP commit then approve)\n'
+        return 0
+    fi
+    if is_rm_f_on_safe_literal_path "$command_for_analysis"; then
+        printf 'verdict: approve (rm [-f] on a literal working-repo path — dynamic defense: WIP commit then approve)\n'
+        return 0
+    fi
+
+    local destructive_reason
+    if destructive_reason=$(approval_safety_destructive_reason "$command_for_analysis"); then
+        printf 'verdict: block (%s)\n' "$destructive_reason"
+        return 0
+    fi
+
+    command_normalized=$(printf '%s' "$command_for_analysis" \
+        | sed 's/\\|/__ESCAPED_PIPE__/g; s/[0-9]*>>\/dev\/null//g; s/[0-9]*>\/dev\/null//g; s/&>>\/dev\/null//g; s/&>\/dev\/null//g')
+
+    if _has_unquoted_write_redirect "$command_normalized"; then
+        printf 'verdict: user_prompt (unquoted file-write redirect detected)\n'
+        return 0
+    fi
+
+    printf 'segments (split on newline / ; / | / || / &&, quote-aware):\n\n'
+
+    local overall_safe=1 segment
+    while IFS= read -r segment; do
+        segment=$(printf '%s' "$segment" | sed 's/__ESCAPED_PIPE__/\\|/g')
+        [ -z "$(printf '%s' "$segment" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')" ] && continue
+        _explain_segment "$segment" || overall_safe=0
+    done < <(split_shell_segments "$command_normalized")
+
+    if [ "$overall_safe" = "1" ]; then
+        printf 'verdict: approve (every segment matched a safe allow-shape or session-approved category)\n'
+    else
+        printf 'verdict: user_prompt (at least one segment matched no safe allow-shape or session-approved category)\n'
+    fi
+}
+
+if [ "$EXPLAIN_MODE" = "1" ]; then
+    run_explain "$EXPLAIN_COMMAND"
+    exit 0
+fi
+
 # Always approve Read tool
 if [ "$tool_name" = "Read" ]; then
     file_path=$(echo "$payload" | jq -r '.tool_input.file_path // "-"')
@@ -1405,263 +2023,6 @@ if _has_unquoted_write_redirect "$command_normalized"; then
     exit 0
 fi
 
-is_safe_segment() {
-    local seg condition
-    seg=$(printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-    [ -z "$seg" ] && return 0
-
-    has_unsupported_expansion "$seg" && return 1
-
-    # If the segment contains $(), validate each subshell's content recursively,
-    # then strip them out so the remaining command can be checked against the allowlist.
-    if printf '%s' "$seg" | grep -qE '\$\('; then
-        _subshells_are_safe "$seg" || return 1
-        seg=$(_strip_subshells "$seg")
-    fi
-
-    # Pure variable assignment with a safe RHS (e.g. VAR=$(safe_cmd), VAR="string")
-    _is_pure_assignment "$seg" && return 0
-
-    case "$seg" in
-        then|else|fi|do|done) return 0 ;;
-        then[[:space:]]*) is_safe_segment "${seg#then}" && return 0; return 1 ;;
-        else[[:space:]]*) is_safe_segment "${seg#else}" && return 0; return 1 ;;
-        do[[:space:]]*) is_safe_segment "${seg#do}" && return 0; return 1 ;;
-    esac
-    case "$seg" in
-        if[[:space:]]*)
-            condition="${seg#if}"
-            condition=$(printf '%s' "$condition" | sed 's/^[[:space:]]*//')
-            is_safe_test_expression "$condition" && return 0
-            return 1
-            ;;
-        for[[:space:]]*)
-            is_safe_for_in_list "$seg" && return 0
-            return 1
-            ;;
-    esac
-    is_safe_test_expression "$seg" && return 0
-
-    # tee writes to files — block unconditionally regardless of future allowlist additions
-    printf '%s' "$seg" | grep -qE '^tee(\s|$)' && return 1
-
-    # git read-only subcommands
-    is_safe_git_read_command "$seg" && return 0
-
-    # git add / commit / fetch — narrow known-safe shapes, local-only
-    is_safe_local_git_write_command "$seg" && return 0
-
-    # gh read-only subcommands
-    printf '%s' "$seg" | grep -qE '^gh[[:space:]]+(issue|pr|label|repo|release|run|workflow)[[:space:]]+(list|view|status)(\s|$)' && return 0
-    printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+checks(\s|$)' && return 0
-    printf '%s' "$seg" | grep -qE '^gh[[:space:]]+auth[[:space:]]+status(\s|$)' && return 0
-    if printf '%s' "$seg" | grep -qE '^gh[[:space:]]+api(\s|$)'; then
-        # A variable reference can smuggle -X/-f/-F/etc past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        # -X/-f/-F accept an attached value with no separator (e.g. -XPOST, -fkey=value)
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-X[^[:space:]]*|-f[^[:space:]]*|-F[^[:space:]]*|--method([=[:space:]]|$)|--field([=[:space:]]|$)|--raw-field([=[:space:]]|$)|--input([=[:space:]]|$))' && return 1
-        return 0
-    fi
-    # Standard read-only Unix tools (prefer fd over find). These are safe
-    # regardless of arguments/flags (see _has_variable_expansion's docstring),
-    # so normalizing a known-safe absolute-path prefix here needs no
-    # additional variable-expansion guard beyond what already applies to
-    # bare-name invocations.
-    printf '%s' "$seg" | grep -qE '^cd(\s|$)' && return 0
-    printf '%s' "$(normalize_absolute_path_prefix "$seg")" | grep -qE '^(ls|ll|la|cat|head|tail|grep|egrep|fgrep|rg|fd|wc|uniq|cut|tr|echo|printf|pwd|which|type|printenv|du|df|stat|file|basename|dirname|uname|whoami|id|groups|ps|pgrep|jq|column|nl|sha256sum|strings|readlink|ss|apt-cache|desktop-file-validate|man|diff|sleep)(\s|$)' && return 0
-    if printf '%s' "$seg" | grep -qE '^find(\s|$)'; then
-        # A variable reference can smuggle -delete/-exec/etc past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        # -delete/-fls/-fprint* mutate or write files directly and don't wrap
-        # a command — always reject, no recursive validation applies.
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(delete|fls|fprint|fprintf)([[:space:]]|$)' && return 1
-        # -exec/-execdir/-ok/-okdir wrap an arbitrary command; validate each
-        # clause's wrapped command recursively instead of rejecting outright
-        # (see _find_exec_clauses_are_safe).
-        if printf '%s' "$seg" | grep -qE '(^|[[:space:]])-(exec|execdir|ok|okdir)([[:space:]]|$)'; then
-            _find_exec_clauses_are_safe "$seg" && return 0
-            return 1
-        fi
-        return 0
-    fi
-    if printf '%s' "$seg" | grep -qE '^xargs(\s|$)'; then
-        # A variable reference can smuggle a dangerous xargs option or the
-        # wrapped command itself past this scan.
-        _has_variable_expansion "$seg" && return 1
-        local xargs_rest xargs_cmd
-        xargs_rest=$(printf '%s' "$seg" | sed -E 's/^xargs[[:space:]]*//')
-        xargs_cmd=$(_xargs_wrapped_command "$xargs_rest") || return 1
-        is_safe_segment "$xargs_cmd"
-        return $?
-    fi
-    if printf '%s' "$seg" | grep -qE '^sed(\s|$)'; then
-        # A variable reference can smuggle -i/e/w past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--in-place)([^[:space:]]*|$)' && return 1
-        printf '%s' "$seg" | grep -qE "(^|[^[:alnum:]_-])([0-9,$]+)?[ew]([[:space:]]|['\"]|$)" && return 1
-        return 0
-    fi
-    if printf '%s' "$seg" | grep -qE '^sort(\s|$)'; then
-        # A variable reference can smuggle -o/--output past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-o|--output)([=[:space:]]|$)' && return 1
-        return 0
-    fi
-    if printf '%s' "$seg" | grep -qE '^yq(\s|$)'; then
-        # A variable reference can smuggle -i/--inplace past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-i|--inplace)([=[:space:]]|$)' && return 1
-        return 0
-    fi
-    if printf '%s' "$seg" | grep -qE '^awk(\s|$)'; then
-        # Quote-tracked, so an awk script's single-quoted $1-style field refs
-        # are not flagged — only a genuinely unquoted $ outside the script
-        # rejects. A variable reference could otherwise smuggle system()/
-        # getline past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE 'system[[:space:]]*\(' && return 1
-        printf '%s' "$seg" | grep -qE '\|[[:space:]]*getline([[:space:](;}]|$)' && return 1
-        # awk's own print/printf output-redirect operator (e.g. print $1 >
-        # "file", printf "%s" >> "file") writes files independently of the
-        # shell-level write-redirect check above, which only sees the
-        # single-quoted script as opaque text. Reject the whole segment if a
-        # '>' appears anywhere after a print/printf keyword — deliberately
-        # coarse (it also catches a literal '>' inside a print argument
-        # string, e.g. print "a>b") since a false prompt-fallback here is
-        # harmless but a missed file write is not.
-        printf '%s' "$seg" | grep -qE '\b(print|printf)\b.*>' && return 1
-        return 0
-    fi
-    printf '%s' "$seg" | grep -qE '^env[[:space:]]*$' && return 0
-    if printf '%s' "$seg" | grep -qE '^date(\s|$)'; then
-        # A variable reference can smuggle -s/--set past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-s|--set)([=[:space:]]|$)' && return 1
-        return 0
-    fi
-    printf '%s' "$seg" | grep -qE '^hostname[[:space:]]*$' && return 0
-
-    # journalctl — read-only log query; exclude maintenance/mutating operations
-    if printf '%s' "$seg" | grep -qE '^journalctl(\s|$)'; then
-        # A variable reference can smuggle --vacuum-*/--rotate/etc past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(--vacuum-size|--vacuum-time|--vacuum-files|--rotate|--flush|--sync|--relinquish-var|--smart-relinquish-var|--setup-keys|--update-catalog|--force)([=[:space:]]|$)' && return 1
-        return 0
-    fi
-
-    # gsettings — allow read-only introspection subcommands only
-    printf '%s' "$seg" | grep -qE '^gsettings[[:space:]]+(get|list-schemas|list-relocatable-schemas|list-keys|list-children|list-recursively|range|describe|writable)(\s|$)' && return 0
-
-    # gnome-extensions — allow read-only introspection subcommands only
-    printf '%s' "$seg" | grep -qE '^gnome-extensions[[:space:]]+(info|list)(\s|$)' && return 0
-
-    # gdbus — allow read-only introspection subcommand only; call/emit/wait/
-    # monitor can invoke arbitrary D-Bus methods with unknowable side effects
-    printf '%s' "$seg" | grep -qE '^gdbus[[:space:]]+introspect(\s|$)' && return 0
-
-    # dpkg — allow read-only query flags only (see is_safe_dpkg_query_command)
-    if printf '%s' "$seg" | grep -qE '^dpkg(\s|$)'; then
-        is_safe_dpkg_query_command "$seg" && return 0
-        return 1
-    fi
-
-    # gresource — allow read-only introspection subcommands only; compile
-    # writes a binary resource bundle to disk and must remain excluded
-    printf '%s' "$seg" | grep -qE '^gresource[[:space:]]+(list|list-sections)(\s|$)' && return 0
-
-    # tmux — allow read-only introspection subcommands only; send-keys can
-    # inject input into another pane/session and kill-* can terminate them
-    printf '%s' "$seg" | grep -qE '^tmux[[:space:]]+(display-message|list-windows|list-sessions|list-panes|show-options)(\s|$)' && return 0
-
-    # Runtime version / syntax-check-only invocations
-    printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby|gh)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
-    printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0
-    printf '%s' "$seg" | grep -qE '^go[[:space:]]+version[[:space:]]*$' && return 0
-    printf '%s' "$seg" | grep -qE '^(bash|zsh)[[:space:]]+--version[[:space:]]*$' && return 0
-    printf '%s' "$seg" | grep -qE '^codex[[:space:]]+(--version|--help|-h)[[:space:]]*$' && return 0
-    # bash -n / node --check: an allowlist of exactly "<cmd> <flag> <file>" with
-    # no other tokens, rather than a denylist of dangerous flags. node in
-    # particular treats -/_ as interchangeable in long option names and can
-    # preload modules via --experimental-config-file, so any denylist of
-    # specific flag spellings is provably incomplete; only the single-argument
-    # shape is safe to auto-approve.
-    # A variable reference — quoted or not — is opaque here: unquoted, bash
-    # word-splits it into an arbitrary number of argv entries at execution
-    # time; quoted, its resolved value can still itself start with "-" and
-    # be parsed as a flag despite the leading-non-dash literal-text check
-    # below. Either way it can defeat the single-argument shape these two
-    # patterns require, so reject rather than trust the literal-text token.
-    if ! _has_variable_expansion "$seg"; then
-        printf '%s' "$seg" | grep -qE '^bash[[:space:]]+-n[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
-        printf '%s' "$seg" | grep -qE '^node[[:space:]]+(--check|-c)[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
-        # command -v <name>: read-only path/function/alias lookup, equivalent
-        # to `type`. Same single-argument shape rationale as bash -n / node
-        # --check above — a variable reference could otherwise smuggle extra
-        # tokens or a leading-dash flag past a literal-text check.
-        printf '%s' "$seg" | grep -qE '^command[[:space:]]+-v[[:space:]]+[^-[:space:]][^[:space:]]*[[:space:]]*$' && return 0
-    fi
-
-    # kill -0 <pid...>: signal 0 sends no actual signal — it only tests
-    # whether the process exists and is signalable — so this is a read-only
-    # liveness check, not a mutation. Deliberately narrow: only digit-only
-    # PIDs (no leading '-', which would target a process GROUP instead) and
-    # no other signal/flag are accepted; any other `kill` invocation falls
-    # through to the normal prompt.
-    if printf '%s' "$seg" | grep -qE '^kill(\s|$)'; then
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '^kill[[:space:]]+-0([[:space:]]+[0-9]+)+[[:space:]]*$' && return 0
-        return 1
-    fi
-
-    # mkdir -p restricted to the session tmp directory (or a descendant of
-    # it): this repo's own documented convention for AI-agent scratch files
-    # (see CLAUDE.md "一時ファイルの作成"). Only the exact `-p <single-path>`
-    # shape is accepted — no other flags, no multiple paths — and the target
-    # must resolve under SESSION_TMP_DIR, mirroring the Write/Edit tool's
-    # existing is_session_tmp_file check.
-    if printf '%s' "$seg" | grep -qE '^mkdir(\s|$)'; then
-        _has_variable_expansion "$seg" && return 1
-        if printf '%s' "$seg" | grep -qE '^mkdir[[:space:]]+-p[[:space:]]+[^[:space:]]+[[:space:]]*$'; then
-            local mk_path
-            mk_path=$(printf '%s' "$seg" | sed -E 's/^mkdir[[:space:]]+-p[[:space:]]+//; s/[[:space:]]*$//')
-            case "$mk_path" in
-                \"*\") mk_path="${mk_path#\"}"; mk_path="${mk_path%\"}" ;;
-                \'*\') mk_path="${mk_path#\'}"; mk_path="${mk_path%\'}" ;;
-            esac
-            case "$mk_path" in
-                *[\"\'\ ]*) return 1 ;;
-            esac
-            is_session_tmp_dir_or_descendant "$mk_path" && return 0
-        fi
-        return 1
-    fi
-
-    # curl — allow default GET/HEAD requests only; reject writes and custom methods
-    if printf '%s' "$seg" | grep -qE '^curl(\s|$)'; then
-        # A variable reference can smuggle -o/-X/--data/etc past this exclusion scan.
-        _has_variable_expansion "$seg" && return 1
-        printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-[^-[:space:]]*[oOXdFTK][^[:space:]]*|--output|--remote-name|--remote-name-all|--request|--data[^[:space:]]*|--form[^[:space:]]*|--upload-file|--json|--config)([=[:space:]]|$)' && return 1
-        return 0
-    fi
-
-    # npm — allow metadata inspection only; scripts and package mutations require a prompt
-    if printf '%s' "$seg" | grep -qE '^npm(\s|$)'; then
-        printf '%s' "$seg" | grep -qE '^npm[[:space:]]+(view|info|show|search|list|ls|outdated|explain|why|prefix|root|help)([[:space:]]|$)' && return 0
-        printf '%s' "$seg" | grep -qE '^npm[[:space:]]+config[[:space:]]+(get|list|ls)([[:space:]]|$)' && return 0
-        printf '%s' "$seg" | grep -qE '^npm[[:space:]]+run[[:space:]]*$' && return 0
-        return 1
-    fi
-
-    # mise — allow read-only introspection subcommands only (`current`/`ls`/
-    # `list` report active/installed tool versions with no destructive flags);
-    # `use`/`install`/`settings set`/`trust`/etc. are not matched and fall
-    # through to the normal confirmation prompt.
-    printf '%s' "$seg" | grep -qE '^mise[[:space:]]+(current|ls|list)([[:space:]]|$)' && return 0
-
-    [ "$SESSION_ID_IS_FALLBACK" = "0" ] && check_session_approved "$seg" && return 0
-
-    return 1
-}
 
 # Split on &&, ||, ;, | and verify every segment is read-only.
 # Uses command_normalized so that \| inside grep patterns (already replaced

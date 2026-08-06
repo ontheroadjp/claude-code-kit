@@ -1165,4 +1165,76 @@ printf '' > "$SESSION_262B_APPROVED"
 output=$(run_auto_write_262b $'tool:git_write\nfile:/abs/path/to/file.md')
 assert_json_decision "$output" "block"
 
+# --- --explain diagnostic mode (issue #283) ---
+# Debug-only entry point: reachable only via an explicit --explain argv
+# argument, never through the normal PreToolUse JSON-stdin path exercised by
+# run_auto above. These tests pin its output format and confirm it reuses
+# the real decision-path helpers (is_safe_<name>_command, check_session_approved)
+# rather than a separate, potentially-drifting implementation.
+EXPLAIN_SESSION_ID="test-explain-session"
+EXPLAIN_SESSION_FILE="${TMP_DIR}/explain-session-approved"
+
+run_auto_explain() {
+    local command="$1"
+    env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
+        CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
+        CLAUDE_CODE_KIT_SESSION_ID="$EXPLAIN_SESSION_ID" \
+        CLAUDE_CODE_KIT_SESSION_APPROVED_FILE="$EXPLAIN_SESSION_FILE" \
+        CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
+        bash "$AUTO_HOOK" --explain "$command" < /dev/null
+}
+
+assert_contains() {
+    local output="$1" needle="$2"
+    if ! printf '%s' "$output" | grep -qF "$needle"; then
+        printf 'Expected output to contain %q\nOutput: %s\n' "$needle" "$output" >&2
+        exit 1
+    fi
+}
+
+# Never reads stdin: --explain must not block waiting on it, and must not go
+# through the PreToolUse JSON protocol at all (no {"decision": ...} output).
+output=$(run_auto_explain 'cat foo.txt')
+assert_contains "$output" 'matched: is_safe_unix_read_tool_command'
+assert_contains "$output" 'verdict: approve'
+if printf '%s' "$output" | jq -e . >/dev/null 2>&1; then
+    printf 'Expected --explain output to be plain text, not JSON\nOutput: %s\n' "$output" >&2
+    exit 1
+fi
+
+# No named allow-shape matches (sed -i) and no session-approved file: reports
+# the opaque "none matched" case and the absent-file state explicitly.
+output=$(run_auto_explain 'sed -i s/x/y/ f')
+assert_contains "$output" 'none of the'
+assert_contains "$output" 'named allow-shape checks'
+assert_contains "$output" "session-approved: no file at ${EXPLAIN_SESSION_FILE}"
+assert_contains "$output" 'verdict: user_prompt'
+
+# Destructive guard short-circuits before segmentation.
+output=$(run_auto_explain 'git push --force')
+assert_contains "$output" 'verdict: block'
+
+# usage message when no command is given.
+output=$(run_auto_explain '')
+assert_contains "$output" 'usage:'
+
+mkdir -p "$(dirname "$EXPLAIN_SESSION_FILE")"
+printf 'tool:git_write\n' > "$EXPLAIN_SESSION_FILE"
+
+# Whole-command session-approved fast path: single segment, category covers it.
+output=$(run_auto_explain 'git checkout foo')
+assert_contains "$output" 'session-approved fast path'
+assert_contains "$output" 'verdict: approve'
+
+# Compound command where the fast path does NOT apply (git status is not a
+# tool:git_write category shape), but each segment is independently safe:
+# one via a named allow-shape function, the other via check_session_approved.
+# Exercises both match paths inside _explain_segment in one command.
+output=$(run_auto_explain 'git status && git checkout foo')
+assert_contains "$output" 'matched: is_safe_git_read_command'
+assert_contains "$output" 'matched: check_session_approved'
+assert_contains "$output" 'verdict: approve (every segment matched'
+
+rm -f "$EXPLAIN_SESSION_FILE"
+
 printf 'approval hook tests passed\n'
