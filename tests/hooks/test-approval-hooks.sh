@@ -163,6 +163,10 @@ for command in \
     'npm list --depth=0' \
     'npm config get registry' \
     'npm run' \
+    'gh --version' \
+    'mise current' \
+    'mise ls' \
+    'mise list' \
     'git merge-base main HEAD' \
     'git merge-base --is-ancestor main HEAD' \
     'pgrep -f node' \
@@ -260,6 +264,9 @@ for command in \
     'npm exec tool' \
     'npm test' \
     'npm version patch' \
+    'mise use node@20' \
+    'mise install' \
+    'mise settings set idiomatic_version_file_enable_tools true' \
     'bash version' \
     'python -v script.py' \
     'ruby version' \

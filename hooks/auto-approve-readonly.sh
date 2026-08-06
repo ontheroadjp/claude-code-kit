@@ -1599,7 +1599,7 @@ is_safe_segment() {
     printf '%s' "$seg" | grep -qE '^tmux[[:space:]]+(display-message|list-windows|list-sessions|list-panes|show-options)(\s|$)' && return 0
 
     # Runtime version / syntax-check-only invocations
-    printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
+    printf '%s' "$seg" | grep -qE '^(node|npm|npx|ruby|gh)[[:space:]]+(--version|-v)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(python3?|pip3?|cargo|rustc)[[:space:]]+(--version|-V)[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^go[[:space:]]+version[[:space:]]*$' && return 0
     printf '%s' "$seg" | grep -qE '^(bash|zsh)[[:space:]]+--version[[:space:]]*$' && return 0
@@ -1676,6 +1676,12 @@ is_safe_segment() {
         printf '%s' "$seg" | grep -qE '^npm[[:space:]]+run[[:space:]]*$' && return 0
         return 1
     fi
+
+    # mise — allow read-only introspection subcommands only (`current`/`ls`/
+    # `list` report active/installed tool versions with no destructive flags);
+    # `use`/`install`/`settings set`/`trust`/etc. are not matched and fall
+    # through to the normal confirmation prompt.
+    printf '%s' "$seg" | grep -qE '^mise[[:space:]]+(current|ls|list)([[:space:]]|$)' && return 0
 
     [ "$SESSION_ID_IS_FALLBACK" = "0" ] && check_session_approved "$seg" && return 0
 
