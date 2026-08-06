@@ -69,7 +69,7 @@ Step 6: 一時ファイルの削除と完了報告
 
 ## 変更履歴（git log より自動生成）
 
-- fix(#293): codex-review の `--base`/PROMPT 競合を修正（本コミット）
+- 75801fb fix(#293): replace codex review --base with codex exec and piped diff
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
 - 4ba8259 feat(#115): require CODEX_REVIEW_TOKEN and auto-invoke review-resolve on changes-requested
 - a474b4c fix(#113): address 3 P2 issues from Codex review
