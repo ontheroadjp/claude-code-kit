@@ -64,21 +64,28 @@ git fetch origin <baseRefName>
 
 ## Step 3: Codex CLI によるレビュー実行
 
-以下のプロンプトで `codex review` を実行し、結果を一時ファイルに保存して端末に表示する。
+> **バージョン依存の注意**: `codex review --base <BRANCH>` は `[PROMPT]` 引数（カスタムレビュー指示）と併用できない（`codex-cli 0.146.1` で確認済み。`error: the argument '--base <BRANCH>' cannot be used with '[PROMPT]'`, exit 2）。`codex exec review` サブコマンドも同一の制約を持つ。将来の `codex-cli` でこの制約が変わっていないか怪しい場合は、まず `codex --version` と `codex review --help` を確認すること（`gh` について CLAUDE.md の Local Tooling Environment に記載されている手順と同様の考え方）。
+>
+> このため `codex review`/`codex exec review` の `--base` は使わず、トップレベルの `codex exec` に切り替える。diff の取得は **`git diff` を codex 自身に実行させず、事前にこちら側で取得してプロンプトへ渡す**（`--sandbox read-only` と併用）。プロンプト内で「まず `git diff` を実行して」と指示する方式は実機検証で試したが、codex エージェントが「このリポジトリ」という文脈から自律的に `/work` スキルの読み込みなど無関係な探索行動に入り、`git diff` の実行自体が完了しないままタイムアウトする事例を確認したため不採用とした。
+
+以下の手順で diff を取得し、`codex exec`（`review` サブコマンドではなくトップレベルの `exec`）に `<stdin>` ブロックとして渡す。`-o/--output-last-message` で最終メッセージのみを一時ファイルに保存して端末に表示する。
 
 ```bash
 TMPFILE="/tmp/codex-review-<PR番号>-$$.txt"
+DIFFFILE="/tmp/codex-review-<PR番号>-$$.diff"
 
-codex review \
-  --base "origin/<baseRefName>" \
-  --title "<PR タイトル>" \
-  "レビューは全て日本語で回答してください。このリポジトリは Claude Code / Codex CLI 向けのコマンド・フック・スキル・設定を管理するツールキットです。以下のリポジトリ固有ルールを適用してください:
+git diff "origin/<baseRefName>...HEAD" > "$DIFFFILE"
+
+codex exec \
+  -o "$TMPFILE" \
+  --sandbox read-only \
+  "以下の <stdin> ブロックに含まれる unified diff（PR #<PR番号>「<PR タイトル>」の origin/<baseRefName> との差分）をレビューしてください。diff を再取得するためのコマンド実行は行わず、与えられたテキストのみを事実として判断してください。レビューは全て日本語で回答してください。このリポジトリは Claude Code / Codex CLI 向けのコマンド・フック・スキル・設定を管理するツールキットです。以下のリポジトリ固有ルールを適用してください:
 - symlink-only 原則: ~/.claude/ 配下には実体ファイルを置かず、全て本リポジトリへの symlink とする
 - コミット形式: <type>(#<issue number>): <short description> (Conventional Commits)
 - docs/* 変更は /docs-sync が担う（実装者が直接編集しない）
 - ワークスペースのクリーン化は stash で行う（破壊的操作禁止）
 - git diff が事実。AI の要約・解釈は補助情報にとどめる" \
-  > "$TMPFILE"
+  < "$DIFFFILE" > /dev/null
 cat "$TMPFILE"
 ```
 
@@ -114,7 +121,7 @@ sed $'s/\033\[[0-9;]*[mGKHF]//g' "$TMPFILE" > "$CLEAN_TMPFILE"
 
 **設定されていない場合:**
 
-以下のエラーを報告し、`rm -f "$TMPFILE" "$CLEAN_TMPFILE"` を実行して終了する:
+以下のエラーを報告し、`rm -f "$TMPFILE" "$CLEAN_TMPFILE" "$DIFFFILE"` を実行して終了する:
 
 ```
 エラー: CODEX_REVIEW_TOKEN が設定されていません。
@@ -139,14 +146,14 @@ GH_TOKEN="$CODEX_REVIEW_TOKEN" gh pr review <PR番号> --approve --body-file "$C
 GH_TOKEN="$CODEX_REVIEW_TOKEN" gh pr review <PR番号> --request-changes --body-file "$CLEAN_TMPFILE"
 ```
 
-- 投稿に失敗した場合: `rm -f "$TMPFILE" "$CLEAN_TMPFILE"` を実行し、「レビューの投稿に失敗しました。レビュー結果は削除されました」と報告して終了する
+- 投稿に失敗した場合: `rm -f "$TMPFILE" "$CLEAN_TMPFILE" "$DIFFFILE"` を実行し、「レビューの投稿に失敗しました。レビュー結果は削除されました」と報告して終了する
 
 ---
 
 ## Step 6: 一時ファイルの削除と完了報告
 
 ```bash
-rm -f "$TMPFILE" "$CLEAN_TMPFILE"
+rm -f "$TMPFILE" "$CLEAN_TMPFILE" "$DIFFFILE"
 ```
 
 ユーザーに以下を報告する:
