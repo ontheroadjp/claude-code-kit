@@ -27,10 +27,12 @@ Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提�
 - `hooks/auto-approve-readonly.sh` 自体の変更は行わない。改善案は Proposals として提示するに留める
 - **Primary KPI** は2つ: 全体の自動承認率 `result_ratio_pct.approved`、および定型処理（`/work` パイプラインの git/gh write系操作）のユーザー確認率 `routine_ops.result_ratio_pct.user_prompt`（目標0%）。後者は issue #216 で追加された、`/work` の実運用に紐づく具体的なチューニング対象
 - **Supporting KPI** は `result_ratio_pct.user_prompt` / `result_ratio_pct.blocked`（全体の摩擦・防御指標）、`monthly_trend`（時系列でのチューニング効果測定）、`routine_ops.patterns_needing_approval`（user_prompt に落ちている定型処理パターンの具体的なリスト。恒久的に自動承認へ追加すべき候補をAIが読み取れる形にしたもの）、`duration_ms_stats.avg_ms` / `p95_ms`（hook 処理時間が体感レイテンシに寄与しているかの判断材料。issue #218）
-- Step 3 では `patterns_needing_approval` の上位パターンごとに「なぜ現状 user_prompt に落ちているか」と「恒久的に自動承認へ追加する場合の具体的な提案」をセットで記述する
+- `patterns_needing_approval` の各要素は `sample_commands`（実際に user_prompt に落ちたユニークなコマンド文字列を頻度降順で最大10件、各要素に `possibly_truncated` フラグ付き）を持つ。カテゴリ名だけでは「具体的にどのコマンド文字列を allowlist に足すべきか」が分からないという問題への対応として issue #278 で追加された
+- `routine_ops.truncated_detail_count` は `sample_commands` の `possibly_truncated` が true の user_prompt 件数の合計。値が大きい場合、ログの120文字切り詰めにより長いコマンドの末尾が欠落している可能性を示す
+- Step 3 では `patterns_needing_approval` の上位パターンごとに「なぜ現状 user_prompt に落ちているか」と「恒久的に自動承認へ追加する場合の具体的な提案」をセットで記述する。提案文には `sample_commands` の実際のコマンド文字列を最低1つ引用する（抽象的なパターン名だけで終わらせない）。`possibly_truncated: true` のコマンドを引用する場合は末尾欠落の可能性を明記する
 - Step 3 では `duration_ms_stats.avg_ms` / `p95_ms` から hook 処理時間が体感レイテンシの有意な要因かどうかを必ず言及し、有意な場合は `duration_ms_stats.top_slow_patterns` から遅延要因パターンを特定する
 
-根拠: `commands/analyze-auto-approve.md:17-27`, `commands/analyze-auto-approve.md:39-59`, `commands/analyze-auto-approve.md:65`
+根拠: `commands/analyze-auto-approve.md:17-27`, `commands/analyze-auto-approve.md:39-61`, `commands/analyze-auto-approve.md:66-67`
 
 ## 重要な設計判断とその理由
 
@@ -41,6 +43,8 @@ hook の許可ルールを直接変更すると read-only 分析の境界を越�
 `routine_ops` の分類基準は `hooks/auto-approve-readonly.sh` の `check_session_approved()` をそのままミラーしている（`scripts/analyze_auto_approve.py` 側の設計判断を参照）。独自基準を作ると hook の実挙動とズレるため、唯一の正の情報源をそのまま参照する方針にした。
 
 `duration_ms_stats` を Supporting KPI に加えたのは「安全性を保ちながら自動承認率を100%に近づける」目的の裏で、hook 処理自体が別の観点（体感レイテンシ）のコストになっていないかを同じレポートで確認できるようにするため（issue #218）。Primary KPI ではなく Supporting KPI に置いているのは、この command の主目的（自動承認率のチューニング）とは独立した補助的な健全性指標であるため。
+
+`patterns_needing_approval` の Proposal 記述にコマンド文字列の引用を必須にした（issue #278）のは、パターン名（例:「git commit」）だけでは allowlist に何を足すべきかが分からず、ユーザーが `logs/auto-approve/*.log` の生ログを毎回手動でコピペして精査する運用になっていたため。`sample_commands` は `scripts/analyze_auto_approve.py` 側で既に集計済みのため、この command は独自の解析を行わず引用するだけでよい。
 
 ## 統合ポイント
 
@@ -59,5 +63,7 @@ hook の許可ルールを直接変更すると read-only 分析の境界を越�
 
 ## 変更履歴（git log より自動生成）
 
+- deecd59 feat(#278): surface unique command samples in auto-approve routine_ops
+- ac0a68a feat(#218): add duration_ms aggregation and reporting to /analyze-auto-approve
 - 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands

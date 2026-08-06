@@ -21,6 +21,18 @@ LOG_CONTENT = textwrap.dedent(
     """
 )
 
+LONG_COMMAND_DETAIL = 'git commit -m "' + "x" * 110 + '"'
+
+TRUNCATION_LOG_CONTENT = textwrap.dedent(
+    f"""\
+    [2026-08-01 10:00:00] agent=claude session=s1 result=user_prompt tool=Bash git push origin feature-a
+    [2026-08-01 10:00:05] agent=claude session=s2 result=user_prompt tool=Bash git push origin feature-a
+    [2026-08-01 10:00:10] agent=claude session=s2 result=user_prompt tool=Bash git push origin feature-b
+    [2026-08-01 10:00:15] agent=claude session=s1 result=user_prompt tool=Bash {LONG_COMMAND_DETAIL}
+    [2026-08-01 10:00:20] agent=claude session=s1 result=approved     tool=Bash git push (session)
+    """
+)
+
 DURATION_LOG_CONTENT = textwrap.dedent(
     """\
     [2026-08-01 10:00:00] agent=claude session=s1       result=approved     tool=Bash       duration_ms=10     git commit -m "a"
@@ -127,9 +139,51 @@ def test_routine_ops_breakdown_classifies_git_gh_write_commands(
     routine_ops = result["routine_ops"]
     assert routine_ops["total_routine_decisions"] == 3
     assert routine_ops["result_counts"] == {"user_prompt": 2, "approved": 1}
+    assert routine_ops["truncated_detail_count"] == 0
     assert routine_ops["patterns_needing_approval"] == [
-        {"pattern": "git commit", "user_prompt_count": 2, "approved_count": 1, "blocked_count": 0}
+        {
+            "pattern": "git commit",
+            "user_prompt_count": 2,
+            "approved_count": 1,
+            "blocked_count": 0,
+            "sample_commands": [
+                {"command": 'git commit -m "later"', "count": 1, "possibly_truncated": False},
+                {"command": 'git commit -m "wip"', "count": 1, "possibly_truncated": False},
+            ],
+        }
     ]
+
+
+def test_pattern_command_samples_orders_by_frequency_then_alphabetically(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(analyze_common, "repo_root", lambda: tmp_path)
+    write_log(tmp_path, "2026-08", TRUNCATION_LOG_CONTENT)
+
+    decisions = analyze_auto_approve.load_decisions(["2026-08"])
+    result = analyze_auto_approve.aggregate(["2026-08"], decisions)
+
+    patterns = {p["pattern"]: p for p in result["routine_ops"]["patterns_needing_approval"]}
+    assert patterns["git push"]["sample_commands"] == [
+        {"command": "git push origin feature-a", "count": 2, "possibly_truncated": False},
+        {"command": "git push origin feature-b", "count": 1, "possibly_truncated": False},
+    ]
+
+
+def test_pattern_command_samples_flags_possibly_truncated_detail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(analyze_common, "repo_root", lambda: tmp_path)
+    write_log(tmp_path, "2026-08", TRUNCATION_LOG_CONTENT)
+
+    decisions = analyze_auto_approve.load_decisions(["2026-08"])
+    result = analyze_auto_approve.aggregate(["2026-08"], decisions)
+
+    patterns = {p["pattern"]: p for p in result["routine_ops"]["patterns_needing_approval"]}
+    assert patterns["git commit"]["sample_commands"] == [
+        {"command": LONG_COMMAND_DETAIL, "count": 1, "possibly_truncated": True}
+    ]
+    assert result["routine_ops"]["truncated_detail_count"] == 1
 
 
 def test_duration_ms_stats_excludes_na_and_missing_from_numeric_aggregation(
