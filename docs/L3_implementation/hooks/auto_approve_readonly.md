@@ -480,6 +480,7 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 0685826 feat(#276): allowlist gh --version and mise current/ls/list in auto-approve hook
 - 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
 - f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
 - 202a7eb refactor(#257): extract _heredoc_skip_end_index and make subshell span scanner heredoc-aware
@@ -489,4 +490,3 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook
 - 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
 - 199021a feat(#236): add narrow allow-shape for gdbus introspect
-- b45c722 feat(#235): add narrow allow-shape for read-only tmux subcommands
