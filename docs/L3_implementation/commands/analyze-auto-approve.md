@@ -27,12 +27,11 @@ Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提�
 - `hooks/auto-approve-readonly.sh` 自体の変更は行わない。改善案は Proposals として提示するに留める
 - **Primary KPI** は2つ: 全体の自動承認率 `result_ratio_pct.approved`、および定型処理（`/work` パイプラインの git/gh write系操作）のユーザー確認率 `routine_ops.result_ratio_pct.user_prompt`（目標0%）。後者は issue #216 で追加された、`/work` の実運用に紐づく具体的なチューニング対象
 - **Supporting KPI** は `result_ratio_pct.user_prompt` / `result_ratio_pct.blocked`（全体の摩擦・防御指標）、`monthly_trend`（時系列でのチューニング効果測定）、`routine_ops.patterns_needing_approval`（user_prompt に落ちている定型処理パターンの具体的なリスト。恒久的に自動承認へ追加すべき候補をAIが読み取れる形にしたもの）、`duration_ms_stats.avg_ms` / `p95_ms`（hook 処理時間が体感レイテンシに寄与しているかの判断材料。issue #218）
-- `patterns_needing_approval` の各要素は `sample_commands`（実際に user_prompt に落ちたユニークなコマンド文字列を頻度降順で最大10件、各要素に `possibly_truncated` フラグ付き）を持つ。カテゴリ名だけでは「具体的にどのコマンド文字列を allowlist に足すべきか」が分からないという問題への対応として issue #278 で追加された
-- `routine_ops.truncated_detail_count` は `sample_commands` の `possibly_truncated` が true の user_prompt 件数の合計。値が大きい場合、ログの120文字切り詰めにより長いコマンドの末尾が欠落している可能性を示す
-- Step 3 では `patterns_needing_approval` の上位パターンごとに「なぜ現状 user_prompt に落ちているか」と「恒久的に自動承認へ追加する場合の具体的な提案」をセットで記述する。提案文には `sample_commands` の実際のコマンド文字列を最低1つ引用する（抽象的なパターン名だけで終わらせない）。`possibly_truncated: true` のコマンドを引用する場合は末尾欠落の可能性を明記する
+- `patterns_needing_approval` の各要素は `sample_commands`（実際に user_prompt に落ちたユニークなコマンド文字列を頻度降順で最大10件）を持つ。カテゴリ名だけでは「具体的にどのコマンド文字列を allowlist に足すべきか」が分からないという問題への対応として issue #278 で追加された
+- Step 3 では `patterns_needing_approval` の上位パターンごとに「なぜ現状 user_prompt に落ちているか」と「恒久的に自動承認へ追加する場合の具体的な提案」をセットで記述する。提案文には `sample_commands` の実際のコマンド文字列を最低1つ引用する（抽象的なパターン名だけで終わらせない）
 - Step 3 では `duration_ms_stats.avg_ms` / `p95_ms` から hook 処理時間が体感レイテンシの有意な要因かどうかを必ず言及し、有意な場合は `duration_ms_stats.top_slow_patterns` から遅延要因パターンを特定する
 
-根拠: `commands/analyze-auto-approve.md:17-27`, `commands/analyze-auto-approve.md:39-61`, `commands/analyze-auto-approve.md:66-67`
+根拠: `commands/analyze-auto-approve.md:17-27`, `commands/analyze-auto-approve.md:39-59`, `commands/analyze-auto-approve.md:64-65`
 
 ## 重要な設計判断とその理由
 
@@ -46,6 +45,8 @@ hook の許可ルールを直接変更すると read-only 分析の境界を越�
 
 `patterns_needing_approval` の Proposal 記述にコマンド文字列の引用を必須にした（issue #278）のは、パターン名（例:「git commit」）だけでは allowlist に何を足すべきかが分からず、ユーザーが `logs/auto-approve/*.log` の生ログを毎回手動でコピペして精査する運用になっていたため。`sample_commands` は `scripts/analyze_auto_approve.py` 側で既に集計済みのため、この command は独自の解析を行わず引用するだけでよい。
 
+`possibly_truncated` への言及（issue #278 で追加）を issue #280 で削除したのは、hook 側の120文字 truncate 自体が撤廃され、このフラグが新規ログ行に対して常に意味を持たなくなったため。旧ログ行の truncate 有無を区別する手段が失われる点は「注意事項・既知の制限」に残す。
+
 ## 統合ポイント
 
 - 呼び出し元: `commands/work.md`
@@ -58,7 +59,7 @@ hook の許可ルールを直接変更すると read-only 分析の境界を越�
 ## 注意事項・既知の制限
 
 - 唯一の書き込みは `logs/reports/auto-approve/` 配下の新規 HTML ファイルのみ
-- `detail` フィールドは hook 側で 120 バイトに truncate 済みのため、長いコマンド全文はログに残っていない
+- `detail` フィールドは issue #280 より hook 側で truncate されず全文がログに残る。ただし #280 より前に書かれたログ行は 120 バイトに truncate 済みのままであり、`sample_commands` にはこれを区別するフィールドがない（`possibly_truncated` は #280 で削除済み）
 - `routine_ops` は hook の allowlist カテゴリの手動ミラーであり自動同期されない。hook の allowlist が変わった場合、`scripts/analyze_auto_approve.py` の `ROUTINE_OP_PATTERNS` も追従して更新する必要がある
 
 ## 変更履歴（git log より自動生成）

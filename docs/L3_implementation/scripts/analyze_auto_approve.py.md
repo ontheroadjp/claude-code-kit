@@ -21,20 +21,20 @@
    - `duration_ms_stats`（`duration_ms` の数値集計。`sample_count` / `excluded_count` / `avg_ms` / `median_ms` / `p95_ms` / `max_ms` / `top_slow_patterns`）
 4. `main()` で `lib.analyze_common` の共通CLI・月解決処理を呼び、結果を JSON として出力する
 
-根拠: `scripts/analyze_auto_approve.py:97-347`
+根拠: `scripts/analyze_auto_approve.py:91-331`
 
 ## 主要な判定ロジック・フロー
 
 - `count_values()` は TypedDict のキーを文字列引数で動的に取り出す代わりに、呼び出し側で `(d["field"] for d in decisions)` というジェネレータを渡す設計にしている。これにより mypy strict 下で `# type: ignore` を使わずに型安全性を保っている
-- `top_detail_patterns()` は完全一致の `(tool, detail)` ペアでグルーピングする。`detail` は hook 側で120バイトに truncate 済みのため、長いコマンドの一部だけが一致してグルーピングされることは想定していない
+- `top_detail_patterns()` は完全一致の `(tool, detail)` ペアでグルーピングする。`detail` は hook 側で truncate されず全文が記録される（issue #280）ため、長いコマンドの一部だけが一致してグルーピングされることは想定していない
 - `classify_routine_op(tool, detail)` は `ROUTINE_OP_PATTERNS` の正規表現リストを先頭一致で試し、Bash の `detail` 先頭が `hooks/auto-approve-readonly.sh` の `check_session_approved()` が認識する git/gh write系コマンド形状（`git add` / `git commit` / `git push` / ... / `gh pr merge` 等）に一致すればそのラベルを返す。一致しなければ `None`（定型処理として扱わない）。パターンの並び順・粒度は `check_session_approved()` の分岐と1:1対応させており、あるパターンを恒久的に自動承認へ追加したくなった場合、hook 側のどの正規表現分岐を編集すべきかがそのまま分かるようにしている
-- `routine_ops_breakdown()` は `classify_routine_op` で分類できた判定のみを対象に、パターンごとの result 内訳を集計し、`user_prompt_count > 0` のパターンを `user_prompt_count` 降順で `patterns_needing_approval` として抽出する。各要素には `pattern_command_samples()` の結果を `sample_commands` として付与し、`routine_ops` 直下には全パターン跨ぎの `truncated_detail_count` を添える（issue #278）
-- `pattern_command_samples(routine, label, n)` は該当パターンかつ `result == "user_prompt"` の `detail` を `count_values()` でユニーク集計し、`(count 降順, detail 昇順)` でソートして上位 `n` 件を返す。件数タイ時のソート順を `detail` の辞書順で固定しているのは、テストの期待値を決定論的にするため。各要素は `{"command", "count", "possibly_truncated"}` を持ち、`possibly_truncated` は `len(command) >= DETAIL_TRUNCATE_LIMIT`（120、`hooks/auto-approve-readonly.sh` の `truncate_utf8_safe ... 120` とそろえた値）で判定する。120文字ちょうどの非truncateコマンドを誤って truncated 扱いする可能性があるのは既知の制限（下記）
+- `routine_ops_breakdown()` は `classify_routine_op` で分類できた判定のみを対象に、パターンごとの result 内訳を集計し、`user_prompt_count > 0` のパターンを `user_prompt_count` 降順で `patterns_needing_approval` として抽出する。各要素には `pattern_command_samples()` の結果を `sample_commands` として付与する（issue #278）
+- `pattern_command_samples(routine, label, n)` は該当パターンかつ `result == "user_prompt"` の `detail` を `count_values()` でユニーク集計し、`(count 降順, detail 昇順)` でソートして上位 `n` 件を返す。件数タイ時のソート順を `detail` の辞書順で固定しているのは、テストの期待値を決定論的にするため。各要素は `{"command", "count"}` を持つ
 - `monthly_trend()` は `timestamp` の先頭 `MONTH_PATTERN_LENGTH`（7文字 = `YYYY-MM`）を月キーとして `decisions` をグルーピングする
 - `numeric_duration_ms(decision)` は `duration_ms` が数字のみ（`str.isdigit()`）の場合にのみ `int` を返し、`None` および `"NA"` は `None` として扱う（例外送出ではなく判定で除外する設計）
 - `duration_ms_stats(decisions, n)` は `numeric_duration_ms` で数値化できた `duration_ms` のみを対象に `avg_ms` / `median_ms`（`statistics.median`）/ `p95_ms`（`lib.analyze_common.percentile()`、`statistics.quantiles(..., method="inclusive")`）/ `max_ms` を計算し、`top_slow_patterns(decisions, n)`（`(tool, detail)` 別の平均処理時間 `avg_ms` 降順 TOP `n`、`top_blocked_patterns` と同じグルーピング様式）を添える。数値サンプルが1件のみの場合は `percentile()` がそのまま単一値を返す（`statistics.quantiles` は2件未満で例外を送出するため）。数値サンプルが0件の場合は `sample_count=0`・数値系フィールドは全て `0.0`・`top_slow_patterns=[]` を返す（`ratio()` が `total=0` を `0.0` で扱う既存の設計と揃えている）
 
-根拠: `scripts/analyze_auto_approve.py:124-238`, `scripts/analyze_auto_approve.py:241-301`
+根拠: `scripts/analyze_auto_approve.py:118-232`, `scripts/analyze_auto_approve.py:235-284`
 
 ## 重要な設計判断とその理由
 
@@ -49,6 +49,8 @@
 `percentile()` はもともとこのファイルの内部関数だったが、`scripts/analyze_access.py` / `scripts/analyze_token_usage.py` にも同一の hook 処理時間集計（`duration_ms_stats`）を追加した際、ロジックを複製せず `scripts/lib/analyze_common.py` へ移した（issue #252）。挙動・シグネチャは変更していない。
 
 `patterns_needing_approval` はカテゴリ集計（パターン名＋件数）のみを提供しており、「具体的にどのコマンド文字列を allowlist に足すべきか」の判断にはユーザーが `logs/auto-approve/*.log` の生ログを手動でコピペして精査する必要があった。`sample_commands` はこの手動精査を減らすために追加した（issue #278）。独自の要約・推測は行わず、ログに実際に記録された `detail` 文字列をそのまま頻度付きで返す設計にしている — allowlist 追加の判断材料は AI の解釈ではなく実データそのものであるべきという方針のため。
+
+`sample_commands` は当初 `possibly_truncated`（hook 側の120文字切り詰めを長さで推測するフラグ）を持っていたが、issue #280 で `hooks/auto-approve-readonly.sh` の truncate 自体を撤廃したため削除した。truncate がなくなった以上、このフラグは新規ログ行に対して常に無意味（かつ長いコマンドを誤って truncated 扱いする偽陽性の原因）になるため、フラグを残さず完全に削除する判断をした。#280 以前に書かれた旧ログ行（120文字で実際に truncate 済み）はこのフィールドで区別できなくなる。`logs/*.log` に自動ローテーション・削除の仕組みはなく月次ファイルが無期限に蓄積されるため、旧フォーマットの truncate 済み行は今後も `--all` 集計に混在し続ける。区別できないことは既知の制限として残す（下記）。
 
 ## 統合ポイント
 
@@ -65,9 +67,8 @@
 - `ROUTINE_OP_PATTERNS` は `hooks/auto-approve-readonly.sh` の `check_session_approved()` の手動ミラーであり、自動同期はされない。hook 側の allowlist が変わった場合、このファイルも合わせて更新しないと `routine_ops` の分類が古くなる
 - `duration_ms_stats.top_slow_patterns` も `TOP_N`（10件）に切り詰められる
 - `duration_ms_stats` は `"NA"` およびフィールド欠損（旧フォーマットのログ行）を区別せず一律 `excluded_count` にまとめる。bash バージョンによる計測不能とログフォーマット移行前の欠損を JSON レベルでは区別できない
-- `sample_commands` の `possibly_truncated` は `len(command) >= DETAIL_TRUNCATE_LIMIT`（120）による長さのみの判定であり、たまたま120文字ちょうどで終わる非truncateコマンドを誤って truncated 扱いする可能性がある（偽陽性はあるが偽陰性は起きない設計）
-- `DETAIL_TRUNCATE_LIMIT`（120）は `hooks/auto-approve-readonly.sh` の `truncate_utf8_safe ... 120` の手動ミラーであり自動同期されない。hook 側の truncate 上限が変わった場合、この定数も追従して更新する必要がある
 - `patterns_needing_approval` の各 `sample_commands` は `SAMPLE_COMMANDS_PER_PATTERN`（10件）に切り詰められる。あるパターンのユニークコマンドが10件を超える場合、頻度の低いコマンドは出力に含まれない
+- issue #280 より前に書かれたログ行は hook 側で120文字に truncate 済みだが、`sample_commands` にこれを示すフィールドはない（`possibly_truncated` は削除済み）。`--all` で古い月のログを含めて集計する場合、`sample_commands` の一部が実は末尾切り詰め済みの可能性がある
 
 ## 変更履歴（git log より自動生成）
 
