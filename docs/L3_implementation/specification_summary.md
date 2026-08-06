@@ -76,6 +76,12 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 根拠: `commands/concept-maker.md:1-92`
 
+### `/auto-approve-hazard-scan` (`commands/auto-approve-hazard-scan.md`)
+
+`logs/auto-approve/*.log` で `user_prompt` に落ちている定型処理コマンドから allowlist 拡張候補を洗い出し、`hooks/auto-approve-readonly.sh --explain` の判定根拠をもとに AI が構造化ハザードチェックリストを作成し、既知ハザードが見つからない候補についてのみ `auto-approve-candidate` label 付き issue を起票するスタンドアロン入口（issue #284、#282 の一部）。`python3 scripts/analyze_auto_approve.py --all` の `routine_ops.patterns_needing_approval`（`sample_commands` 上位3件）を候補とし、既存 `auto-approve-candidate` issue との本文完全一致で重複除外した後、各候補について `--explain` を実行する。`--explain` は呼び出しセッション自身の session-approved ファイルを fast path として参照するため、`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE` を存在しないパスへ向けて実行し、常に「新規セッションでの判定」を診断する。ハザードチェックリストは variable expansion / absolute-path・cwd bypass / unquoted write redirect / destructive flags / 既存 allow-shape との比較の5項目固定で、`already-safe`（ログ記録時点以降に既に allow-shape 拡張済み）/ `no-known-hazard`（issue化候補）/ `hazard-found`（issue化しない）の3種類に判定する。全候補を1回でまとめて提示し、`no-known-hazard` 候補への issue 起票はユーザーの一括承認後にのみ行う。`hooks/auto-approve-readonly.sh` を含む既存コードは一切変更しない。
+
+根拠: `commands/auto-approve-hazard-scan.md:1-162`
+
 ### `/triage-issues` (`commands/triage-issues.md`)
 
 open issue が溜まったタイミングで実行するスタンドアロンのトリアージ入口。`gh issue list` で全 open issue を取得し、`docs/.ai/repo.profile.json` および `docs/L3_implementation/specification_summary.md` と照合して stale / inconsistent / duplicated / unclear / ready の 5 カテゴリに分類する。分類結果をユーザーに提示し、issue ごとに推奨アクション（close / comment / edit / label / skip）を「理由 + 推奨アクション」付きで提示してユーザー承認後のみ実行する。`/work`・`/task`・`/new-issue`・`/review-resolve` とは独立しており、既存コマンドの振る舞いは変更しない。
@@ -120,7 +126,7 @@ PR 番号を受け取り、PR ブランチに checkout し、`codex review --bas
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。framework layerはgeneral → JavaScript → TypeScript → React → Next.jsの依存順を明示する。現存するskill wrapperは23件でcommandsと対応する。`report-review` skillおよび`analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skillはread-only境界を保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。framework layerはgeneral → JavaScript → TypeScript → React → Next.jsの依存順を明示する。現存するskill wrapperは24件でcommandsと対応する。`report-review` skillおよび`analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skillはread-only境界を保持する。
 
 根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/` 実体一覧
 

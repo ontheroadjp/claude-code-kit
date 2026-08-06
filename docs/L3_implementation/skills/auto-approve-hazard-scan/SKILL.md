@@ -29,4 +29,4 @@ command と skill に別々の workflow を持たせず、Claude/Codex 間の仕
 
 ## 変更履歴（git log より自動生成）
 
-（初回追加のためコミット前。次回 /docs-sync 実行時に自動反映される）
+- ddaf819 feat(#284): add /auto-approve-hazard-scan pipeline

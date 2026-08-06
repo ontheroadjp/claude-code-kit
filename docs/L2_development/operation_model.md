@@ -82,6 +82,12 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 根拠: `commands/analyze-access.md:16-87`, `commands/analyze-auto-approve.md:17-92`, `commands/analyze-token-usage.md:16-92`, `scripts/lib/analyze_common.py:30-77`
 
+## auto-approve-hazard-scan flow
+
+`auto-approve-hazard-scan.md` は `python3 scripts/analyze_auto_approve.py --all` の `routine_ops.patterns_needing_approval`（`sample_commands` 上位3件）を候補として抽出し、既存の `auto-approve-candidate` issue と本文完全一致で重複除外した上で、各候補を `hooks/auto-approve-readonly.sh --explain` で診断する。`--explain` は呼び出しセッション自身の session-approved ファイルを参照するため、`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE=/nonexistent/session-approved` を指定して常に「新規セッションでの判定」を診断する。診断結果と該当 `is_safe_*` 関数の実装を根拠に、AI が variable expansion / absolute-path・cwd bypass / unquoted write redirect / destructive flags / 既存 allow-shape との比較の5項目ハザードチェックリストを作成し、`already-safe` / `no-known-hazard` / `hazard-found` のいずれかに判定する。全候補をまとめて提示し、`no-known-hazard` 候補への `auto-approve-candidate` issue 起票はユーザーの一括承認後にのみ行う。`hooks/auto-approve-readonly.sh` を含む既存コードは変更しない。
+
+根拠: `commands/auto-approve-hazard-scan.md:1-162`
+
 ## ローカル・CI コマンド
 
 | コマンド | 用途 | 根拠 |

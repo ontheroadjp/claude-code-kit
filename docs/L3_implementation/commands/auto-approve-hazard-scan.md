@@ -67,4 +67,4 @@ hook 自体は一切変更しない。この command 唯一の書き込みは `g
 
 ## 変更履歴（git log より自動生成）
 
-（初回追加のためコミット前。次回 /docs-sync 実行時に自動反映される）
+- ddaf819 feat(#284): add /auto-approve-hazard-scan pipeline
