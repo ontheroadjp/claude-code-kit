@@ -11,6 +11,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
 | `/analyze-token-usage` | Aggregates `logs/token-usage/*.log` via a Python script (deduping per-session cumulative rows), then prints a KPI dashboard (cache efficiency) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/token-usage/`. |
+| `/auto-approve-hazard-scan` | Standalone entry point that mines `/analyze-auto-approve`'s candidate commands, diagnoses each via `hooks/auto-approve-readonly.sh --explain`, has the AI produce a hazard checklist, and files `auto-approve-candidate` labeled issues for hazard-free candidates after one batch user approval. Never modifies the hook itself. |
 | `/triage-issues` | Standalone entry point for reviewing and cleaning up open issues so they are ready for `/work #N`. |
 | `/new-issue` | Optional pre-`/work` entry point. Turns a rough idea into one or more GitHub issues. |
 | `/review-resolve` | Handles PR review comments interactively without going through `/work`. |
