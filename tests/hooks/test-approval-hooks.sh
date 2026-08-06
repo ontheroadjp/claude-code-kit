@@ -917,18 +917,12 @@ if [ "$commits_after" -ne "$commits_before" ]; then
     exit 1
 fi
 
-# --- Multibyte log truncation regression test ---
-# Force byte-wise `cut -c` (LC_ALL=C) to reproduce the truncation bug: a
-# multibyte command long enough to overflow the 120-char log limit at a
-# non-character-aligned byte offset must still produce a valid UTF-8,
-# grep-matchable log line.
-# "echo AB" is a 7-byte ASCII prefix; each subsequent "あ" is 3 bytes, so byte
-# offset 120 falls on the middle byte of the 38th "あ" — a genuine
-# mid-character split, not a coincidental character boundary.
-multibyte_command="echo AB$(printf 'あ%.0s' $(seq 1 45))"
+# --- Multibyte log line regression test ---
+# log_decision() no longer truncates (issue #280): a multibyte Bash command
+# must still produce a valid UTF-8, grep-matchable log line end to end.
+multibyte_command="echo AB$(printf 'あ%.0s' $(seq 1 5))"
 output=$(jq -cn --arg command "$multibyte_command" '{tool_name:"Bash",tool_input:{command:$command}}' \
     | env -u CODEX_MANAGED_BY_NPM -u CODEX_MANAGED_BY_BUN -u CODEX_CI -u CODEX_THREAD_ID \
-        LC_ALL=C \
         CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
         CLAUDE_CODE_KIT_SESSION_ID="$SESSION_ID" \
         CLAUDE_CODE_KIT_SESSION_APPROVED_FILE="$SESSION_FILE" \
@@ -943,6 +937,10 @@ if ! printf '%s' "$multibyte_log_line" | grep -qE 'result=approved[[:space:]]+to
 fi
 if ! printf '%s' "$multibyte_log_line" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1; then
     printf 'Multibyte log line contains invalid UTF-8: %s\n' "$multibyte_log_line" >&2
+    exit 1
+fi
+if ! printf '%s' "$multibyte_log_line" | grep -qF "$multibyte_command"; then
+    printf 'Multibyte log line does not retain the full command: %s\n' "$multibyte_log_line" >&2
     exit 1
 fi
 

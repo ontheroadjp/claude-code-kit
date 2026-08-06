@@ -34,12 +34,6 @@ RECENT_N = 15
 P95_PERCENTILE = 95
 SAMPLE_COMMANDS_PER_PATTERN = 10
 
-# Mirrors hooks/auto-approve-readonly.sh's truncate_utf8_safe() call in
-# log_decision() (`truncate_utf8_safe ... 120`). A detail this long or longer
-# may have had its tail cut off before it ever reached the log, so it is
-# flagged as possibly_truncated rather than trusted as the full command text.
-DETAIL_TRUNCATE_LIMIT = 120
-
 # Mirrors hooks/auto-approve-readonly.sh's check_session_approved() categories
 # (tool:git_write / tool:gh_issue_write / tool:gh_pr_write) — the same Bash
 # command shapes that only auto-approve once a session has an approved plan.
@@ -243,14 +237,7 @@ def pattern_command_samples(routine: list[tuple[str, Decision]], label: str, n: 
         d["detail"] for pattern_label, d in routine if pattern_label == label and d["result"] == "user_prompt"
     )
     ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:n]
-    return [
-        {
-            "command": command,
-            "count": count,
-            "possibly_truncated": len(command) >= DETAIL_TRUNCATE_LIMIT,
-        }
-        for command, count in ranked
-    ]
+    return [{"command": command, "count": count} for command, count in ranked]
 
 
 def routine_ops_breakdown(decisions: list[Decision], n: int) -> dict[str, object]:
@@ -287,18 +274,12 @@ def routine_ops_breakdown(decisions: list[Decision], n: int) -> dict[str, object
         }
         for user_prompt_count, label, counts in ranked_patterns
     ]
-    truncated_detail_count = sum(
-        1
-        for _, decision in routine
-        if decision["result"] == "user_prompt" and len(decision["detail"]) >= DETAIL_TRUNCATE_LIMIT
-    )
 
     return {
         "total_routine_decisions": total,
         "result_counts": result_counts,
         "result_ratio_pct": ratio(result_counts, total),
         "patterns_needing_approval": patterns_needing_approval,
-        "truncated_detail_count": truncated_detail_count,
     }
 
 

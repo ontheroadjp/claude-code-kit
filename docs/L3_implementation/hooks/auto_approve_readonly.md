@@ -354,9 +354,9 @@ decision log は `logs/auto-approve/YYYY-MM.log` に次の形式で追記する�
 
 `duration_ms` はスクリプト冒頭（`payload=$(cat)` の前）で取得した `$EPOCHREALTIME`（bash 5.0+ のビルトイン変数、サブプロセスなし）を起点に、`log_decision()` 呼び出し時点までの経過ミリ秒を純粋な bash 整数演算（`10#` prefix で usec の leading zero を octal 誤解釈しないようにする）で計算したものである。`$EPOCHREALTIME` が使えない bash（5.0未満。例: macOS デフォルトの `/bin/bash` 3.2）では `duration_ms=NA` とし、計測不能を正直に記録する（サブプロセスベースの代替計測は行わない）。`scripts/analyze_auto_approve.py` の `LINE_RE` はこのフィールドを任意グループとして扱うため、`duration_ms` を持たない旧フォーマットのログ行も引き続き解析できる。集計・レポートへの反映は issue #218 のスコープ。
 
-`detail` は `cut -c1-120` で切り詰めてからログへ書き込む。`cut -c` は non-UTF-8-aware なロケール（`LC_ALL=C` 等）ではバイト単位に振る舞うため、日本語などマルチバイト文字を含む command を境界で切ると不正な UTF-8 バイト列を生成し、`grep` 等ロケール依存ツールがログをバイナリ扱いして検索に失敗する原因になっていた。`truncate_utf8_safe()` は `cut` の直後に `iconv -f UTF-8 -t UTF-8 -c` を通し、切り詰め境界に残った不完全なマルチバイトシーケンスを除去する（`iconv` 不在時は切り詰め結果をそのまま返すフォールバック）。
+`detail` は改行をスペースに正規化するのみで、以前あった120文字への切り詰め（`cut -c1-120` + `truncate_utf8_safe()` によるマルチバイト境界の UTF-8 安全化）は撤廃した（issue #280）。`log_decision` はマスキング前の元 `$command` を全文記録する。
 
-根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:627-671`
+根拠: `hooks/auto-approve-readonly.sh:64-73`, `hooks/auto-approve-readonly.sh:1026-1035`
 
 ## 動的防御（Working Repo Dynamic Defense）
 
@@ -468,7 +468,7 @@ issue #208 で修正した quote-unaware write-redirect 誤検知と `>&` fd 複
 
 `xargs`/`find -exec`（issue #254）については、read-only な wrapped command を持つ `xargs`（分離/添字形の `-I`、`-0`、`-n`/`-P` の組み合わせ、`--` marker、パイプライン経由）と `find -exec`/`-execdir`（`\;`/`+` 終端、複数 `-exec` 節）を positive case、unsafe な wrapped command（`rm` 系）、終端記号の欠落、一部の節だけ unsafe な複数 `-exec`、認識対象外の xargs オプション（long option・クラスタ化）、`is_safe_segment` が元々認識しない wrapped command（`sh -c ...`）、変数展開によるオプション/wrapped command の smuggling を negative case として固定する。`-fprintf` は `-exec` 系と異なりコマンドをラップしないため、既存の `-delete` と同様に無条件拒否のまま negative case として固定する。
 
-`log_decision` のマルチバイト切り詰めについては、`LC_ALL=C` でバイト単位 `cut -c` を強制し、120文字境界を跨ぐ日本語コマンドのログ行が valid UTF-8 かつ `grep -qE` で検出可能であることを検証する回帰テストを持つ。
+`log_decision` については、日本語などマルチバイト文字を含む Bash コマンドのログ行が valid UTF-8・`grep -qE` で検出可能・かつコマンド全文を保持していることを検証する回帰テストを持つ（truncate 撤廃前は120文字境界を跨ぐマルチバイト分割の UTF-8 安全性検証だったが、issue #280 で truncate 自体がなくなったため全文保持の検証に置き換えた）。
 
 heredoc body のマスキング（issue #246）については、`gh pr create --body-file - <<'EOF' ... EOF` 形（複数行 Markdown 本文、`>`/`->`/`rm -rf /` のような他のスキャナーを誤検知させうる文字列を本文に含む場合を含む）と `<<"EOF"`（ダブルクォート）を `tool:gh_pr_write` 許可済みセッションでの positive case として固定する。演算子より前に実際の危険操作がある `git push --force <<'EOF' ... EOF` は本文の内容に関わらず引き続き block されること、`tool:gh_pr_write` が未承認の場合は同じ heredoc コマンドでも引き続き通常許可フローへ戻ること、および delimiter が unquoted な heredoc（`<<EOF`）は既知の未対応形として引き続き通常許可フローへ戻ること（回帰ではなく仕様）を negative case として固定する。
 
