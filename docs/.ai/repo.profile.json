@@ -19,6 +19,7 @@
     "analyze:token-usage": "python3 scripts/analyze_token_usage.py --all",
     "test:approval-hooks": "bash tests/hooks/test-approval-hooks.sh",
     "test:report-review": "bash tests/commands/test-report-review.sh",
+    "test:coding-guidelines": "bash tests/commands/test-coding-guidelines.sh",
     "test:install": "bash tests/install/test-install.sh",
     "test:analysis-scripts": "python3 -m pytest tests/scripts/"
   },
@@ -42,6 +43,8 @@
     "commands/coding-js.md",
     "commands/coding-ts.md",
     "commands/coding-sh.md",
+    "commands/coding-react.md",
+    "commands/coding-nextjs.md",
     "commands/git-commit.md",
     "commands/git-pr.md"
   ],
@@ -133,6 +136,8 @@
     "skills/coding-js/SKILL.md",
     "skills/coding-ts/SKILL.md",
     "skills/coding-sh/SKILL.md",
+    "skills/coding-react/SKILL.md",
+    "skills/coding-nextjs/SKILL.md",
     "skills/git-commit/SKILL.md",
     "skills/git-pr/SKILL.md"
   ],

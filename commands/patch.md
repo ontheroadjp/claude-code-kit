@@ -63,8 +63,11 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
     ```
 - ソースコードを修正する場合は、修正前に対象ファイルの言語に応じたコマンドを Read し、記載された原則を適用すること:
     - Python (.py): `commands/coding-py.md`
-    - JavaScript (.js / .jsx): `commands/coding-js.md`
-    - TypeScript (.ts / .tsx): `commands/coding-ts.md`
+    - JavaScript (.js): `commands/coding-js.md`
+    - TypeScript (.ts): `commands/coding-ts.md`
+    - React (.jsx): `commands/coding-js.md` → `commands/coding-react.md`
+    - React + TypeScript (.tsx): `commands/coding-ts.md` → `commands/coding-react.md`
+    - Next.js（`next` dependencyまたはNext.js configで判定）: 上記に加えて `commands/coding-nextjs.md`
     - Shell script (.sh): `commands/coding-sh.md`
     - その他の言語: `commands/coding-general.md`
 - 変更を実施する（ユーザー確認不要）

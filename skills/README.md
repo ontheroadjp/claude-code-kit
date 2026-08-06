@@ -45,6 +45,8 @@ skills/
 | `coding-js/` | `commands/coding-js.md` | JavaScript コーディングルール |
 | `coding-ts/` | `commands/coding-ts.md` | TypeScript コーディングルール |
 | `coding-sh/` | `commands/coding-sh.md` | Shell script コーディングルール（ShellCheck） |
+| `coding-react/` | `commands/coding-react.md` | React コーディングルールとアンチパターン |
+| `coding-nextjs/` | `commands/coding-nextjs.md` | Next.js コーディングルールとアンチパターン |
 
 ## 使い方
 

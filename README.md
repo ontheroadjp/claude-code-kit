@@ -27,6 +27,8 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | `/coding-js` | JavaScript-specific coding conventions. |
 | `/coding-ts` | TypeScript-specific coding conventions. |
 | `/coding-sh` | Shell script-specific coding conventions (ShellCheck). |
+| `/coding-react` | Generic React conventions and common anti-patterns. |
+| `/coding-nextjs` | Generic Next.js conventions and common anti-patterns. |
 
 ## Installation
 
@@ -97,6 +99,7 @@ Local verification commands:
 ```bash
 bash tests/hooks/test-approval-hooks.sh
 bash tests/commands/test-report-review.sh
+bash tests/commands/test-coding-guidelines.sh
 bash tests/install/test-install.sh
 python3 -m pytest tests/scripts/
 shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_modules/*" -not -path "./.git/*" -iname "*.sh")
