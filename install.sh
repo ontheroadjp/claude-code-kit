@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLAUDE_HOME="${HOME}/.claude"
 COMMANDS_TARGET="${HOME}/.claude/commands"
 CODEX_COMMANDS_TARGET="${HOME}/.codex/commands"
 HOOKS_TARGET="${HOME}/.claude/hooks"
@@ -17,6 +18,9 @@ mkdir -p "$CODEX_HOOKS_TARGET"
 mkdir -p "$SKILLS_TARGET"
 mkdir -p "$CLAUDE_TEMPLATES_TARGET"
 mkdir -p "$CODEX_TEMPLATES_TARGET"
+
+echo "Linking commands -> ${CLAUDE_HOME}"
+ln -sf "$(basename ${REPO_DIR}/keybindings.json)" "${CLAUDE_HOME}/keybindings.json)"
 
 echo "Linking commands -> ${COMMANDS_TARGET}"
 for src in "$REPO_DIR"/commands/*.md; do
