@@ -29,4 +29,4 @@ command と skill に別々の workflow を持たせず、Claude/Codex 間の仕
 
 ## 変更履歴（git log より自動生成）
 
-（この doc は初回作成のため変更履歴なし）
+- 7aa4615 feat(#285): add /triage-issues-for-auto-approve command
