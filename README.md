@@ -6,14 +6,14 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 
 | Command | Purpose |
 |---|---|
-| `/work` | Main entry point. Routes report-labeled issues to read-only review; otherwise gates, investigates, and routes to patch or task flow. |
+| `/work` | Main entry point. Routes report-labeled issues to read-only review, tells the user to run `/triage-issues-for-auto-approve` first for auto-approve-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
 | `/report-review` | Evaluates a report-labeled issue read-only and prints evidence-based opinions and proposals without changing files or GitHub state. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
 | `/analyze-token-usage` | Aggregates `logs/token-usage/*.log` via a Python script (deduping per-session cumulative rows), then prints a KPI dashboard (cache efficiency) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/token-usage/`. |
 | `/auto-approve-hazard-scan` | Standalone entry point that mines `/analyze-auto-approve`'s candidate commands, diagnoses each via `hooks/auto-approve-readonly.sh --explain`, has the AI produce a hazard checklist, and files `auto-approve-candidate` labeled issues for hazard-free candidates after one batch user approval. Never modifies the hook itself. |
 | `/triage-issues` | Standalone entry point for reviewing and cleaning up open issues so they are ready for `/work #N`. |
-| `/triage-issues-for-auto-approve` | Standalone, read-only entry point that lists `auto-approve-candidate` labeled issues, discloses each one's hazard analysis verbatim, and on a per-issue yes/no gate directs the user to run `/work #N` themselves. Never invokes `/work` or writes to GitHub. |
+| `/triage-issues-for-auto-approve` | Standalone entry point that lists `auto-approve-candidate` labeled issues, discloses each one's hazard analysis verbatim, and on a per-issue yes/no gate directs the user to run `/work #N` themselves. On yes, swaps the issue's label from `auto-approve-candidate` to `triage-approved` (clearing `/work`'s gate); no other GitHub writes, and never invokes `/work` itself. |
 | `/new-issue` | Optional pre-`/work` entry point. Turns a rough idea into one or more GitHub issues. |
 | `/review-resolve` | Handles PR review comments interactively without going through `/work`. |
 | `/codex-review` | Reviews a PR using the Codex CLI non-interactively, posts the result as a PR approval or change request (requires `CODEX_REVIEW_TOKEN`), and auto-invokes `/review-resolve` when changes are requested. |
@@ -76,6 +76,7 @@ This links `scripts/statusline.sh` to `~/.claude/statusline.sh` and adds a `stat
 
 /work (main entry)
   report-labeled issue -> /report-review -> read-only evaluation on standard output
+  auto-approve-candidate issue -> stops, tells user to run /triage-issues-for-auto-approve first
   docs not required -> patch flow: branch -> commit -> user ff-merges
   docs required     -> task flow: issue -> implement -> /docs-sync -> ready PR
                        (end of flow -- review/merge are manual)

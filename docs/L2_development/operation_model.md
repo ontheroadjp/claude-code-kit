@@ -2,21 +2,22 @@
 
 ## 通常作業フロー
 
-`/review-resolve` 以外の作業は `/work` から開始する。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、以降の review・merge は自動実行しない。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、それ以外は現状調査後に task または patch へ進む。
+`/review-resolve` 以外の作業は `/work` から開始する。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、以降の review・merge は自動実行しない。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、`auto-approve-candidate` label があれば `/triage-issues-for-auto-approve` の実行を案内して終了し、どちらでもなければ現状調査後に task または patch へ進む。
 
-根拠: `commands/work.md:7-143`
+根拠: `commands/work.md:7-149`
 
 ## ルーティング
 
-issue 番号がある場合は最初に exact `report` label を判定する。
+issue 番号がある場合は最初に exact `report` label、次に exact `auto-approve-candidate` label を判定する（同じ `gh issue view --json labels` 呼び出しの結果を使う）。
 
 - `report` label の issue: `commands/report-review.md` を Read し、read-only 評価で終了する。
-- report issue 以外: 次の実装 routing を行う。
+- `report` に該当せず `auto-approve-candidate` label の issue: `/triage-issues-for-auto-approve` の実行を促し、`/work` を終了する（issue #298）。`/triage-issues-for-auto-approve` で `yes` 承認され `triage-approved` label に付け替えられた issue はこの分岐に該当しなくなる。
+- どちらの label にも該当しない issue: 次の実装 routing を行う。
 
 - issue 起点、または docs 変更が必要な場合: `commands/task.md` を Read し task flow を実行する。
 - issue なし、かつ docs 変更が不要な場合: `commands/patch.md` を Read し patch flow を実行する。
 
-根拠: `commands/work.md:53-115`
+根拠: `commands/work.md:64-121`
 
 ## report-review flow
 
@@ -90,9 +91,9 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 ## triage-issues-for-auto-approve flow
 
-`triage-issues-for-auto-approve.md` は `gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま開示する（見出しが見つからない場合は本文全体を表示）。issue ごとに「実装に進みますか？（yes/no）」を確認し、yes の場合も `/work` を自身で起動せず「`/work #N` を実行してください」と案内するのみに留める。GitHub issue/label/PR の変更は一切行わない。
+`triage-issues-for-auto-approve.md` は `gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま開示する（見出しが見つからない場合は本文全体を表示）。候補が1件以上あれば session-approved に `tool:gh_issue_write` を書き込む（hook 側の変更なしに `gh issue edit --add-label/--remove-label` を自動承認するため）。issue ごとに「実装に進みますか？（yes/no）」を確認し、yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap してから（未存在なら確認の上 `gh label create`）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内する（issue #298）。no の場合、および `gh issue` 本文編集・close・comment は行わない。
 
-根拠: `commands/triage-issues-for-auto-approve.md:1-91`
+根拠: `commands/triage-issues-for-auto-approve.md:1-120`
 
 ## ローカル・CI コマンド
 

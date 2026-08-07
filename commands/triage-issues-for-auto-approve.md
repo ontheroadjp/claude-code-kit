@@ -4,7 +4,7 @@
 
 - `/work`・`/task`・`/patch`・`/triage-issues`・`/auto-approve-hazard-scan` とは独立したワークフローです
 - 判断基準が `/triage-issues`（issue 衛生全般のトリアージ）とは異なる（ハザード/リスクレビュー）ため、`commands/triage-issues.md` とは論理的にも構造的にも別ファイルとして維持し、`commands/triage-issues.md` 自体は変更しません
-- **read-only です** — GitHub issue・label・PR・リポジトリファイルのいずれも変更しません。唯一の出力は標準出力です
+- **label 付け替え以外は read-only です** — `yes` 回答時に対象 issue の label を `auto-approve-candidate` → `triage-approved` へ付け替える（`triage-approved` label が存在しない場合はユーザー確認の上で新規作成する）以外、GitHub issue 本文・PR・リポジトリファイルは変更しません
 - **`/work` を自身で起動しません** — 実装に進む場合は「`/work #N` をユーザー自身が実行してください」と案内するだけに留めます
 
 ---
@@ -23,6 +23,28 @@ gh issue list --label auto-approve-candidate --state open --json number,title,bo
 ```
 
 取得件数をユーザーに報告する。0 件の場合は「`auto-approve-candidate` label の open issue はありません」と報告して終了する。
+
+### Step 1.5: session-approved の準備
+
+1 件以上の候補が取得できた場合、Step 2 開始前に以下で session-approved ファイルの正確なパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接取得する）:
+
+```bash
+SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
+    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
+fi
+SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
+SESSION_APPROVED_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
+```
+
+セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 2 へ進む。
+
+Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容:
+```
+tool:gh_issue_write
+```
+
+これにより、Step 2.2 の `yes` 時に行う `gh issue edit --add-label/--remove-label` が `hooks/auto-approve-readonly.sh` の既存 `tool:gh_issue_write` カテゴリ（`gh issue (create|edit|close|delete|comment|reopen)` をサブコマンド単位でマッチする）で自動承認される。hook 自体の変更は不要。`gh label create`（`triage-approved` 未作成の場合のみ）はこのカテゴリの対象外のため、引き続き通常の確認プロンプトに落ちる。
 
 ### Step 2: issue ごとの開示・承認
 
@@ -61,10 +83,17 @@ URL: <url>
 **ユーザーに確認する:**
 「この提案の実装に進みますか？（yes / no）」
 
-- `yes` → 「`/work #<N>` を実行してください」と案内し、当該 issue 番号を「実装案内済み」リストに記録して次の issue へ進む
-- `no` → 対応せず「見送り」リストに記録して次の issue へ進む
+- `yes` →
+    - `triage-approved` label が存在しない場合、作成をユーザーに提案する:
+        - name: `triage-approved`
+        - description: `Reviewed and approved for implementation via /triage-issues-for-auto-approve`
+        - color: 任意の未使用色（例: `#1d76db`）
+        - 承認を得てから `gh label create "triage-approved" --description "Reviewed and approved for implementation via /triage-issues-for-auto-approve" --color "1d76db"` を実行する
+    - `gh issue edit <N> --remove-label "auto-approve-candidate" --add-label "triage-approved"` で label を付け替える（stack ではなく swap。Step 1.5 の session-approved により確認プロンプトなしで進む）
+    - 「`/work #<N>` を実行してください」と案内し、当該 issue 番号を「実装案内済み」リストに記録して次の issue へ進む
+- `no` → 対応せず「見送り」リストに記録して次の issue へ進む（label 操作は行わない）
 
-このステップでは `gh issue` の編集・コメント・label 操作は一切行わない。
+このステップで行う変更操作は `yes` 時の label 付け替え（および必要な場合の `triage-approved` label 新規作成）のみであり、issue 本文の編集・コメント投稿は一切行わない。
 
 ### Step 3: 完了報告
 
@@ -84,7 +113,7 @@ URL: <url>
 
 ## スコープ外
 
-- `gh issue` の編集・close・comment・label 操作（一切行わない）
+- `gh issue` の本文編集・close・comment（一切行わない）。label 操作は Step 2.2 `yes` 時の `auto-approve-candidate` → `triage-approved` 付け替え、および `triage-approved` label 自体の新規作成に限り行う
 - `/work` の自動起動（ユーザーが個別に `/work #N` を実行する）
 - `hooks/auto-approve-readonly.sh` を含む既存コードの変更
 - `auto-approve-candidate` issue の新規起票（`/auto-approve-hazard-scan` が担う）

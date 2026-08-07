@@ -1,6 +1,6 @@
 # /work
 
-全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、report issue は `commands/report-review.md`、それ以外は `commands/task.md` または `commands/patch.md` を Read して委譲します。
+全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、report issue は `commands/report-review.md`、auto-approve-candidate issue は `/triage-issues-for-auto-approve` の実行を案内して終了し、それ以外は `commands/task.md` または `commands/patch.md` を Read して委譲します。
 
 ---
 
@@ -61,7 +61,7 @@ G-1 で Read した `docs/.ai/repo.profile.json` および現状調査で Read �
 
 ユーザーに作業の目的を尋ねる。
 
-#### report issue の事前ルーティング
+#### issue label の事前ルーティング
 
 ユーザーが issue 番号を明示している場合、現状調査より先に以下で label を取得する:
 
@@ -69,11 +69,15 @@ G-1 で Read した `docs/.ai/repo.profile.json` および現状調査で Read �
 gh issue view <issue番号> --json labels --jq '.labels[].name'
 ```
 
-- label の name が `report` と完全一致する場合:
+- label に `report` が完全一致で含まれる場合:
     - `commands/report-review.md` を Read し、その内容に従う
     - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
     - `/report-review` の完了後に `/work` も終了する
-- `report` と完全一致する label がない場合:
+- label に `report` は含まれないが `auto-approve-candidate` が完全一致で含まれる場合:
+    - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
+    - 「この issue には auto-approve-candidate label が付いています。実装前に `/triage-issues-for-auto-approve` を実行してハザード審査を受けてください」と報告し、`/work` を終了する
+    - このチェックは `/triage-issues-for-auto-approve` で承認され `triage-approved` label に付け替えられた issue には適用されない（label が既に外れているため自然に該当しなくなる）
+- いずれの label にも該当しない場合:
     - 既存どおり現状調査と2段階ルーティングへ進む
 - issue の取得に失敗した場合:
     - エラーを報告して終了し、推測でルーティングしない
@@ -82,7 +86,7 @@ gh issue view <issue番号> --json labels --jq '.labels[].name'
 
 上記「現状調査（共通）」を実行する（ルーティング判定の前に必ず行う）。
 
-report issue の事前ルーティングに該当しなかった場合、以下の2段階でルーティングを判定する:
+issue label の事前ルーティングに該当しなかった場合、以下の2段階でルーティングを判定する:
 
 **判定基準:**
 
