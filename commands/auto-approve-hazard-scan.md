@@ -104,7 +104,7 @@ CLAUDE_CODE_KIT_SESSION_APPROVED_FILE=/nonexistent/session-approved \
 
 承認を得てから:
 ```bash
-gh label create --name "auto-approve-candidate" --description "AI-proposed auto-approve allowlist extension candidate, pending human review" --color "0e8a16"
+gh label create "auto-approve-candidate" --description "AI-proposed auto-approve allowlist extension candidate, pending human review" --color "0e8a16"
 ```
 
 承認された各候補について起票する（タイトル・本文は英語）:
