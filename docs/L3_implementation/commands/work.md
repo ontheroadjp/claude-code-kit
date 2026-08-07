@@ -49,6 +49,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- 4450e96 feat(#298): gate /work on auto-approve-candidate label, swap to triage-approved on approval
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - b3a5b06 chore(#269): prefer L3 doc line citations over full-file reads in /work investigation
 - af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
@@ -58,6 +59,5 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - 0297a81 feat(#126): add report review workflow
 - 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
-- dd29feb feat(#129): store session approvals per session
 
-根拠: `commands/work.md:9-145`
+根拠: `commands/work.md:9-149`

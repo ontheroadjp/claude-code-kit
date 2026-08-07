@@ -28,9 +28,9 @@ core-toolkit-for-claude/
 
 ### `commands/`
 
-Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md`、実装は `task.md` または `patch.md` に委譲する。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する（作成後の自動 review はない）。
+Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md` へ、auto-approve-candidate issue は `/triage-issues-for-auto-approve` の実行案内で終了し、それ以外の実装は `task.md` または `patch.md` に委譲する。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する（作成後の自動 review はない）。
 
-根拠: `commands/work.md:1-115`, `commands/report-review.md:1-14`, `commands/git-pr.md:62-65`, `commands/README.md`
+根拠: `commands/work.md:1-149`, `commands/report-review.md:1-14`, `commands/git-pr.md:62-65`, `commands/README.md`
 
 ### `skills/`
 

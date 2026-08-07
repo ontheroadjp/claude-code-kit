@@ -12,11 +12,11 @@
 
 全作業の通常入口。G-0 で main へ checkout する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
-exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。それ以外は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
+exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。`report` に該当せず exact `auto-approve-candidate` label があれば、`/triage-issues-for-auto-approve` の実行を促して終了する（issue #298）。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
-根拠: `commands/work.md:7-140`
+根拠: `commands/work.md:7-144`
 
 ### `/report-review` (`commands/report-review.md`)
 
@@ -84,9 +84,9 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 ### `/triage-issues-for-auto-approve` (`commands/triage-issues-for-auto-approve.md`)
 
-`/auto-approve-hazard-scan`（issue #284）が起票した `auto-approve-candidate` label 付き open issue を一覧化し、issue ごとに AI ハザード分析を開示した上で実装に進むかどうかをユーザーに確認する read-only のスタンドアロン入口（issue #285、#282 の一部）。`gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま転記し提示する（要約・言い換えはしない）。見出しが見つからない issue は本文全体をそのまま提示するフォールバックを持つ。承認は issue 単位の yes/no で、yes の場合も `/work` を自身で起動せず「`/work #N` を実行してください」と案内するのみに留める。`gh issue` の編集・close・comment・label 操作、および `hooks/auto-approve-readonly.sh` を含む既存コードの変更は一切行わない。`commands/triage-issues.md`（issue 衛生全般のトリアージ）とは判断基準が異なるため別ファイルとして維持し、`commands/triage-issues.md` 自体は変更しない。
+`/auto-approve-hazard-scan`（issue #284）が起票した `auto-approve-candidate` label 付き open issue を一覧化し、issue ごとに AI ハザード分析を開示した上で実装に進むかどうかをユーザーに確認するスタンドアロン入口（issue #285、#282 の一部）。`gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま転記し提示する（要約・言い換えはしない）。見出しが見つからない issue は本文全体をそのまま提示するフォールバックを持つ。承認は issue 単位の yes/no で、yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap した上で（`triage-approved` 未存在時はユーザー確認の上で新規作成）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内するのみに留める（issue #298）。label 付け替え以外の `gh issue` の本文編集・close・comment、および `hooks/auto-approve-readonly.sh` を含む既存コードの変更は一切行わない。`commands/triage-issues.md`（issue 衛生全般のトリアージ）とは判断基準が異なるため別ファイルとして維持し、`commands/triage-issues.md` 自体は変更しない。
 
-根拠: `commands/triage-issues-for-auto-approve.md:1-91`
+根拠: `commands/triage-issues-for-auto-approve.md:1-120`
 
 ### `/triage-issues` (`commands/triage-issues.md`)
 

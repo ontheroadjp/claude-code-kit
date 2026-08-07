@@ -66,4 +66,5 @@ session-approved に `tool:gh_issue_write` を書き込んで Step 2.2 の `gh i
 
 ## 変更履歴（git log より自動生成）
 
+- 4450e96 feat(#298): gate /work on auto-approve-candidate label, swap to triage-approved on approval
 - 7aa4615 feat(#285): add /triage-issues-for-auto-approve command
