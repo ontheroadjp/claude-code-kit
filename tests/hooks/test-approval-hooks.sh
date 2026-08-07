@@ -122,13 +122,49 @@ assert_log_matches() {
     fi
 }
 
+# Parallel runner for independent run_auto cases: same expected outcome, no
+# log-tail assertion, no session/repo state mutation within the group. Loops
+# that check assert_log_matches or mutate SESSION_FILE/TEST_GIT_REPO stay
+# sequential and are not converted to this helper.
+JOBS="$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
+
+run_parallel_case() {
+    local expected="$1" command="$2"
+    local output
+    output=$(run_auto "$command")
+    if [ "$expected" = "NO_OUTPUT" ]; then
+        if [ -n "$output" ]; then
+            printf 'Expected no output, got: %s\nCommand: %s\n' "$output" "$command" >&2
+            return 1
+        fi
+        return 0
+    fi
+    local actual
+    actual=$(printf '%s' "$output" | jq -r '.decision')
+    if [ "$actual" != "$expected" ]; then
+        printf 'Expected decision=%s, got decision=%s\nCommand: %s\nOutput: %s\n' "$expected" "$actual" "$command" "$output" >&2
+        return 1
+    fi
+}
+export -f run_auto run_parallel_case
+export TMP_DIR SESSION_FILE SESSION_ID TMP_ROOT AUTO_HOOK
+
+# expected: a decision value ("approve"/"block"/...) or the sentinel
+# "NO_OUTPUT" for assert_no_output-equivalent checks. Remaining args are each
+# run as an independent run_auto case in parallel.
+run_parallel_group() {
+    local expected="$1"
+    shift
+    printf '%s\0' "$@" | xargs -0 -P "$JOBS" -I CMD bash -c 'run_parallel_case "$0" "$1"' "$expected" CMD
+}
+
 output=$(run_auto 'git reset --hard')
 assert_json_decision "$output" "block"
 
 output=$(run_auto 'rm -fr /usr')
 assert_json_decision "$output" "block"
 
-for command in \
+run_parallel_group "approve" \
     'nl -ba README.md' \
     'cd site' \
     'test -f README.md && echo present' \
@@ -196,10 +232,7 @@ for command in \
     'tmux show-options -g' \
     'bash -n script.sh' \
     'node --check script.js' \
-    'node -c script.js'; do
-    output=$(run_auto "$command")
-    assert_json_decision "$output" "approve"
-done
+    'node -c script.js'
 
 output=$(run_auto $'git diff --check\nnode --version\ncd site')
 assert_json_decision "$output" "approve"
@@ -210,19 +243,16 @@ assert_json_decision "$output" "approve"
 # git add / commit / fetch in their narrow known-safe shapes must auto-approve
 # unconditionally, independent of any session-approved state (no SESSION_FILE
 # has been written yet at this point in the test).
-for command in \
+run_parallel_group "approve" \
     'git add README.md' \
     'git add README.md docs/L0_concept/policy.md' \
     'git commit -m "docs: sync documentation"' \
     "git commit --message 'fix: correct typo'" \
     'git fetch' \
     'git fetch origin' \
-    'git -C /tmp fetch origin'; do
-    output=$(run_auto "$command")
-    assert_json_decision "$output" "approve"
-done
+    'git -C /tmp fetch origin'
 
-for command in \
+run_parallel_group "NO_OUTPUT" \
     'if [ -f README.md ]; then touch unsafe; fi' \
     'for f in a b; do touch unsafe; done' \
     'for ((i=0;i<3;i++)); do echo $i; done' \
@@ -333,23 +363,17 @@ for command in \
     'git fetch origin +main:main' \
     'git fetch origin main:main' \
     'git fetch --all' \
-    'git fetch --prune origin'; do
-    output=$(run_auto "$command")
-    assert_no_output "$output"
-done
+    'git fetch --prune origin'
 
 # Quote-aware write-redirect detection: a '>' used as a comparison operator
 # inside a single-quoted script (not a real file-write redirect) must not be
 # misread as one. cmd 2>&1 / cmd 1>&2 (fd duplication, not a background
 # operator) must also stay auto-approved when otherwise read-only.
-for command in \
+run_parallel_group "approve" \
     'awk -F: '\''$1>130 && $1<200'\'' README.md' \
     'grep -n foo README.md | awk -F: '\''$1>10 && $1<20'\''' \
     'cat README.md 2>&1' \
-    'cat README.md 1>&2'; do
-    output=$(run_auto "$command")
-    assert_json_decision "$output" "approve"
-done
+    'cat README.md 1>&2'
 
 # awk's own print/printf output-redirect ('>' / '>>') writes a file
 # independently of the shell-level write-redirect check, which sees the
@@ -432,7 +456,7 @@ done
 # always prompting (issue #254). Read-only wrapped commands are approved,
 # including through a full pipeline and the batching (+) terminator and
 # multiple -exec clauses in one find command.
-for command in \
+run_parallel_group "approve" \
     'find logs/auto-approve -name "*.log" | head -1 | xargs -I{} tail -20 {}' \
     'xargs -I{} tail -20 {}' \
     'xargs -I {} cat {}' \
@@ -443,17 +467,14 @@ for command in \
     'find . -type f -exec cat {} \;' \
     'find . -name "*.log" -execdir head -5 {} \;' \
     'find . -type f -exec grep -l TODO {} +' \
-    'find . -exec echo start \; -exec cat {} \;'; do
-    output=$(run_auto "$command")
-    assert_json_decision "$output" "approve"
-done
+    'find . -exec echo start \; -exec cat {} \;'
 
 # Unsafe wrapped commands, a missing terminator, one unsafe clause among
 # several, an unrecognized xargs option (long option or clustered short
 # flags), a wrapped command the hook doesn't otherwise recognize (sh -c), and
 # variable-expansion smuggling of the wrapped command must all prompt
 # fallback.
-for command in \
+run_parallel_group "NO_OUTPUT" \
     'xargs -I{} rm {}' \
     'xargs rm -rf' \
     'xargs --max-args=1 cat' \
@@ -463,10 +484,7 @@ for command in \
     'find . -exec cat {} \; -exec rm {} \;' \
     'find . -exec sh -c "rm {}" \;' \
     "XARGSOPT='-I{} rm'; xargs \$XARGSOPT {}" \
-    "FINDEXEC='-exec rm {} \\;'; find . \$FINDEXEC"; do
-    output=$(run_auto "$command")
-    assert_no_output "$output"
-done
+    "FINDEXEC='-exec rm {} \\;'; find . \$FINDEXEC"
 
 # -fprintf writes to a file directly and doesn't wrap a command, so it stays
 # unconditionally rejected like -delete (tested above) even though
@@ -475,15 +493,12 @@ output=$(run_auto 'find . -fprintf out.txt "%p\n"')
 assert_no_output "$output"
 
 # $() with read-only content → approve
-for command in \
+run_parallel_group "approve" \
     'PR_BODY=$(cat /tmp/file)' \
     'SYNC_RESULT=$(cat /tmp/other)' \
     'SESSION_ID=$(basename "$(dirname "/tmp/x")" 2>/dev/null)' \
     'echo "$(cat /tmp/file)"' \
-    $'PR_BODY=$(cat /tmp/a)\nSYNC=$(cat /tmp/b)'; do
-    output=$(run_auto "$command")
-    assert_json_decision "$output" "approve"
-done
+    $'PR_BODY=$(cat /tmp/a)\nSYNC=$(cat /tmp/b)'
 
 # $() with unsafe content → prompt fallback
 for command in \
@@ -497,7 +512,7 @@ done
 # Unquoted variable expansion bypass: a pure-assignment segment stages a
 # dangerous flag string, and a later unquoted reference smuggles it past an
 # exclusion-based/single-token-shape allowlist check. All must prompt fallback.
-for command in \
+run_parallel_group "NO_OUTPUT" \
     'ARGS="--require=./side-effect.js target.js"; node --check $ARGS' \
     "FILE='script.sh extra-arg'; bash -n \$FILE" \
     "OPTS='-o /tmp/evil http://example.com'; curl \$OPTS" \
@@ -510,10 +525,7 @@ for command in \
     "JOPT='--rotate'; journalctl \$JOPT" \
     "ADDOPT='-A'; git add \$ADDOPT" \
     "MSG='\"pwned\" --amend'; git commit -m \$MSG" \
-    "REF='+main:main'; git fetch origin \$REF"; do
-    output=$(run_auto "$command")
-    assert_no_output "$output"
-done
+    "REF='+main:main'; git fetch origin \$REF"
 
 # Unquoted variable expansion in flag-invariant plain tools remains safe and
 # stays auto-approved (no exclusion/single-token-shape check to bypass).
@@ -537,16 +549,13 @@ assert_json_decision "$output" "approve"
 # backslash immediately before a closing single quote (e.g. 'foo\') was
 # misread as escaping it, desyncing quote-tracking for the rest of the
 # segment. All must prompt fallback.
-for command in \
+run_parallel_group "NO_OUTPUT" \
     "DIR='repo branch -D victim'; git -C \$DIR diff" \
     'OUT="--output=/tmp/evil"; git diff "$OUT"' \
     "OPTS='-o /tmp/evil'; curl --user-agent 'foo\\' \$OPTS https://example.com" \
     "YQOPT='-i'; yq \$YQOPT .key=value config.yml" \
     "SCRIPT='{system(\"touch unsafe\")}'; awk \$SCRIPT README.md" \
-    "OPTS='-o /tmp/evil'; curl --user-agent \"foo'bar\" \$OPTS https://example.com"; do
-    output=$(run_auto "$command")
-    assert_no_output "$output"
-done
+    "OPTS='-o /tmp/evil'; curl --user-agent \"foo'bar\" \$OPTS https://example.com"
 
 # Round-3 review finding: _extract_subshell_contents / _strip_subshells had
 # no escape handling, so an escaped double quote (\") inside a $(...)
@@ -654,16 +663,13 @@ for command in \
     assert_no_output "$output"
 done
 
-for command in \
+run_parallel_group "block" \
     'git push origin +main:main' \
     'git checkout -f main' \
     'git checkout --force main' \
     'git switch --force main' \
     'git branch --delete --force old-branch' \
-    'git branch -df old-branch'; do
-    output=$(run_auto "$command")
-    assert_json_decision "$output" "block"
-done
+    'git branch -df old-branch'
 
 printf '%s\n' 'tool:git_write' 'tool:gh_pr_write' > "$SESSION_FILE"
 output=$(run_auto 'gh pr merge 143')
@@ -1003,17 +1009,14 @@ fi
 # Absolute-path invocations of already-allowlisted commands under a fixed set
 # of known-safe system directories (issue #237 decision, implemented in #244)
 # must auto-approve identically to their bare-name equivalents.
-for command in \
+run_parallel_group "approve" \
     '/usr/bin/git status' \
     '/usr/bin/git -C /tmp status --porcelain' \
     '/bin/nl README.md' \
     '/usr/local/bin/rg -n foo README.md' \
     '/usr/bin/git add README.md' \
     '/usr/bin/git commit -m "docs: sync documentation"' \
-    '/usr/bin/git fetch origin'; do
-    output=$(run_auto "$command")
-    assert_json_decision "$output" "approve"
-done
+    '/usr/bin/git fetch origin'
 
 # Absolute paths outside the recognized system directories — in particular
 # agent-writable locations — must NOT be normalized away: a binary planted at
