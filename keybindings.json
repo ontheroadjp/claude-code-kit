@@ -6,7 +6,7 @@
       "context": "Global",
       "bindings": {
         "ctrl+t": "app:toggleTodos",
-        "ctrl+o": "app:toggleTranscript",
+        "alt+o": "app:toggleTranscript",
         "ctrl+shift+b": "app:toggleBrief",
         "ctrl+r": "history:search",
         "ctrl+up": "app:diffFileListUp",
