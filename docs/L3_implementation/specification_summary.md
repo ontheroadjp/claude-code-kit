@@ -56,7 +56,7 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/docs-sync` (`commands/docs-sync.md`)
 
-PR branch 上で `git diff main...HEAD` を事実として docs と README を最小更新する。G-4（PR 存在確認）は廃止。補助情報は GitHub PR body の代わりに SESSION_TMP_DIR の `pr-body.md` から取得する（存在しない場合は git diff のみで判断）。HARD STOP 判定、更新、commit、`pr-docs-sync-result.md` 書き出しを行う。push・PR 作成は行わない（`/git-pr` が担う）。L0（`docs/L0_concept/`）には一切書き込まず、L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` へ候補を積んで `/concept-maker` の実行を案内するに留める（issue #273）。4 フェーズ構成（Phase 4 は最終報告）。
+PR branch 上で `git diff main...HEAD` を事実として docs と README を最小更新する。G-4（PR 存在確認）は廃止。補助情報は GitHub PR body の代わりに SESSION_TMP_DIR の `pr-body.md` から取得する（存在しない場合は git diff のみで判断）。HARD STOP 時は `/init-docs` の documentation-only mode を自動実行し、包括的な再構築が完了したら commit・`pr-docs-sync-result.md` 書き出しへ復帰して呼び出し元へ通常完了として返す。push・PR 作成は行わない（`/git-pr` が担う）。L0（`docs/L0_concept/`）には一切書き込まず、L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` へ候補を積んで `/concept-maker` の実行を案内するに留める（issue #273）。4 フェーズ構成（Phase 4 は最終報告）。
 
 Phase 3 では docs・README.md 更新に加え、L3 per-file doc の変更履歴セクションを自動更新する。`git diff --name-only` で取得したソースファイル（`docs/` 配下を除く）に対応する `docs/L3_implementation/<path>.md` が存在する場合、`git log --oneline -10 -- <file>` を実行し `## 変更履歴（git log より自動生成）` セクションを更新または末尾追加する。L3 doc が存在しないファイルはスキップ（L3 doc 新規作成は `/task` が担う）。
 
@@ -64,7 +64,7 @@ Phase 3 では docs・README.md 更新に加え、L3 per-file doc の変更履�
 
 ### `/init-docs` (`commands/init-docs.md`)
 
-G-2 で `docs/init-docs-<YYYYMMDD>` 作業ブランチを作成または切り替え、そのブランチ上で repo 再観測、local tooling 観測、`docs/.ai/repo.profile.json` 生成、L1-L3 docs 生成、整合性検証、README scaffold 確認、CLAUDE.md / AGENTS.md 更新を行う。Phase 7 はユーザー確認後に作業ブランチ確認、commit、draft PR 作成を行う。L0（`docs/L0_concept/`）は存在しない場合のみ新規生成し、既に存在する場合は再実行時も一切変更しない（issue #273）。
+モード指定がなければ standalone mode とし、G-2 で `docs/init-docs-<YYYYMMDD>` 作業ブランチを作成または切り替える。そのブランチ上で repo 再観測、local tooling 観測、`docs/.ai/repo.profile.json` 生成、L1-L3 docs 生成、整合性検証、README scaffold 確認、CLAUDE.md / AGENTS.md 更新を行い、Phase 7 でユーザー確認後に commit と draft PR を作成する。documentation-only mode が明示された場合は現在ブランチを維持して Phase 1〜6 だけを実行し、commit・push・PR 作成を行わず呼び出し元へ返る。L0（`docs/L0_concept/`）は存在しない場合のみ新規生成し、既に存在する場合は再実行時も一切変更しない（issue #273）。
 
 local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints を確認し、環境依存の注意を command workflow ではなく `CLAUDE.md` の `Local Tooling Environment` に出力する。`AGENTS.md` は原則として `CLAUDE.md` への symlink とし、Codex CLI も同じ AI 運用情報を読む。
 

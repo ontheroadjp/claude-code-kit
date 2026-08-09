@@ -108,6 +108,7 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 
 ## 変更履歴（git log より自動生成）
 
+- 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
@@ -117,4 +118,3 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 - 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
 - f6288ac feat(#98): add git push to /docs-sync Phase 3
 - e07fe3b fix: enforce independent README.md check in docs-sync Phase 2
-- f0d7bc1 feat(#41): move templates/ to repo root, add partials/ symlink, clean up stale symlinks

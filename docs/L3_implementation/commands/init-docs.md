@@ -45,6 +45,7 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 
 ## 変更履歴（git log より自動生成）
 
+- 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 27f1861 feat(#76): install templates for claude and codex
 - 2137bed Merge origin/main into docs/init-docs-branch-before-editing

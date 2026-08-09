@@ -36,3 +36,5 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 固定文字列による契約テストであり、実際の GitHub PR 作成や branch 切り替えは行わない。
 
 ## 変更履歴（git log より自動生成）
+
+- 65a9329 feat(#302): resume task after docs-sync hard stop
