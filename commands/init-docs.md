@@ -10,17 +10,12 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 
 ---
 
-## このコマンドを使うタイミング（再実行トリガー）
+## 実行モード
 
-以下のいずれかに該当する場合、このコマンドで **再観測・再構築** を行う:
+このコマンドには以下の2モードがある:
 
-- /docs-sync が HARD STOP を検知した
-- docs/.ai/repo.profile.json に載っていないコマンドや doc_root が運用上必要になった
-- docs（L1/L2/L3）が現状の構造や責務を説明できなくなった
-- 起動方法・主要エントリポイントが変わった疑いがある
-- 新しいレイヤ（apps / packages / infra 等）が導入された
-
-**例外（L0）**: `docs/L0_concept/concept.md`・`policy.md` は上記トリガーによる再観測・再構築の対象外である。既に存在する場合、このコマンドは L0 に一切触れない（存在しない場合のみ新規作成する）。理由は下記「Phase 3: docs/L0_concept/」を参照。
+- **standalone mode（デフォルト）**: 特にモードの指示がない場合。G-2 で専用ブランチへ切り替え、Phase 1〜7 をすべて実行して draft PR を作成する
+- **documentation-only mode**: このモードが明示された場合。現在ブランチを維持して Phase 1〜6 を実行し、commit・push・PR 作成を行わず呼び出し元へ制御を返す
 
 ---
 
@@ -32,7 +27,7 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 
 ### G-2: 作業ブランチの作成
 
-Phase 1 でリポジトリの観測・ドキュメント生成・更新を開始する前に、必ず作業ブランチへ切り替える。
+standalone mode では、Phase 1 でリポジトリの観測・ドキュメント生成・更新を開始する前に、必ず作業ブランチへ切り替える。
 
 ```bash
 git checkout -b docs/init-docs-<YYYYMMDD>
@@ -45,6 +40,8 @@ git checkout -b docs/init-docs-<YYYYMMDD>
 - 既存ブランチの目的が異なる、または安全に判断できない場合: ユーザーに確認してから別名ブランチを作成する
 
 このブランチ作成・切り替えが完了するまで、docs/.ai/repo.profile.json、docs/*、README.md、CLAUDE.md などのファイルを編集してはならない。
+
+documentation-only mode では G-2 のブランチ作成・切り替えをスキップし、呼び出し時の現在ブランチを維持する。main ブランチ上ではこのモードを実行してはならない。
 
 ---
 
@@ -336,7 +333,7 @@ AGENTS.md の扱い:
     - `AGENTS.md` を `CLAUDE.md` と同内容のコピーとして生成する
     - ファイル先頭に「`CLAUDE.md` が source of truth であり、このファイルは同期コピーである」旨を明記する
 
-Phase 6 完了後、以下の形式で最終報告を行い、Phase 7 へ進む。
+Phase 6 完了後、以下の形式で最終報告を行う。standalone mode は Phase 7 へ進み、documentation-only mode は Phase 7 をスキップして呼び出し元へ制御を返す。
 
 ---
 
@@ -351,6 +348,8 @@ Phase 6 完了後、以下の形式で最終報告を行い、Phase 7 へ進む�
 ---
 
 ### Phase 7: ユーザー確認 → commit & PR 作成
+
+このフェーズは standalone mode でのみ実行する。documentation-only mode ではフェーズ全体をスキップし、commit・push・PR 作成を行わない。
 
 最終報告を出力した後、**必ずユーザーの明示的な確認を取ってから**以下を実行する。
 確認なしに commit・push・PR 作成を行ってはならない。

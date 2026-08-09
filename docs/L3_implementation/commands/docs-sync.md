@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`commands/docs-sync.md` は PR ブランチ上で `git diff main...HEAD` を事実として docs と README.md を最小更新し、L3 per-file doc の変更履歴セクションを自動更新するドキュメント同期専用コマンドである。
+`commands/docs-sync.md` は PR ブランチ上で `git diff main...HEAD` を事実として docs と README.md を最小更新し、L3 per-file doc の変更履歴セクションを自動更新するドキュメント同期専用コマンドである。局所更新の前提が崩れる HARD STOP では `/init-docs` の documentation-only mode へ包括的な再構築を委譲し、完了後に通常フローへ復帰する。
 
 `/task` から自動呼び出しされるほか、ユーザーが手動で呼び出すこともある。実装ファイルへの変更は一切行わない。`docs/L0_concept/`（concept.md, policy.md）にも一切書き込まない（issue #273）。
 
@@ -14,7 +14,7 @@
 
 ```
 Phase 1: 変更の把握（git diff --name-only + pr-body.md）
-Phase 2: 更新対象の特定（docs/* および README.md）
+Phase 2: 更新対象の特定（docs/* および README.md。HARD STOP 時は /init-docs へ委譲）
 Phase 3: docs・README.md 最小更新 + L3 変更履歴更新 + L0 昇格候補キューイング + 結果書き出し
 Phase 4: 最終報告（L0 候補ありの案内を含む）
 ```
@@ -39,7 +39,7 @@ Phase 4: 最終報告（L0 候補ありの案内を含む）
 
 ### Phase 2: 更新対象の特定
 
-変更領域に対応する更新対象 docs を根拠付きで列挙する。`.github/workflows/*` の追加・削除・変更を検出した場合は、プローズ判断に頼らず `docs/L2_development/cicd.md` と `docs/L2_development/consistency_checks.md` を無条件で更新対象タスクへ追加する決定論的ルールを持つ（issue #271。以前はプローズ判断のみに委ねていたため、`.github/workflows/shellcheck.yml` 追加時にこの2ファイルの更新漏れが発生していた）。HARD STOP 判定はファイル名パターンで行う（10件以上かつ3領域以上、主要レイヤ新出、エントリポイント変更）。L0_concept は更新しない。
+変更領域に対応する更新対象 docs を根拠付きで列挙する。`.github/workflows/*` の追加・削除・変更を検出した場合は、プローズ判断に頼らず `docs/L2_development/cicd.md` と `docs/L2_development/consistency_checks.md` を無条件で更新対象タスクへ追加する決定論的ルールを持つ（issue #271。以前はプローズ判断のみに委ねていたため、`.github/workflows/shellcheck.yml` 追加時にこの2ファイルの更新漏れが発生していた）。HARD STOP 判定はファイル名パターンで行う（10件以上かつ3領域以上、主要レイヤ新出、エントリポイント変更）。該当時は `/init-docs` を documentation-only mode で自動実行し、現在ブランチ上で Phase 1〜6 の再観測・再構築を完了させる。完了後は局所更新フェーズを重複実行せず Phase 3 Step 3 の commit・結果書き出しへ合流する。L0_concept は更新しない。
 
 タスクリストの各項目を「確認不要（git diff の値をそのまま転記するだけ）」と「確認必要（文脈・意図を解釈して文章化する）」に分類する（issue #229）。全項目が確認不要なら許可を求めずそのまま Phase 3 へ進む。1項目でも確認必要な場合は、その項目について反映する文章そのものではなく根拠となった解釈を提示し、「解釈が合っているか」だけを確認する。文章化自体は確認後の Phase 3 で行い、再確認は求めない。分類に迷う場合は確認必要側に倒す。
 
@@ -83,17 +83,19 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 
 ### HARD STOP（/init-docs が必要なケース）
 
-以下の場合は docs-sync の前提（局所更新）が崩れているため処理を止める:
+以下の場合は docs-sync の前提（局所更新）が崩れているため `/init-docs` の documentation-only mode へ自動委譲する:
 - 新しい主要レイヤ/トップレベル構造の追加疑い
 - 起動経路・エントリポイントの変更疑い
 - 変更ファイルが 10 件以上かつ 3 領域以上
 
-根拠: `commands/docs-sync.md:71-78`, `commands/docs-sync.md:134-136`
+委譲先が完了した場合は通常の docs-sync 完了として呼び出し元へ返り、部分完了または失敗の場合は commit・push・PR 作成を行わず終了する。これにより `/task` は内部委譲の有無を知らず、従来どおり `/docs-sync` 完了後に `/git-pr` へ進める。
+
+根拠: `commands/docs-sync.md:67-101`, `commands/docs-sync.md:150-156`
 
 ## 統合ポイント
 
 - 呼び出し元: `commands/task.md`（Phase 2 Step 1 から自動呼び出し）、ユーザーの手動呼び出し
-- 呼び出すもの: `/git-commit`（`fixed_message="docs: sync documentation"`）
+- 呼び出すもの: `/init-docs`（HARD STOP 時、documentation-only mode）、`/git-commit`（`fixed_message="docs: sync documentation"`）
 - 書き出す temp ファイル: `SESSION_TMP_DIR/pr-docs-sync-result.md`（`/git-pr` が参照する）
 - 依存: `docs/.ai/repo.profile.json`、PR ブランチ
 
@@ -101,11 +103,12 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 
 - `docs/L3_implementation/` 配下のファイルは Phase 3 Step 2 の L3 変更履歴更新の対象外（自己参照ループを防ぐ）
 - push・PR 作成は行わない（`/git-pr` が担う）
-- HARD STOP 時は `/init-docs` を実行してから `/task → /docs-sync` をやり直す
+- HARD STOP 時は `/init-docs` の documentation-only mode を自動実行し、完了後は commit・結果書き出しへ復帰する
 - セッション temp ディレクトリの特定（Phase 1 Step 2、Phase 3 Step 3）は `${STATE_ROOT}/current-session-approved-path`（共有ポインタファイル）を経由せず、`$CLAUDE_CODE_SESSION_ID` から直接導出する（issue #210。複数セッション同時実行時の混線を防ぐため）
 
 ## 変更履歴（git log より自動生成）
 
+- 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
@@ -115,4 +118,3 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 - 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
 - f6288ac feat(#98): add git push to /docs-sync Phase 3
 - e07fe3b fix: enforce independent README.md check in docs-sync Phase 2
-- f0d7bc1 feat(#41): move templates/ to repo root, add partials/ symlink, clean up stale symlinks

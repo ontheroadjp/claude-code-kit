@@ -2,17 +2,21 @@
 
 ## 目的・役割
 
-`commands/init-docs.md` は repository の実体を再観測し、L0-L3 docs、repo profile、README、AI guidance を再構築する重い初期化 workflow である。
+`commands/init-docs.md` は repository の実体を再観測し、L0-L3 docs、repo profile、README、AI guidance を再構築する重い初期化 workflow である。指示がない場合は standalone mode、明示された場合は documentation-only mode で動作する。
 
 根拠: `commands/init-docs.md:1-35`
 
 ## 動作の概要
 
-専用 branch 上で repository/tooling を観測し、docs と README の整合性を検証した後、ユーザー承認を得て commit と PR を作成する。
+standalone mode では専用 branch 上で repository/tooling を観測し、docs と README の整合性を検証した後、ユーザー承認を得て commit と draft PR を作成する。documentation-only mode では現在ブランチを維持して Phase 1〜6 の再観測・再構築だけを実行し、commit・push・PR 作成を行わず呼び出し元へ返る。
 
-根拠: `commands/init-docs.md:27-49`, `commands/init-docs.md:353-423`
+根拠: `commands/init-docs.md:13-20`, `commands/init-docs.md:38-60`, `commands/init-docs.md:349-429`
 
 ## 主要な判定ロジック
+
+実行モードは明示された指示だけで決まる。モード指定がなければ standalone mode とし、documentation-only mode が明示された場合だけ専用ブランチ作成と Phase 7 をスキップする。documentation-only mode は main ブランチ上では実行しない。
+
+根拠: `commands/init-docs.md:13-20`, `commands/init-docs.md:43-60`, `commands/init-docs.md:365-370`
 
 README scaffold の基準は `${TEMPLATES_DIR}/readme.md` である。`TEMPLATES_DIR` は Claude Code では `~/.claude/templates`、Codex CLI では `~/.codex/templates` とする。
 
@@ -28,7 +32,7 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 
 ## 統合ポイント
 
-- entry from `/docs-sync` HARD STOP or explicit user invocation
+- standalone invocation、または documentation-only mode を明示するドキュメントワークフローからの委譲
 - README template: `${TEMPLATES_DIR}/readme.md`
 - output: `docs/.ai/repo.profile.json`, L1-L3 docs（常時）、L0 docs（存在しない場合のみ）、README, CLAUDE.md/AGENTS.md
 - L0 昇格の実行経路: `commands/concept-maker.md`（`/init-docs` はこの役割を代替しない）
@@ -36,11 +40,12 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 ## 注意事項・既知の制限
 
 - 通常の局所 docs 更新には使用しない
-- commit/PR 前にユーザー確認が必須
+- standalone mode の commit/PR 前にユーザー確認が必須。documentation-only mode は commit/PR を行わない
 - 既存 L0 の内容を更新・修正したい場合でも、このコマンドでは行えない。`/concept-maker` を使うこと
 
 ## 変更履歴（git log より自動生成）
 
+- 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 27f1861 feat(#76): install templates for claude and codex
 - 2137bed Merge origin/main into docs/init-docs-branch-before-editing

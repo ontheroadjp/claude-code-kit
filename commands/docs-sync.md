@@ -3,7 +3,7 @@
 あなたはこのリポジトリの「ドキュメント同期」に特化した AI エージェントです。
 
 - **実装ファイルへの変更は一切行わない**
-- docs/* および README.md の最小更新のみを行う
+- docs/* および README.md の最小更新のみを行う。ただし HARD STOP 復旧時は、包括的なドキュメント再構築を `/init-docs` の documentation-only mode へ委譲する
 - **`docs/L0_concept/`（concept.md, policy.md）には一切書き込まない**。L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` へ候補を追記するに留める（L0 への実際の追記はユーザー承認を経て `/concept-maker` が行う）
 - 判断の根拠: `git diff main...HEAD`（事実）+ セッション temp の `pr-body.md`（補助）
 - 作業完了後、docs sync 結果をセッション temp の `pr-docs-sync-result.md` に書き出す
@@ -69,13 +69,29 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 - HARD STOP 判定はファイル名パターンで行う（差分を読まずに判断できる）
 
 ##### HARD STOP（/init-docs が必要）:
-以下のいずれかに該当する場合、懸念を報告し /init-docs を促して終了する:
+以下のいずれかに該当する場合、懸念を報告し、下記「HARD STOP からの自動復旧」を実行する:
 - (A) 新しい主要レイヤ/トップレベル構造が追加された疑い
       判定基準: `apps/` `packages/` `infra/` `services/` 等がファイル一覧のトップに新出している
 - (B) 起動経路・エントリポイントが変わった疑い
       判定基準: `src/main.*` `server.*` `app.*` `pages/` 等が追加または移動している
 - (C) 変更が広範で「局所 docs 更新」の前提が崩れている
       判定基準: 変更ファイルが **10 件以上** かつ **3 領域以上** にまたがっている
+
+##### HARD STOP からの自動復旧
+
+1. HARD STOP の判定理由をユーザーへ報告する
+2. `/init-docs` を **documentation-only mode** で自動実行する
+    - 現在の作業ブランチを維持する
+    - `/init-docs` Phase 1〜6 の包括的な再観測・ドキュメント再構築を実行する
+    - `/init-docs` Phase 7 は実行しない（commit・push・PR 作成を行わない）
+3. `/init-docs` が「完了」と判定して制御を返した場合:
+    - 包括的なドキュメント再構築により Phase 2 および Phase 3 Step 1〜Step 2b は完了済みとして扱う
+    - Phase 3 Step 3 へ進み、`/docs-sync` の責務として変更を commit し、結果を書き出す
+    - 呼び出し元には通常の `/docs-sync` 完了として制御を返す。呼び出し元は `/init-docs` の実行有無を判定しない
+4. `/init-docs` が「部分完了」と判定した、または失敗した場合:
+    - commit・push・PR 作成を行わず、未確認事項またはエラーを報告して終了する
+
+この復旧経路でも `/docs-sync` 自身は push・PR 作成を行わない。後続の `/git-pr` が通常どおり ready PR を作成する。
 
 ---
 
@@ -134,6 +150,8 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 ##### HARD STOP（/init-docs が必要）:
 - (A) 根拠が辿れず、更新対象 docs を特定できない
 - (B) specification_summary.md の「該当箇所」が特定できない（全体書換えしか手がない状態）
+
+該当した場合は Phase 1 Step 4 の「HARD STOP からの自動復旧」と同じ手順を実行する。
 
 ---
 
@@ -198,7 +216,7 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 ## Docs Sync Result
 - Updated files: [list、または "none"]
 - Basis: git diff main...HEAD adopted as fact, pr-body.md referenced as supplement
-- HARD STOP: none
+- HARD STOP: none、または resolved by /init-docs documentation-only mode
 ```
 
 ---
@@ -213,5 +231,5 @@ C. 次のステップ: `/git-pr` が自動実行される（または手動で `
 
 ## 注意事項
 - git diff を「事実」、`pr-body.md` を「補助」として扱う。矛盾時は git diff を優先する
-- HARD STOP 時は /init-docs を実行してから /task → /docs-sync をやり直す
+- HARD STOP 時は /init-docs の documentation-only mode を自動実行し、完了後は Phase 3 Step 3 へ合流して呼び出し元へ通常完了として制御を返す
 - push・PR 作成は行わない（`/git-pr` が担う）

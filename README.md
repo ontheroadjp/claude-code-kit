@@ -19,10 +19,10 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | `/codex-review` | Reviews a PR using the Codex CLI non-interactively, posts the result as a PR approval or change request (requires `CODEX_REVIEW_TOKEN`), and auto-invokes `/review-resolve` when changes are requested. |
 | `/patch` | Delegated by `/work` for lightweight fixes without docs changes. |
 | `/task` | Delegated by `/work` for implementation that requires docs changes. |
-| `/docs-sync` | Syncs `docs/*` and README from `git diff`, auto-updates L3 per-file doc change history, then writes Docs Sync Result to session temp for `/git-pr`. |
+| `/docs-sync` | Syncs `docs/*` and README from `git diff`; on HARD STOP, automatically delegates comprehensive regeneration to `/init-docs` in documentation-only mode, then resumes and writes Docs Sync Result for `/git-pr`. |
 | `/git-commit` | Normalizes WIP commits when needed, checks staged changes, and creates a Conventional Commit. |
 | `/git-pr` | Reads PR title/body/docs-sync-result from session temp and creates a ready PR. This is the end of the `/work`/`/task` flow — further review and merge are manual. |
-| `/init-docs` | Re-observes the repository and reconstructs project design docs. Creates `docs/L0_concept/` only if it does not already exist; never modifies existing L0 content. |
+| `/init-docs` | Re-observes the repository and reconstructs project design docs. Defaults to standalone mode with its own draft PR; explicit documentation-only mode preserves the current branch and skips commit, push, and PR creation. Creates L0 only when absent. |
 | `/concept-maker` | Standalone entry point that processes L0 promotion candidates queued in `docs/.ai/l0_candidates.md` by `/docs-sync`, iterating on wording with the user until explicit approval, then appends to `docs/L0_concept/`. The only AI-facing write path to L0 besides `/init-docs`'s first-time creation. |
 | `/coding-general` | Language-independent coding principles. |
 | `/coding-py` | Python-specific coding conventions. |
@@ -79,6 +79,7 @@ This links `scripts/statusline.sh` to `~/.claude/statusline.sh` and adds a `stat
   auto-approve-candidate issue -> stops, tells user to run /triage-issues-for-auto-approve first
   docs not required -> patch flow: branch -> commit -> user ff-merges
   docs required     -> task flow: issue -> implement -> /docs-sync -> ready PR
+                       HARD STOP -> /docs-sync runs /init-docs documentation-only -> resumes -> ready PR
                        (end of flow -- review/merge are manual)
 
 /review-resolve #N
@@ -112,7 +113,8 @@ shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_mod
 
 - `git diff` is truth for docs sync; PR text is supplemental.
 - `/task` creates and updates L3 per-file docs (`docs/L3_implementation/<source-path>.md`) as part of implementation; `/docs-sync` handles all other docs updates and auto-inserts `git log --oneline -10` output into the `## 変更履歴（git log より自動生成）` section of existing L3 per-file docs.
-- `/docs-sync` makes minimal updates and escalates to `/init-docs` when the structure can no longer be explained locally.
+- `/docs-sync` makes minimal updates and, when the structure can no longer be explained locally, runs `/init-docs` in documentation-only mode before resuming its normal commit/result flow.
+- `/init-docs` defaults to standalone mode; documentation-only mode is used only when explicitly instructed and never creates a branch, commit, push, or PR.
 - `~/.claude/` and `~/.codex/` are symlink-only; this repository remains the source of truth.
 - Workspace cleanup uses stash; destructive git operations require explicit human control.
 - `docs/L0_concept/` is 100% user-controlled; the only AI write path is `/concept-maker`'s per-candidate wording review and explicit approval, besides `/init-docs`'s first-time creation.
