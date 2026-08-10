@@ -37,3 +37,12 @@
 - issue title/body は英語
 - `/work` を自動実行しない
 - 親子issueの自動チェックは同一リポジトリ内の `#<番号>` 参照が前提の GitHub 標準機能であり、`/new-issue` 側で明示的に検証・保証しているわけではない
+
+## 変更履歴（git log より自動生成）
+
+- ff477c0 feat(#310): add parent/child issue split option to /new-issue
+- 27f1861 feat(#76): install templates for claude and codex
+- aeb0dc4 docs: remove environment-specific cli notes
+- 25a1e8d feat(#77): add label selection step to /new-issue workflow
+- 03e70dc feat(#72): simplify Step 3 options and add Claude recommendation in /new-issue
+- bc2900f feat(#63): add /new-issue skill for idea-to-issue workflow
