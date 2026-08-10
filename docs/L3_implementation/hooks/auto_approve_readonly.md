@@ -270,12 +270,22 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 | category | 許可内容 | 除外 |
 |---|---|---|
 | `tool:git_write` | add, commit, merge, fetch, `pull --ff-only`, stash push/pop/apply, non-force push, branch checkout/switch, non-force branch operation | force option / `+refspec` push, pull without `--ff-only`, pull rebase/no-ff/force, checkoutによるpath復元, checkout/switch force, forced branch deletion |
-| `tool:gh_issue_write` | issue create/edit/close/delete/comment/reopen | その他 |
-| `tool:gh_pr_write` | PR create/edit/close/comment/reopen/ready/review/checkout/merge | その他 |
+| `tool:gh_issue_write:<N>` | `gh issue create`（N非依存、常時）、`gh issue (edit\|close\|delete\|comment\|reopen) <N> ...`（対象番号が grant の N と一致する場合のみ） | 対象番号が N と不一致、N が非数値の grant |
+| `tool:gh_pr_write:<N>` | `gh pr create`（N非依存、常時）、`gh pr (edit\|close\|comment\|reopen\|ready\|review\|checkout\|merge) <N> ...`（対象番号が grant の N と一致する場合のみ） | 対象番号が N と不一致、N が非数値の grant、`checkout` に非数値（branch名/URL）が渡された場合 |
 
 destructive guard に該当する操作は category があっても block する。
 
 根拠: `hooks/auto-approve-readonly.sh:707-748`, `hooks/lib/approval-safety.sh`
+
+### issue/PR 番号スコープ化（issue #297）
+
+`tool:gh_issue_write`/`tool:gh_pr_write` は元々セッション全体に対する広い許可だった（対象 issue/PR 番号を一切見ずカテゴリ一致のみで承認）。`commands/triage-issues-for-auto-approve.md` のように untrusted な issue 本文を AI のコンテキストへ読み込んだ上で複数 issue をループ処理するフローでは、prompt injection が成功した場合に無関係な issue/PR への書き込みを誘発できる余地があった。この issue でグラント自体を対象番号にスコープし、blast radius を「そのグラントが指す番号」に縮小した。
+
+`check_session_approved()` の `tool:gh_issue_write:*`/`tool:gh_pr_write:*` 分岐は、`category` から `:` 以降を `N` として抽出し、数字のみであることを検証する（非数値・空文字は grant として一切機能しない — fail closed）。`create` はそもそも対象となる既存番号が存在しないため（issue/PR がまだ存在しない時点で呼ばれる）、N の値に関わらず該当カテゴリの grant が1行でも存在すれば承認する。それ以外の verb（`gh issue edit/close/delete/comment/reopen <N>`、`gh pr edit/close/comment/reopen/ready/review/checkout/merge <N>`）は、コマンド中の対象番号が grant の N と完全一致する場合のみ承認する。`session-approved` に複数の numbered grant（例: `tool:gh_issue_write:42` と `tool:gh_issue_write:57`）を並べることで、複数 issue を扱うフローでも issue ごとに個別のグラントを持てる。
+
+**`gh pr checkout` の既知の制限:** `gh pr checkout` は PR 番号だけでなく branch 名や URL も受け付けるが、この matcher は数値の対象番号のみを N と照合する。branch 名/URL を渡す呼び出しは grant があっても常に通常許可フローへ戻る（narrowing — 以前の session-scoped 広域許可では checkout 対象を一切区別していなかったため、これは意図した安全側の挙動変化である）。現在の呼び出し元（`commands/codex-review.md` の `gh pr checkout <PR番号>`）は常に数値の PR 番号のみを渡すため、実際の呼び出しパスに影響はない。
+
+根拠: `hooks/auto-approve-readonly.sh:1094-1141`（`check_session_approved`）, `tests/hooks/test-approval-hooks.sh`（numbered grant の positive/negative ケース）, issue #297
 
 ## 複合 command
 
@@ -531,6 +541,7 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 5748c69 feat(#283): add --explain diagnostic mode to auto-approve-readonly.sh
 - 8d684e6 fix(#280): remove 120-char truncation from auto-approve decision log
 - 0685826 feat(#276): allowlist gh --version and mise current/ls/list in auto-approve hook
@@ -540,4 +551,3 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
-- 77938cc fix(#246): mask quoted-delimiter heredoc bodies in the auto-approve hook

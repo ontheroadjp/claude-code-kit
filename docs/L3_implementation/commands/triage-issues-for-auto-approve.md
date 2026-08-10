@@ -13,7 +13,7 @@
 ```
 Step 0: gh auth status 確認
 Step 1: gh issue list --label auto-approve-candidate --state open で候補一覧を取得
-Step 1.5: 候補が1件以上あれば session-approved ファイルを tool:gh_issue_write のみで作成
+Step 1.5: 候補が1件以上あれば session-approved ファイルを候補 issue 番号ごとの tool:gh_issue_write:<N> で作成（issue #297）
 Step 2: issue ごとに本文をセクション見出しで分割して開示し、
         「実装に進みますか？（yes/no）」を確認。yes の場合は
         auto-approve-candidate → triage-approved へ label を swap してから
@@ -42,11 +42,11 @@ Step 3: 実装案内をした件数・見送り件数を報告
 
 `auto-approve-candidate` → `triage-approved` の label 付け替えを stack（両 label 併存）ではなく swap にしたのは、`commands/work.md` 側のゲート判定を「`auto-approve-candidate` label の有無」という単純な条件のまま保つため。stack にすると `/work` 側が「`auto-approve-candidate` AND NOT `triage-approved`」という AND-NOT 条件を持つ必要が生じ、既存の report label チェック（単一 label の有無）と非対称になる（issue #298）。
 
-session-approved に `tool:gh_issue_write` を書き込んで Step 2.2 の `gh issue edit --add-label/--remove-label` を自動承認する設計は、`hooks/auto-approve-readonly.sh` の変更を伴わない。同カテゴリの既存マッチャー（`hooks/auto-approve-readonly.sh:1126-1127`）は `gh issue (create|edit|close|delete|comment|reopen)` をサブコマンド prefix のみで判定しており、`--add-label`/`--remove-label` を含む `gh issue edit` はサブコマンド形状としてはこの時点で既に対象内だった。一方 `gh label create` はこのカテゴリの対象外だが、`triage-approved` label 作成はリポジトリに1回限り発生する構造変更であり、以降のどの実行でも二度と呼ばれないため、hook 側に新規カテゴリ（`tool:gh_label_write` 等）を追加してまで自動化する費用対効果は低いと判断し、通常の確認プロンプトに委ねる設計を維持した（issue #298）。
+session-approved に候補 issue 番号ごとの `tool:gh_issue_write:<N>` を書き込んで Step 2.2 の `gh issue edit <N> --add-label/--remove-label` を自動承認する設計は、issue #297 で `hooks/auto-approve-readonly.sh` の `check_session_approved()` が対象番号スコープに対応したことに伴う変更である。Step 1 で取得済みの候補一覧（`gh issue list --json number,...`）から番号を全て把握できるため、Step 1.5 の書き込み時点で全 grant 行を確定でき、issue 作成タイミングを待つような順序変更は不要だった（`commands/task.md` の Step 2 とは異なる点 — 詳細は `docs/L3_implementation/commands/task.md` 参照）。`gh label create`（`triage-approved` 未作成の場合のみ）はこのカテゴリの対象外のため、引き続き通常の確認プロンプトに落ちる。
 
-将来的な改善として、`tool:gh_issue_write` を対象 issue 番号にスコープする案（`tool:gh_issue_write:<N>` 形式でセッション全体ではなく特定 issue のみ許可）が issue #297 として別途起票されている。本コマンドは issue 本文（`/auto-approve-hazard-scan` が生成、場合によっては第三者が作成）を AI のコンテキストに読み込む性質上、prompt injection 経由で無関係な issue への書き込みを誘発される理論的余地があり、issue 番号スコープはその対策になる。hook 本体の変更を伴うため、本 issue #298 のスコープには含めていない。
+番号スコープ化以前（issue #297 より前）は session 全体に対する単一の広い `tool:gh_issue_write` 許可だった。本コマンドは issue 本文（`/auto-approve-hazard-scan` が生成、場合によっては第三者が作成）を AI のコンテキストに読み込む性質上、prompt injection 経由で無関係な issue への書き込みを誘発される理論的リスクがあったが、Step 1 で開示した候補番号にのみ grant を限定したことでこのリスクは解消された（Step 1 で取得していない番号への `gh issue edit` 等は grant が存在せず自動承認されない）。
 
-根拠: issue #285, issue #297, issue #298, `commands/triage-issues-for-auto-approve.md:9-12`, `commands/triage-issues-for-auto-approve.md:27-47`, `hooks/auto-approve-readonly.sh:1126-1127`
+根拠: issue #285, issue #297, issue #298, `commands/triage-issues-for-auto-approve.md:9-12`, `commands/triage-issues-for-auto-approve.md:27-49`, `hooks/auto-approve-readonly.sh:1094-1141`
 
 ## 統合ポイント
 
@@ -62,9 +62,10 @@ session-approved に `tool:gh_issue_write` を書き込んで Step 2.2 の `gh i
 - `yes` 時の label 付け替え（および `triage-approved` label 新規作成）を除き read-only。`gh issue` の本文編集・close・comment、`/work` の自動起動、`hooks/auto-approve-readonly.sh` を含む既存コードの変更のいずれも行わない
 - セクション分割は見出し文字列の一致に依存するため、`auto-approve-hazard-scan.md` のテンプレート以外の形式で作成された `auto-approve-candidate` issue は本文全体表示にフォールバックする（パース精度は issue 本文の構造に依存する）
 - `triage-issues.md`・`auto-approve-hazard-scan.md` 同様、専用の自動テスト（shell テストスイート）は存在しない
-- `tool:gh_issue_write` はセッション全体に対する広い許可であり、Step 2.2 の label 付け替えに限定した粒度ではない（issue #297 で issue 番号スコープ化を検討中）
+- `tool:gh_issue_write:<N>` は Step 1 で開示した候補 issue 番号ごとにスコープされる（issue #297）。Step 1 未取得の番号への `gh issue edit`/`comment`/`close`/`reopen`/`delete` は grant が存在せず自動承認されない
 
 ## 変更履歴（git log より自動生成）
 
+- c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 4450e96 feat(#298): gate /work on auto-approve-candidate label, swap to triage-approved on approval
 - 7aa4615 feat(#285): add /triage-issues-for-auto-approve command

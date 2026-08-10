@@ -51,18 +51,19 @@ work.md の調査結果を引き継ぎ、プラン策定に必要な情報が不
 以下を含む作業プランを確定し、ユーザーの明確な許可を得る:
 
 - 完了条件、Before/After、変更対象（最小単位）、影響とリスク、検証方法、ロールバック方針
-- 利用ツール（`tool:git_write` / `tool:gh_issue_write` / `tool:gh_pr_write`）。**`tool:gh_issue_write` は `/task` フローでは常に列挙する** — Step 3.2 の完了コメント投稿が issue の新旧を問わず必ず発生するため、条件付き判定の対象にしない（issue #250）
+- 利用ツール（`tool:git_write` / `tool:gh_issue_write:<N>` / `tool:gh_pr_write:<N>`。N は対象 issue 番号 — issue #297 でカテゴリを対象番号にスコープ化。`create` verb は N に関わらず常に承認されるため `tool:gh_pr_write:<N>` の N には形式的にこの issue 番号を流用する）。**`tool:gh_issue_write:<N>` は `/task` フローでは常に列挙する** — Step 3.2 の完了コメント投稿が issue の新旧を問わず必ず発生するため、条件付き判定の対象にしない（issue #250）
 - 新規作成・編集ファイルの絶対パス。プラン本文で言及した実装ファイル・テストファイルを漏れなく転記する
 - Step 3.2 で作成・更新する L3 per-file doc の絶対パス（`docs/L3_implementation/<source-path>.md`）
 
-ユーザーから OK が出た後:
-1. `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出し、ツールカテゴリ・実装ファイル・L3 doc パスを一括書き込みする（1 度だけ）
-2. issue が未作成の場合は new-issue.md Step 4-5 で自動作成する
-3. issue が作成済みの場合は調査結果・作業プランを issue 本文に追記する
+ユーザーから OK が出た後（issue #297: session-approved 書き込みに N が必要になったため、旧来の「書き込み→未作成なら作成」の順序を反転した）:
+1. issue が未作成の場合は new-issue.md Step 4-5 で先に自動作成し、確定した issue 番号を N とする。この `gh issue create` 呼び出し自体は session-approved がまだ存在しないため通常の確認プロンプトに従う（1 回限りのトレードオフ）
+2. issue が作成済みの場合は Step 0 で確定した番号を N とする
+3. `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出し、ツールカテゴリ（`tool:gh_issue_write:<N>` 等）・実装ファイル・L3 doc パスを一括書き込みする（1 度だけ）
+4. issue が元から作成済みだった場合のみ、調査結果・作業プランを issue 本文に追記する（今回新規作成した場合は Step 1 のドラフトが既に内容を含むため不要）
 
 session-approved はこの Step で 1 度だけ書き込む。スコープ変更が必要な場合はこの Step に戻りユーザーの許可を得てから再書き込みする。
 
-根拠: `commands/task.md:68-111`
+根拠: `commands/task.md:81-121`, issue #297
 
 #### Step 3: 実行
 
@@ -131,6 +132,8 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
+- 1146f95 feat(#286): add generic React and Next.js guidelines
 - d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - e4b3d18 fix: apply resolve-then-embed to task.md session tmp dir mkdir
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
@@ -139,5 +142,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - 27f1861 feat(#76): install templates for claude and codex
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
-- 7f30935 feat(#161): defer issue creation to after plan approval in task flow
-- 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit

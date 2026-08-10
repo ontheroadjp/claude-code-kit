@@ -671,9 +671,74 @@ run_parallel_group "block" \
     'git branch --delete --force old-branch' \
     'git branch -df old-branch'
 
-printf '%s\n' 'tool:git_write' 'tool:gh_pr_write' > "$SESSION_FILE"
+printf '%s\n' 'tool:git_write' 'tool:gh_pr_write:143' > "$SESSION_FILE"
 output=$(run_auto 'gh pr merge 143')
 assert_json_decision "$output" "approve"
+
+# Numbered gh_pr_write/gh_issue_write grants (issue #297): the grant only
+# covers its own target number for verbs other than create; create stays
+# number-agnostic (no existing target to scope to). A grant for a different
+# number must not authorize the command (cross-number negative case).
+output=$(run_auto 'gh pr merge 144')
+assert_no_output "$output"
+
+output=$(run_auto 'gh pr edit 143 --title "new title"')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh pr edit 144 --title "new title"')
+assert_no_output "$output"
+
+output=$(run_auto 'gh pr checkout 143')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh pr checkout 144')
+assert_no_output "$output"
+
+output=$(run_auto 'gh pr checkout some-branch')
+assert_no_output "$output"
+
+output=$(run_auto 'gh pr create --title "feat: x" --body "y"')
+assert_json_decision "$output" "approve"
+
+printf '%s\n' 'tool:git_write' 'tool:gh_issue_write:42' 'tool:gh_issue_write:99' > "$SESSION_FILE"
+output=$(run_auto 'gh issue edit 42 --add-label bug')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh issue edit 99 --add-label bug')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh issue edit 43 --add-label bug')
+assert_no_output "$output"
+
+output=$(run_auto 'gh issue comment 42 --body "done"')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh issue comment 100 --body "done"')
+assert_no_output "$output"
+
+output=$(run_auto 'gh issue close 99')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh issue reopen 42')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh issue delete 42')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh issue create --title "feat: x" --body "y"')
+assert_json_decision "$output" "approve"
+
+# A malformed (non-numeric) grant suffix must never match, including for
+# create — the grant is inert rather than falling back to the old
+# number-agnostic behavior.
+printf '%s\n' 'tool:gh_issue_write:abc' > "$SESSION_FILE"
+output=$(run_auto 'gh issue create --title "feat: x" --body "y"')
+assert_no_output "$output"
+
+output=$(run_auto 'gh issue edit 42 --add-label bug')
+assert_no_output "$output"
+
+printf '%s\n' 'tool:git_write' 'tool:gh_pr_write:143' > "$SESSION_FILE"
 
 output=$(run_auto_file_tool "Write" "${SESSION_TMP_DIR}/scratch.txt")
 assert_json_decision "$output" "allow"

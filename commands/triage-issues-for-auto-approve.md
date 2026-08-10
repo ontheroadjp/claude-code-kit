@@ -39,12 +39,14 @@ SESSION_APPROVED_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/ses
 
 セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 2 へ進む。
 
-Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容:
+Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容: Step 1 で取得した候補 issue の番号ごとに、1 行 1 エントリで `tool:gh_issue_write:<N>` を列挙する（例: 候補が `#42`・`#57`・`#103` の場合）:
 ```
-tool:gh_issue_write
+tool:gh_issue_write:42
+tool:gh_issue_write:57
+tool:gh_issue_write:103
 ```
 
-これにより、Step 2.2 の `yes` 時に行う `gh issue edit --add-label/--remove-label` が `hooks/auto-approve-readonly.sh` の既存 `tool:gh_issue_write` カテゴリ（`gh issue (create|edit|close|delete|comment|reopen)` をサブコマンド単位でマッチする）で自動承認される。hook 自体の変更は不要。`gh label create`（`triage-approved` 未作成の場合のみ）はこのカテゴリの対象外のため、引き続き通常の確認プロンプトに落ちる。
+これにより、Step 2.2 の `yes` 時に行う `gh issue edit <N> --add-label/--remove-label` が、`hooks/auto-approve-readonly.sh` の `tool:gh_issue_write:<N>` カテゴリ（issue #297: 対象 issue 番号が grant の N と一致する場合のみ承認、`create` は対象外なのでこのコマンドには無関係）により、Step 1 で開示された候補 issue に限って自動承認される。Step 1 で取得していない番号（本文中の prompt injection 等から誘発された無関係な issue への書き込み）は grant が存在しないため自動承認されず、通常の確認プロンプトに落ちる。`gh label create`（`triage-approved` 未作成の場合のみ）はこのカテゴリの対象外のため、引き続き通常の確認プロンプトに落ちる。
 
 ### Step 2: issue ごとの開示・承認
 
