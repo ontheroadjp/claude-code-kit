@@ -102,9 +102,9 @@ open issue が溜まったタイミングで実行するスタンドアロンの
 
 ### `/new-issue` (`commands/new-issue.md`)
 
-実装を伴わず、rough idea から issue draft を作成して `gh issue create` する任意 pre-`/work` flow。scope 分割はユーザー選択必須で、issue 本文は実行 agent に応じて `~/.claude/templates/issue.md` または `~/.codex/templates/issue.md` を使う。
+実装を伴わず、rough idea から issue draft を作成して `gh issue create` する任意 pre-`/work` flow。scope 分割方針（分割しない／Phase分割／親子issue分割／単体分割）はユーザー選択必須で、親子issue分割を選んだ場合は子issueを先に作成し、GitHub の task list 機能（`- [ ] #<子issue番号>`）で親issueに進捗を自動連動させる。issue 本文は実行 agent に応じて `~/.claude/templates/issue.md` または `~/.codex/templates/issue.md` を使う。
 
-根拠: `commands/new-issue.md:1-126`
+根拠: `commands/new-issue.md:1-146`
 
 ### `/review-resolve` (`commands/review-resolve.md`)
 
