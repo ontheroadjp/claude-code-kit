@@ -132,6 +132,8 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
+- 1146f95 feat(#286): add generic React and Next.js guidelines
 - d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - e4b3d18 fix: apply resolve-then-embed to task.md session tmp dir mkdir
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
@@ -140,5 +142,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - 27f1861 feat(#76): install templates for claude and codex
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
-- 7f30935 feat(#161): defer issue creation to after plan approval in task flow
-- 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit

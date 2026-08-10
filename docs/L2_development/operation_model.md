@@ -91,7 +91,7 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 ## triage-issues-for-auto-approve flow
 
-`triage-issues-for-auto-approve.md` は `gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま開示する（見出しが見つからない場合は本文全体を表示）。候補が1件以上あれば session-approved に `tool:gh_issue_write` を書き込む（hook 側の変更なしに `gh issue edit --add-label/--remove-label` を自動承認するため）。issue ごとに「実装に進みますか？（yes/no）」を確認し、yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap してから（未存在なら確認の上 `gh label create`）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内する（issue #298）。no の場合、および `gh issue` 本文編集・close・comment は行わない。
+`triage-issues-for-auto-approve.md` は `gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま開示する（見出しが見つからない場合は本文全体を表示）。候補が1件以上あれば session-approved に候補 issue 番号ごとの `tool:gh_issue_write:<N>` を書き込む（`gh issue edit <N> --add-label/--remove-label` を対象番号一致の場合のみ自動承認するため、issue #297）。issue ごとに「実装に進みますか？（yes/no）」を確認し、yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap してから（未存在なら確認の上 `gh label create`）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内する（issue #298）。no の場合、および `gh issue` 本文編集・close・comment は行わない。
 
 根拠: `commands/triage-issues-for-auto-approve.md:1-120`
 

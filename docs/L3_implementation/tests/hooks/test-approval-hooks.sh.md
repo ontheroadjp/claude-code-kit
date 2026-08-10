@@ -43,6 +43,8 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
+- 2429f81 refactor: parallelize independent run_auto loops in approval hook tests
 - 5748c69 feat(#283): add --explain diagnostic mode to auto-approve-readonly.sh
 - 8d684e6 fix(#280): remove 120-char truncation from auto-approve decision log
 - 0685826 feat(#276): allowlist gh --version and mise current/ls/list in auto-approve hook
@@ -51,6 +53,3 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
 - f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
-- 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
-- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
-- 1b605dc feat(#244): recognize known-safe absolute-path invocations in the auto-approve allowlist
