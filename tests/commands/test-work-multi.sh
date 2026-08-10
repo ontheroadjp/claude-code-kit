@@ -67,14 +67,13 @@ assert_contains "$WORK_SKILL" 'Do not edit `commands/work.md` from this skill.' 
 # --- commands/work.md: worktree-path guard and branch-classification predicate ---
 assert_contains "$WORK" '.claude/worktrees/' 'work.md G-0 checks for the EnterWorktree worktree path'
 assert_contains "$WORK" 'git checkout main' 'work.md G-0 still performs the normal main checkout'
-assert_contains "$WORK" 'feat/' 'work.md branch classification lists the task.md feat/ prefix'
-assert_contains "$WORK" 'patch/' 'work.md branch classification lists the patch.md patch/ prefix'
-assert_contains "$WORK" 'chore-' 'work.md branch classification lists the task.md chore- prefix'
+assert_contains "$WORK" 'worktree-` で始まるブランチ' 'work.md branch classification checks the worktree- prefix only'
+assert_contains "$WORK" '未コミット変更がある' 'work.md preserves the uncommitted-changes resume check (B.1) for any other non-main branch'
 
 # --- scripts/link-worktree-untracked.sh exists and is executable ---
 assert_executable "$LINK_SCRIPT" 'link-worktree-untracked.sh is executable'
-assert_contains "$LINK_SCRIPT" 'clean -ndx' 'link-worktree-untracked.sh enumerates untracked paths via git clean -ndx'
-assert_contains "$LINK_SCRIPT" '.git|.claude' 'link-worktree-untracked.sh excludes .git and .claude'
+assert_contains "$LINK_SCRIPT" 'status --porcelain -z --ignored=matching' 'link-worktree-untracked.sh enumerates untracked/ignored paths via NUL-delimited porcelain output'
+assert_contains "$LINK_SCRIPT" '.git|.git/*|.claude|.claude/*' 'link-worktree-untracked.sh excludes .git/.claude and their nested paths'
 
 if ((failures > 0)); then
   printf '\n%d work-multi contract test(s) failed.\n' "$failures"

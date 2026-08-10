@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成され、`work.md` のゲート定義を重複していないこと、および `commands/work.md`・`scripts/link-worktree-untracked.sh` 側の対応する改修（worktree パスガード、ブランチ命名規則ベースの (A)/(B) 判定、`.git`/`.claude` 除外）が実際に入っていることを静的に検証する shell test（issue #296）。
+`commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成され、`work.md` のゲート定義を重複していないこと、および `commands/work.md`・`scripts/link-worktree-untracked.sh` 側の対応する改修（worktree パスガード、`worktree-` prefix ベースの (A)/(B) 判定、`.git`/`.claude` 除外）が実際に入っていることを静的に検証する shell test（issue #296、PR #304 レビューで assertion を更新）。
 
 根拠: `tests/commands/test-work-multi.sh:1-51`
 
@@ -12,10 +12,10 @@
 
 - `commands/work-multi.md` が `EnterWorktree`・`scripts/link-worktree-untracked.sh`・`commands/work.md` への言及を含み、`### G-0`/`### G-1`/`### G-2` を重複定義していない
 - `skills/work-multi/SKILL.md` が `skills/work/SKILL.md` と同じ scope guard パターンを持つ
-- `commands/work.md` が `.claude/worktrees/` パスガードと `feat/`・`patch/`・`chore-` 等のブランチ分類 prefix を含む
-- `scripts/link-worktree-untracked.sh` が実行権限を持ち、`clean -ndx` による列挙と `.git`/`.claude` 除外を含む
+- `commands/work.md` が `.claude/worktrees/` パスガードと `worktree-` prefix ベースのブランチ分類、B.1（未コミット変更があれば継続）の保持を含む
+- `scripts/link-worktree-untracked.sh` が実行権限を持ち、`status --porcelain -z --ignored=matching` による NUL 区切り列挙と `.git`/`.claude` 除外を含む
 
-根拠: `tests/commands/test-work-multi.sh:53-77`
+根拠: `tests/commands/test-work-multi.sh:53-76`
 
 ## 重要な設計判断
 

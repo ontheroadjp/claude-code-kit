@@ -39,11 +39,12 @@ assert_absent() {
     git init -q
     git config user.email "test@example.com"
     git config user.name "test"
+    echo ".claude/" > .gitignore
     mkdir -p .claude/worktrees/dummy site
     echo '{}' > .claude/settings.local.json
     echo "tracked" > tracked.txt
     echo "site readme" > site/README.md
-    git add tracked.txt site/README.md
+    git add .gitignore tracked.txt site/README.md
     git commit -q -m init
     echo "untracked" > untracked.txt
     mkdir -p untracked_dir
@@ -69,6 +70,8 @@ assert_absent "${DST_DIR}/.git/link-worktree-untracked-marker" \
     '.git is not touched (no stray marker path created inside it)'
 assert_absent "${DST_DIR}/.claude" \
     '.claude is excluded entirely (avoids the self-referential worktrees/ loop)'
+assert_absent "${DST_DIR}/.claude/settings.local.json" \
+    'nested .claude/* paths do not individually leak through (PR #304 review regression)'
 
 # --- idempotency: running again must not fail or duplicate ---
 (

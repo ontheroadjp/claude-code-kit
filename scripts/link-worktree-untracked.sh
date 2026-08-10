@@ -10,12 +10,19 @@ fi
 
 src="$(cd "$1" && pwd)"
 
-git -C "$src" clean -ndx | while IFS= read -r line; do
-    rel="${line#Would remove }"
+git -C "$src" status --porcelain -z --ignored=matching | while IFS= read -r -d '' entry; do
+    status="${entry:0:2}"
+    rel="${entry:3}"
+
+    case "$status" in
+        "??"|"!!") ;;
+        *) continue ;;
+    esac
+
     rel="${rel%/}"
 
     case "$rel" in
-        .git|.claude)
+        .git|.git/*|.claude|.claude/*)
             continue
             ;;
     esac

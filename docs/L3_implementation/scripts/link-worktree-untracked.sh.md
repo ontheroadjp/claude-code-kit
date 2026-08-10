@@ -8,18 +8,18 @@
 
 ## 動作概要
 
-引数1つ（元の working tree の絶対パス）を取り、`git -C <元パス> clean -ndx` の dry-run 出力（`Would remove <相対パス>`）から untracked/ignored のルートパス一覧を取得する。`.git`・`.claude` はスキップする。各パスについて、既に symlink が存在すればスキップ（冪等性）、symlink ではない実体が既に存在すれば警告して skip、それ以外は `mkdir -p` で親ディレクトリを作成した上で、カレントディレクトリ（新しい worktree）内の同一相対パスへ symlink を作成する。
+引数1つ（元の working tree の絶対パス）を取り、`git -C <元パス> status --porcelain -z --ignored=matching` の NUL 区切り出力から `??`（untracked）・`!!`（ignored）の2ステータスのエントリを抽出し、untracked/ignored パス一覧を取得する。`.git`・`.claude` およびその配下（`.git/*`・`.claude/*`）はスキップする。各パスについて、既に symlink が存在すればスキップ（冪等性）、symlink ではない実体が既に存在すれば警告して skip、それ以外は `mkdir -p` で親ディレクトリを作成した上で、カレントディレクトリ（新しい worktree）内の同一相対パスへ symlink を作成する。
 
-根拠: `scripts/link-worktree-untracked.sh:11-33`
+根拠: `scripts/link-worktree-untracked.sh:11-40`
 
 ## 重要な設計判断
 
-- `git clean -ndx` はディレクトリ単位で untracked ルートを1行にまとめて報告する（配下を再帰列挙しない）ため、ファイル単位ではなくディレクトリ単位で symlink でき、シンボリックリンク数を最小化できる。
-- 除外対象は `.git` と `.claude` の2つのみ。`.git` は worktree 自身の git-dir 連携のため触れてはならない。`.claude` は `EnterWorktree` 自身が worktree を `.claude/worktrees/<name>` 配下に格納する予約ディレクトリのため、丸ごと symlink すると新しい worktree の中に worktrees ディレクトリ自身への自己参照ループが生じる。
+- 当初は `git clean -ndx` の人間向け出力（`Would remove <path>`）を行単位でパースしていたが、PR #304 の Codex CLI レビューで、この出力形式が特殊文字（空白・改行等）を含むパスをクォート・エスケープして表示するため実パスと一致しない不具合を指摘された。`git status --porcelain -z --ignored=matching` は NUL 区切りでパスをエスケープなしに出力するため、この問題を構造的に回避できる。
+- 除外対象は `.git`・`.claude` とその配下のみ。`.git` は worktree 自身の git-dir 連携のため触れてはならない。`.claude` は `EnterWorktree` 自身が worktree を `.claude/worktrees/<name>` 配下に格納する予約ディレクトリのため、丸ごと symlink すると新しい worktree の中に worktrees ディレクトリ自身への自己参照ループが生じる。当初は `.claude` の完全一致のみを除外していたが、テスト実行環境のグローバル `.gitignore`（例: `**/.claude/settings.local.json` のようなファイル単位の除外ルール）が存在すると、ディレクトリ全体ではなく `.claude/settings.local.json` のような個別ファイル単位で ignored 報告されるケースがあることが判明し、`.claude` 配下のネストしたパスも `.claude/*` パターンで除外するよう修正した（PR #304 レビュー対応）。
 - `node_modules` 等の依存ディレクトリを個別に除外する案は採用しなかった。この toolkit は特定リポジトリ専用ではなく任意のリポジトリで使われるため、リポジトリ・エコシステムごとに異なる依存ディレクトリ名をハードコードすると汎用性の前提と矛盾する。既知の限界（共有可変状態の衝突リスク）として `commands/work-multi.md`・`CLAUDE.md` に文書化するに留めた。
 - coding-sh.md 準拠（`set -euo pipefail`、変数展開のダブルクオート、ShellCheck 通過）。
 
-根拠: `scripts/link-worktree-untracked.sh:13-21`, issue #296
+根拠: `scripts/link-worktree-untracked.sh:13-28`, issue #296, PR #304
 
 ## 統合ポイント
 

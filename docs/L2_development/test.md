@@ -48,9 +48,9 @@ bash tests/commands/test-workflow-contracts.sh
 bash tests/commands/test-work-multi.sh
 ```
 
-`test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードとブランチ命名規則分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を確認する（issue #296）。
+`test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を確認する（issue #296、PR #304）。
 
-根拠: `tests/commands/test-work-multi.sh:1-84`
+根拠: `tests/commands/test-work-multi.sh:1-83`
 
 ## Installer contract test
 
@@ -72,7 +72,7 @@ bash tests/scripts/test-link-worktree-untracked.sh
 
 トップレベル untracked ファイル/ディレクトリの symlink、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性を確認する。
 
-根拠: `tests/scripts/test-link-worktree-untracked.sh:1-90`
+根拠: `tests/scripts/test-link-worktree-untracked.sh:1-93`
 
 ## Log analysis script tests
 

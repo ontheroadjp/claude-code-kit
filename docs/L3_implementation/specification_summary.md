@@ -12,7 +12,7 @@
 
 全作業の通常入口。G-0 はまず `git rev-parse --show-toplevel` が `.claude/worktrees/` 配下かを判定し、配下であれば（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）main は主 worktree で既にチェックアウト済みのため `git checkout main` をスキップする。配下でなければ従来どおり `git checkout main` を実行する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
-exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。`report` に該当せず exact `auto-approve-candidate` label があれば、`/triage-issues-for-auto-approve` の実行を促して終了する（issue #298）。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。この (A)/(B) ルーティングの判定基準は「現在ブランチが `main` か」ではなく「`/task`・`/patch` の作業ブランチ命名規則（`feat/`, `change/`, `fix/`, `test/`, `chore-`, `patch/`）のいずれかに一致するか」であり、一致しないブランチ（`main` 自身、および `EnterWorktree` が作る `worktree-` prefix のブランチを含む）は (A) 新規作業として扱う（issue #296）。
+exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。`report` に該当せず exact `auto-approve-candidate` label があれば、`/triage-issues-for-auto-approve` の実行を促して終了する（issue #298）。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。この (A)/(B) ルーティングの判定基準は、現在ブランチが `main` 自身、または `EnterWorktree` が作る固定 prefix `worktree-` で始まる場合のみ (A) 新規作業とし、それ以外の全ての非 main ブランチは (B) 再開・エスカレーション（既存の未コミット変更有無・commits ahead 有無の判定）として扱う（issue #296、PR #304 レビューで修正。当初は `/task`・`/patch` の命名規則ベースで判定していたが、命名規則に沿わない既存ブランチ上の未コミット変更を誤って (A) 新規作業扱いする不具合が指摘された）。
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
@@ -230,13 +230,13 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/install/test-install.sh:1-71`
 
-`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードとブランチ命名規則分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を静的検証する（issue #296）。
+`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を静的検証する（issue #296、PR #304）。
 
-根拠: `tests/commands/test-work-multi.sh:1-84`
+根拠: `tests/commands/test-work-multi.sh:1-83`
 
 `tests/scripts/test-link-worktree-untracked.sh` は `scripts/link-worktree-untracked.sh` の symlink 挙動を functional に検証する。一時 git リポジトリを用意し、トップレベル untracked ファイル/ディレクトリ、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性を確認する（issue #296）。
 
-根拠: `tests/scripts/test-link-worktree-untracked.sh:1-90`
+根拠: `tests/scripts/test-link-worktree-untracked.sh:1-93`
 
 ## Install and Status Line
 
@@ -250,9 +250,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `scripts/analyze_access.py:1-6`, `scripts/analyze_auto_approve.py:1-6`, `scripts/analyze_token_usage.py:1-9`, `scripts/lib/analyze_common.py:1`
 
-`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、引数に取った元の working tree に対して `git clean -ndx` で untracked/ignored のルートパスを列挙し、`.git`・`.claude` を除く全てを現在の working tree（新しい worktree）の同一相対パスへ symlink する（issue #296）。
+`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、引数に取った元の working tree に対して `git status --porcelain -z --ignored=matching` の NUL 区切り出力から `??`/`!!` エントリを列挙し、`.git`・`.claude` とその配下を除く全てを現在の working tree（新しい worktree）の同一相対パスへ symlink する（issue #296、PR #304 レビューで `git clean -ndx` の人間向け出力パースから変更）。
 
-根拠: `scripts/link-worktree-untracked.sh:1-33`
+根拠: `scripts/link-worktree-untracked.sh:1-40`
 
 ## VitePress Site and CI
 
