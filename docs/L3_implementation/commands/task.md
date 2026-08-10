@@ -86,6 +86,8 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 実行 agent に応じた `${TEMPLATES_DIR}/pr.md`（Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`）を使って英語で PR 本文・タイトルを作成し、session temp directory に `pr-title.txt` と `pr-body.md` を書き出す。この時点では push も PR 作成も行わない。
 
+`Specific docs sections to update` フィールドには、Phase 1 Step 1 の投資調査で `docs/L3_implementation/specification_summary.md` を読んだ際に確認済みのセクション見出しの行範囲を `docs/L3_implementation/specification_summary.md:<line-range>` の citation 形式で書く（再度 Read して探し直さない）。`/docs-sync` Phase 1 Step 2 がこの citation を解析し、Phase 2 で該当箇所を対象読みして再利用する（issue #307）。特定していない場合はファイル名・説明文で代替する。
+
 ユーザーに「追加の変更はありますか？」と確認し、なければ `/docs-sync` を自動実行する。`/docs-sync` 完了後、ユーザー確認なしに即座に `/git-pr` を実行する（push → PR 作成まで完結）。
 
 `/git-pr` による ready PR 作成が task フローのゴールである。作成後の review・merge は自動実行しない（人間、または `/review-resolve`・`/codex-review` を手動起動するユーザーが行う）。

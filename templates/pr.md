@@ -26,7 +26,7 @@ Closes #[issue number]
 - Design intent / background: [why this change was made; "none" if obvious]
 - Side effects not visible in git diff: [env vars, external services, manual steps, infra; "none" if N/A]
 - Potential misreads by docs-sync: [anything that could be misinterpreted; "none" if N/A]
-- Specific docs sections to update: [file or section names; "none" if N/A]
+- Specific docs sections to update: [prefer a resolved citation in `file:line-range` form if already located during investigation (e.g. `docs/L3_implementation/specification_summary.md:63-69`), so /docs-sync can reuse it instead of re-locating; otherwise file or section names; "none" if N/A]
 
 ## Notes for Reviewers
 [Anything reviewers should know; "none" if N/A]
