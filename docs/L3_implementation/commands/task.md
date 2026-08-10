@@ -134,6 +134,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 1146f95 feat(#286): add generic React and Next.js guidelines
 - d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts

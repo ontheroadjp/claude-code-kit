@@ -114,6 +114,7 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 
 ## 変更履歴（git log より自動生成）
 
+- 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
 - 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text

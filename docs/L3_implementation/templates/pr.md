@@ -40,4 +40,8 @@
 
 ## 変更履歴（git log より自動生成）
 
-（`/docs-sync` が commit 後の `git log` から自動生成する）
+- 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
+- f0d7bc1 feat(#41): move templates/ to repo root, add partials/ symlink, clean up stale symlinks
+- 0fac3e7 [/task:wip] #7 コマンドファイルと templates/ を commands/ に集約
+- a29fa9f patch: PR テンプレートに Closes #[issue番号] を追加
+- 275200d init-docs: reorganize repo with 4-command structure and updated docs
