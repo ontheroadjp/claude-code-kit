@@ -7,6 +7,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | Command | Purpose |
 |---|---|
 | `/work` | Main entry point. Routes report-labeled issues to read-only review, tells the user to run `/triage-issues-for-auto-approve` first for auto-approve-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
+| `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Symlinks untracked/ignored files (except `.git`/`.claude`) from the original working tree into the new worktree. |
 | `/report-review` | Evaluates a report-labeled issue read-only and prints evidence-based opinions and proposals without changing files or GitHub state. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
@@ -84,6 +85,9 @@ This links `scripts/statusline.sh` to `~/.claude/statusline.sh` and adds a `stat
 
 /review-resolve #N
   PR review comments -> address/reply/skip interactively -> commit/push/reply as needed
+
+/work-multi (opt-in, for deliberate concurrent sessions)
+  EnterWorktree -> new isolated worktree -> symlink untracked files -> runs /work unchanged
 ```
 
 Site commands are under `site/`:
@@ -104,7 +108,9 @@ Local verification commands:
 bash tests/hooks/test-approval-hooks.sh
 bash tests/commands/test-report-review.sh
 bash tests/commands/test-coding-guidelines.sh
+bash tests/commands/test-work-multi.sh
 bash tests/install/test-install.sh
+bash tests/scripts/test-link-worktree-untracked.sh
 python3 -m pytest tests/scripts/
 shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_modules/*" -not -path "./.git/*" -iname "*.sh")
 ```

@@ -20,6 +20,7 @@
   - `report` label の issue → report-review.md を Read し、実装・branch 作成を行わず評価して終了
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）
   - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → ドラフト PR 作成 → /docs-sync へ引き継ぎ）
+- **work-multi.md**: `/work` と全く同じワークフローを、`EnterWorktree` で作成した専用 worktree 内で実行する明示的 opt-in 入口（issue #296）。複数セッションが同じ working tree を共有すると `git checkout` が他セッションの作業中ファイルを書き換える衝突が起こり得るため、意図的に並行セッションを走らせるとわかっている場合に使う。**「2セッション目以降だけ隔離すればよい」という判断はしない** — どのセッションが「隔離不要な primary」かを常に追跡するのは同種の人為ミスの温床になるため、並行実行するバッチが分かった時点で、最初のセッションを含む全セッションで `/work-multi` を使う。通常の単一セッション作業では引き続き `/work` を使う（overhead なし）。untracked ファイル・ディレクトリ（`.git`・`.claude` を除く）は worktree 作成後に自動で symlink されるが、これには `node_modules` 等セッション中に書き換わる依存ディレクトリも含まれるため、同じ依存ディレクトリを持つ複数 `/work-multi` セッションでパッケージマネージャの書き込み操作（`npm install` 等）を同時実行しないこと。
 - **report-review.md**: `report` label の issue を read-only で評価し、Facts / Assessment / Opinions / Proposals / Risks and Unknowns を標準出力へ提示する。ファイル・Git・GitHub を変更しない。
 - **new-issue.md**: 漠然としたアイデアから 1 件または複数件の整形された issue を生成する任意の pre-`/work` エントリポイント。issue 作成のみで実装は行わない。
 - **triage-issues.md**: open issue を現状 docs と照合し、stale / inconsistent / duplicated / unclear / ready に分類するスタンドアロン入口。issue 操作はユーザー承認後のみ行う。
@@ -96,8 +97,8 @@ hook はリテラル引数が既知の安全なパス（現在セッションの
 
 ## Local Tooling Environment
 
-Observed by /init-docs on 2026-08-06:
-- gh: 2.96.0
+Observed by /init-docs on 2026-08-10:
+- gh: 2.97.0
 - gh auth: logged in to github.com; active account available for repository operations
 - node: v24.16.0
 - npm: 11.13.0

@@ -9,10 +9,15 @@ tests/
 ├── hooks/
 │   └── test-approval-hooks.sh   ← PreToolUse hook の自動テストスクリプト
 ├── commands/
-│   ├── test-report-review.sh    ← report workflow contract
-│   └── test-coding-guidelines.sh ← coding guideline contract
-└── install/
-    └── test-install.sh          ← installer symlink contract の自動テストスクリプト
+│   ├── test-report-review.sh      ← report workflow contract
+│   ├── test-coding-guidelines.sh  ← coding guideline contract
+│   ├── test-workflow-contracts.sh ← docs-sync/init-docs/task/git-pr 間の契約
+│   └── test-work-multi.sh         ← work-multi contract（issue #296）
+├── install/
+│   └── test-install.sh          ← installer symlink contract の自動テストスクリプト
+└── scripts/
+    ├── test-link-worktree-untracked.sh ← untracked symlink の functional test（issue #296）
+    └── test_analyze_*.py            ← ログ解析 scripts の pytest suite
 ```
 
 ## test-approval-hooks.sh
@@ -46,11 +51,21 @@ bash tests/hooks/test-approval-hooks.sh
 
 ## command contract tests
 
-`test-report-review.sh` はreport routingとread-only境界、`test-coding-guidelines.sh` はReact/Next.js layerの依存順・routing・repository非依存性を固定文字列で検証する。
+`test-report-review.sh` はreport routingとread-only境界、`test-coding-guidelines.sh` はReact/Next.js layerの依存順・routing・repository非依存性、`test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`test-work-multi.sh` は work-multi.md・skills/work-multi/SKILL.md・work.md の worktree ガードとブランチ分類・link-worktree-untracked.sh を固定文字列で検証する（issue #296）。
 
 ```bash
 bash tests/commands/test-report-review.sh
 bash tests/commands/test-coding-guidelines.sh
+bash tests/commands/test-workflow-contracts.sh
+bash tests/commands/test-work-multi.sh
+```
+
+## test-link-worktree-untracked.sh
+
+`scripts/link-worktree-untracked.sh` の symlink 挙動を一時 git リポジトリで functional に検証する（issue #296）。
+
+```bash
+bash tests/scripts/test-link-worktree-untracked.sh
 ```
 
 ## test-install.sh

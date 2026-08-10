@@ -18,11 +18,15 @@
 
 template の実体は repository の `templates/` に保持する。Claude Code は `~/.claude/templates/*.md`、Codex CLI は `~/.codex/templates/*.md` の symlink 経由で同じ実体を参照する。
 
-根拠: `CLAUDE.md:32-47`
+根拠: `CLAUDE.md:44-51`
+
+コマンド一覧に `work-multi.md` を持つ（issue #296）。`/work` と同一ワークフローを `EnterWorktree` 隔離下で実行する明示的 opt-in 入口で、AI が自動選択するデフォルトルーティングには含めない（通常作業は引き続き `/work` がデフォルト）。並行セッションのバッチが分かった時点で最初のセッションを含む全セッションに使うという運用ルール、および `node_modules` 等の依存ディレクトリが symlink 経由で複数セッション間に共有されるという既知の限界を明記する。
+
+根拠: `CLAUDE.md:23`
 
 「リポジトリへの操作ルール（必須）」節は、安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）について、read-only な解決ステップ → リテラル値埋め込みの2段階（resolve-then-embed）に分けることを AI に義務付ける。これは `hooks/auto-approve-readonly.sh` がコマンドテキストを実行せずに静的判定のみ行うという制約（推測・実行禁止）に対応するための運用側のルールであり、hook 側の `is_rm_f_on_safe_literal_path` によるリテラルパス自動承認と対になっている。
 
-根拠: `CLAUDE.md:60-70`, `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`）, issue #248
+根拠: `CLAUDE.md:71-80`, `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`）, issue #248
 
 ## 重要な設計判断
 
@@ -43,14 +47,13 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 
 ## 変更履歴（git log より自動生成）
 
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
+- 04ddbb4 fix(claude): default to Japanese responses unless instructed otherwise
+- 91067f8 docs: initialize project documentation (init-docs)
+- e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
+- f330e18 docs: initialize project documentation (init-docs)
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 27f1861 feat(#76): install templates for claude and codex
 - 5faaf5d docs: initialize project documentation (init-docs)
 - 145876c fix(#185): align pr-review with repository workflow rules
-- 4e96f9c feat(#142): add session-scoped temp hook access
-- 2dc74bd docs: initialize project documentation (init-docs)
-- 07ae6ac docs: initialize project documentation (init-docs)
-- bc2900f feat(#63): add /new-issue skill for idea-to-issue workflow
-- 4e87fe4 feat(#56): make /review-resolve self-contained, add opinion presentation
-- d14f403 docs(CLAUDE.md): add npm lazy-load instruction
