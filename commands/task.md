@@ -80,8 +80,8 @@ Phase 3: 最終報告
 - ロールバック方針
 - 利用ツール:
     - `tool:git_write`（git add / commit / push / stash / checkout / switch / branch / merge） — 該当する場合のみ列挙
-    - `tool:gh_issue_write`（gh issue create / edit / close / comment / reopen） — **`/task` フローでは常に列挙する（条件判定不要）**。Step 3.2 で issue が新規・既存いずれの場合も完了コメントを投稿するため、issue の有無に関わらず必ず必要になる
-    - `tool:gh_pr_write`（gh pr create / edit / merge / close / ready） — 該当する場合のみ列挙
+    - `tool:gh_issue_write:<N>`（gh issue create / edit / close / comment / reopen。`create` は対象番号を持たないため N に関わらず常に承認され、それ以外の verb は対象 issue 番号が N と一致する場合のみ承認される） — **`/task` フローでは常に列挙する（条件判定不要）**。Step 3.2 で issue が新規・既存いずれの場合も完了コメントを投稿するため、issue の有無に関わらず必ず必要になる。N は対象 issue 番号（後述の順序に従い確定させる）
+    - `tool:gh_pr_write:<N>`（gh pr create / edit / merge / close / ready。`create` は対象番号を持たないため N に関わらず常に承認される） — 該当する場合のみ列挙。Phase 2 で `/git-pr` が `gh pr create` を呼ぶため実質的に毎回該当する。この時点では PR はまだ存在せず対象 PR 番号もないため、N には対象 issue 番号をそのまま流用する（`create` は N を検査しないため形式的な値で構わない）
 - 新規作成ファイル（絶対パス）— プラン本文で言及した実装ファイル・テストファイルを漏れなく転記する
 - 編集ファイル（絶対パス）— 同上
 - タスクリスト（以下を必ず含む）
@@ -93,7 +93,16 @@ Phase 3: 最終報告
 
 ※ Step 3 実行前に調査結果・作業プランをユーザーに提示し、明確な許可を得ること（必須）
 
-ユーザーから OK が出た場合:
+ユーザーから OK が出た場合、`tool:gh_issue_write:<N>` に使う N（対象 issue 番号）を session-approved 書き込み前に確定させる必要があるため（issue #297: 番号スコープ化に伴い、書き込みより後に番号が判明する順序は成立しない）、以下の順序で進める:
+    - **issue が未作成の場合**（Step 0 で issue 番号がなかった場合）:
+        - `commands/new-issue.md` を Read し、**Step 4〜Step 5 のみ**実行して issue を作成する
+            - Step 1〜3（アイデア捕捉・明確化・スコープ判定）はスキップする（確定済みプランの内容で代替）
+            - Step 4 のドラフトは作業プランの内容（完了条件・背景・変更対象・検証方法）を `${TEMPLATES_DIR}/issue.md` の各セクションに英語で埋めて作成する
+            - Step 6（引き継ぎ案内）はスキップする
+            - **issue 内容のユーザー確認は行わない**（プラン承認で確定済みのため）
+        - 作成した issue 番号を以降の起点（N）とする
+        - 注: この `gh issue create` 呼び出しの時点では session-approved がまだ存在しないため、通常の確認プロンプトに従う（1 回限り。番号スコープ化のトレードオフ）
+    - **issue が作成済みの場合**（ユーザーから issue 番号を受け取っていた場合）: Step 0 で確定した issue 番号を N とする
     - 以下の Bash コマンドで session-approved ファイルの正確なパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接取得し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
       ```bash
       SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
@@ -105,19 +114,11 @@ Phase 3: 最終報告
       ```
       セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 3 へ進む。
     - Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容（1行1エントリ）:
-        - 利用ツールカテゴリ（例: `tool:git_write`）
+        - 利用ツールカテゴリ（例: `tool:git_write`、`tool:gh_issue_write:<N>`、該当する場合は `tool:gh_pr_write:<N>`。N は上記で確定した issue 番号）
         - 新規作成・編集ファイルの絶対パス（例: `file:/abs/path/to/file.md`）
         - Step 3.2 で作成・更新する L3 per-file doc の絶対パス（例: `file:/abs/path/to/docs/L3_implementation/commands/task.md`）
     - 注: `session-approved` はこの Step で 1 度だけ書き込む。実行中にスコープを追加しようとすると hook がブロックする。スコープ変更が必要な場合はこの Step に戻り、ユーザーの許可を得てから再書き込みすること。
-    - **issue が未作成の場合**（Step 0 で issue 番号がなかった場合）:
-        - `commands/new-issue.md` を Read し、**Step 4〜Step 5 のみ**実行して issue を作成する
-            - Step 1〜3（アイデア捕捉・明確化・スコープ判定）はスキップする（確定済みプランの内容で代替）
-            - Step 4 のドラフトは作業プランの内容（完了条件・背景・変更対象・検証方法）を `${TEMPLATES_DIR}/issue.md` の各セクションに英語で埋めて作成する
-            - Step 6（引き継ぎ案内）はスキップする
-            - **issue 内容のユーザー確認は行わない**（プラン承認で確定済みのため）
-        - 作成した issue 番号を以降の起点とする
-    - **issue が作成済みの場合**（ユーザーから issue 番号を受け取っていた場合）:
-        - 調査結果・作業プランを対象 issue の本文に追記する
+    - **issue が元から作成済みだった場合のみ**: 調査結果・作業プランを対象 issue の本文に追記する（`gh issue comment <N>` は上記で書き込んだ `tool:gh_issue_write:<N>` により自動承認される）。今回新規作成した場合は Step 4 のドラフトが既に内容を含むため追記不要
     - Step 3 へ進む
 
 ユーザーから質問や変更があった場合:

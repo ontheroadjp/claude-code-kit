@@ -1123,11 +1123,21 @@ check_session_approved() {
                     approval_safety_is_force_branch_delete "$seg" || return 0
                 fi
                 ;;
-            tool:gh_issue_write)
-                printf '%s' "$seg" | grep -qE '^gh[[:space:]]+issue[[:space:]]+(create|edit|close|delete|comment|reopen)(\s|$)' && return 0
+            tool:gh_issue_write:*)
+                local gh_issue_n="${category#tool:gh_issue_write:}"
+                case "$gh_issue_n" in
+                    ''|*[!0-9]*) continue ;;
+                esac
+                printf '%s' "$seg" | grep -qE '^gh[[:space:]]+issue[[:space:]]+create(\s|$)' && return 0
+                printf '%s' "$seg" | grep -qE "^gh[[:space:]]+issue[[:space:]]+(edit|close|delete|comment|reopen)[[:space:]]+${gh_issue_n}(\s|\$)" && return 0
                 ;;
-            tool:gh_pr_write)
-                printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+(create|edit|close|comment|reopen|ready|review|checkout|merge)(\s|$)' && return 0
+            tool:gh_pr_write:*)
+                local gh_pr_n="${category#tool:gh_pr_write:}"
+                case "$gh_pr_n" in
+                    ''|*[!0-9]*) continue ;;
+                esac
+                printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+create(\s|$)' && return 0
+                printf '%s' "$seg" | grep -qE "^gh[[:space:]]+pr[[:space:]]+(edit|close|comment|reopen|ready|review|checkout|merge)[[:space:]]+${gh_pr_n}(\s|\$)" && return 0
                 ;;
         esac
     done < "$SESSION_APPROVED_FILE"
