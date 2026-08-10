@@ -30,12 +30,17 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 
 根拠: `commands/init-docs.md:23`, `commands/init-docs.md:153-168`, `commands/init-docs.md:214`, issue #273
 
+standalone mode の Phase 7-3（commit）は、変更ファイルを個別に `git add` した後、直接 `git commit` はせず `/git-commit` を `fixed_message`（固定の init-docs commit message）で呼び出す（issue #300）。ステージングは従来どおり `/init-docs` 自身が担い、`/git-commit` はコミット実行のみを担う。これにより `docs/init-docs-<YYYYMMDD>` ブランチを再開した際に HEAD から連続する `wip:` commit があれば `/git-commit` Step 2 の WIP 正規化で自動的に squash されてからこの固定メッセージで commit される。`/git-commit` Step 1（ブランチが main なら切替）は Phase 7-2 で既に non-main ブランチであることを確認済みのため実質 no-op であり、既存の branch verification gate と衝突しない。Phase 7-4（`gh pr create --draft`）は変更していない。
+
+根拠: `commands/init-docs.md:377-401`, issue #300
+
 ## 統合ポイント
 
 - standalone invocation、または documentation-only mode を明示するドキュメントワークフローからの委譲
 - README template: `${TEMPLATES_DIR}/readme.md`
 - output: `docs/.ai/repo.profile.json`, L1-L3 docs（常時）、L0 docs（存在しない場合のみ）、README, CLAUDE.md/AGENTS.md
 - L0 昇格の実行経路: `commands/concept-maker.md`（`/init-docs` はこの役割を代替しない）
+- standalone mode の commit 実行: `commands/git-commit.md`（`fixed_message` 呼び出し。issue #300）
 
 ## 注意事項・既知の制限
 
@@ -45,6 +50,7 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 
 ## 変更履歴（git log より自動生成）
 
+- 5815389 refactor(#300): delegate init-docs commit to the shared commit workflow
 - 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 27f1861 feat(#76): install templates for claude and codex
@@ -54,5 +60,3 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 - ad364de docs(init-docs): add Phase 7 commit & PR creation workflow
 - 3b990cf fix(#50): remove primary_docs from Phase 2 schema example to prevent premature writing
 - 5497931 fix(#50): set primary_docs after Phase 3 generation, not as planned paths in Phase 2
-- 3c7e474 fix(#50): primary_docs population must reference planned Phase 3 paths, not existing files
-- 3e24c4a feat(#50): add primary_docs to repo.profile.json as lightweight SSOT for investigation

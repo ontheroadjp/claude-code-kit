@@ -4,22 +4,23 @@
 
 `tests/commands/test-workflow-contracts.sh` は `/docs-sync`、`/init-docs`、`/task`、`/git-pr` 間の責務境界と HARD STOP 復旧契約を静的に検証する。
 
-根拠: `tests/commands/test-workflow-contracts.sh:1-48`
+根拠: `tests/commands/test-workflow-contracts.sh:1-49`
 
 ## 動作の概要
 
 Markdown command source of truth に必須の固定文字列が存在することを `rg --fixed-strings` で確認する。失敗件数を集計し、1件以上なら終了コード1、すべて成功なら終了コード0を返す。
 
-根拠: `tests/commands/test-workflow-contracts.sh:12-48`
+根拠: `tests/commands/test-workflow-contracts.sh:12-49`
 
 ## 主要な検証契約
 
 - `/docs-sync` が HARD STOP 時に documentation-only mode を自動委譲し、commit・結果書き出しへ復帰する
 - `/init-docs` はモード指定なしで standalone、明示時だけ documentation-only とする
 - documentation-only mode は現在ブランチを維持し、commit・push・PR 作成を行わない
+- `/init-docs` standalone mode の Phase 7-3 が直接 commit せず `/git-commit` を `fixed_message` で呼び出す（issue #300）
 - `/task` は `/docs-sync` 完了後に従来どおり `/git-pr` を実行し、`/git-pr` が PR 作成責務を保持する
 
-根拠: `tests/commands/test-workflow-contracts.sh:25-42`
+根拠: `tests/commands/test-workflow-contracts.sh:26-42`
 
 ## 重要な設計判断
 
@@ -37,4 +38,5 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 
 ## 変更履歴（git log より自動生成）
 
+- 5815389 refactor(#300): delegate init-docs commit to the shared commit workflow
 - 65a9329 feat(#302): resume task after docs-sync hard stop

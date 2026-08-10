@@ -376,7 +376,9 @@ main ブランチ上である場合は、commit・push・PR 作成を中止し�
 
 #### 7-3. commit
 
-変更ファイルを個別に `git add` し（`git add -A` や `git add .` は使わない）、以下の形式で commit する:
+変更ファイルを個別に `git add` する（`git add -A` や `git add .` は使わない）。
+
+以下の形式でコミットメッセージを組み立てる:
 
 ```
 docs: initialize project documentation (init-docs)
@@ -393,6 +395,11 @@ docs: initialize project documentation (init-docs)
 ```
 
 実際の変更内容に合わせて箇条書きを調整する。
+
+`/git-commit` を実行する:
+- パラメータ: `fixed_message="<上記で組み立てたメッセージ>"`
+
+これにより、既存の `docs/init-docs-<YYYYMMDD>` ブランチを再開した際に HEAD から連続する `wip:` commit があれば `/git-commit` の WIP 正規化（Step 2）で自動的に squash されてから、この固定メッセージで commit される。non-WIP commit には一切触れない。
 
 #### 7-4. PR 作成
 
