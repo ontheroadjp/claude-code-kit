@@ -30,12 +30,17 @@ template 実体を repository に保持し、agent 固有 installed path の sym
 
 根拠: `commands/init-docs.md:23`, `commands/init-docs.md:153-168`, `commands/init-docs.md:214`, issue #273
 
+standalone mode の Phase 7-3（commit）は、変更ファイルを個別に `git add` した後、直接 `git commit` はせず `/git-commit` を `fixed_message`（固定の init-docs commit message）で呼び出す（issue #300）。ステージングは従来どおり `/init-docs` 自身が担い、`/git-commit` はコミット実行のみを担う。これにより `docs/init-docs-<YYYYMMDD>` ブランチを再開した際に HEAD から連続する `wip:` commit があれば `/git-commit` Step 2 の WIP 正規化で自動的に squash されてからこの固定メッセージで commit される。`/git-commit` Step 1（ブランチが main なら切替）は Phase 7-2 で既に non-main ブランチであることを確認済みのため実質 no-op であり、既存の branch verification gate と衝突しない。Phase 7-4（`gh pr create --draft`）は変更していない。
+
+根拠: `commands/init-docs.md:377-401`, issue #300
+
 ## 統合ポイント
 
 - standalone invocation、または documentation-only mode を明示するドキュメントワークフローからの委譲
 - README template: `${TEMPLATES_DIR}/readme.md`
 - output: `docs/.ai/repo.profile.json`, L1-L3 docs（常時）、L0 docs（存在しない場合のみ）、README, CLAUDE.md/AGENTS.md
 - L0 昇格の実行経路: `commands/concept-maker.md`（`/init-docs` はこの役割を代替しない）
+- standalone mode の commit 実行: `commands/git-commit.md`（`fixed_message` 呼び出し。issue #300）
 
 ## 注意事項・既知の制限
 

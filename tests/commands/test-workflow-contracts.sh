@@ -35,6 +35,8 @@ assert_contains "$INIT_DOCS" 'このモードが明示された場合' 'init-doc
 assert_contains "$INIT_DOCS" '呼び出し時の現在ブランチを維持する' 'delegated init-docs preserves the task branch'
 assert_contains "$INIT_DOCS" 'commit・push・PR 作成を行わない' 'delegated init-docs does not publish changes'
 assert_contains "$INIT_DOCS" 'このフェーズは standalone mode でのみ実行する' 'init-docs skips Phase 7 outside standalone mode'
+assert_contains "$INIT_DOCS" '`/git-commit` を実行する' 'init-docs delegates final commit creation to /git-commit'
+assert_contains "$INIT_DOCS" 'fixed_message="<上記で組み立てたメッセージ>"' 'init-docs passes the fixed init-docs commit message to /git-commit'
 
 assert_contains "$TASK" '`/docs-sync` 完了後、ユーザー確認なしに即座に `/git-pr` を実行する' 'task remains unaware of docs-sync internal escalation'
 assert_contains "$GIT_PR" 'gh pr create --title "<title>"' 'git-pr remains responsible for PR creation'
