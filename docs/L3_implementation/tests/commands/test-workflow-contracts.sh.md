@@ -38,4 +38,5 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 
 ## 変更履歴（git log より自動生成）
 
+- 5815389 refactor(#300): delegate init-docs commit to the shared commit workflow
 - 65a9329 feat(#302): resume task after docs-sync hard stop

@@ -50,6 +50,7 @@ standalone mode の Phase 7-3（commit）は、変更ファイルを個別に `g
 
 ## 変更履歴（git log より自動生成）
 
+- 5815389 refactor(#300): delegate init-docs commit to the shared commit workflow
 - 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - 27f1861 feat(#76): install templates for claude and codex
@@ -59,5 +60,3 @@ standalone mode の Phase 7-3（commit）は、変更ファイルを個別に `g
 - ad364de docs(init-docs): add Phase 7 commit & PR creation workflow
 - 3b990cf fix(#50): remove primary_docs from Phase 2 schema example to prevent premature writing
 - 5497931 fix(#50): set primary_docs after Phase 3 generation, not as planned paths in Phase 2
-- 3c7e474 fix(#50): primary_docs population must reference planned Phase 3 paths, not existing files
-- 3e24c4a feat(#50): add primary_docs to repo.profile.json as lightweight SSOT for investigation

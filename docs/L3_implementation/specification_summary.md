@@ -70,11 +70,11 @@ Phase 3 では docs・README.md 更新に加え、L3 per-file doc の変更履�
 
 ### `/init-docs` (`commands/init-docs.md`)
 
-モード指定がなければ standalone mode とし、G-2 で `docs/init-docs-<YYYYMMDD>` 作業ブランチを作成または切り替える。そのブランチ上で repo 再観測、local tooling 観測、`docs/.ai/repo.profile.json` 生成、L1-L3 docs 生成、整合性検証、README scaffold 確認、CLAUDE.md / AGENTS.md 更新を行い、Phase 7 でユーザー確認後に commit と draft PR を作成する。documentation-only mode が明示された場合は現在ブランチを維持して Phase 1〜6 だけを実行し、commit・push・PR 作成を行わず呼び出し元へ返る。L0（`docs/L0_concept/`）は存在しない場合のみ新規生成し、既に存在する場合は再実行時も一切変更しない（issue #273）。
+モード指定がなければ standalone mode とし、G-2 で `docs/init-docs-<YYYYMMDD>` 作業ブランチを作成または切り替える。そのブランチ上で repo 再観測、local tooling 観測、`docs/.ai/repo.profile.json` 生成、L1-L3 docs 生成、整合性検証、README scaffold 確認、CLAUDE.md / AGENTS.md 更新を行い、Phase 7 でユーザー確認後に個別 `git add` でステージしたうえで `/git-commit`（`fixed_message` 指定）による commit と draft PR を作成する（issue #300）。documentation-only mode が明示された場合は現在ブランチを維持して Phase 1〜6 だけを実行し、commit・push・PR 作成を行わず呼び出し元へ返る。L0（`docs/L0_concept/`）は存在しない場合のみ新規生成し、既に存在する場合は再実行時も一切変更しない（issue #273）。
 
 local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints を確認し、環境依存の注意を command workflow ではなく `CLAUDE.md` の `Local Tooling Environment` に出力する。`AGENTS.md` は原則として `CLAUDE.md` への symlink とし、Codex CLI も同じ AI 運用情報を読む。
 
-根拠: `commands/init-docs.md:33-47`, `commands/init-docs.md:153-168`, `commands/init-docs.md:306-322`, `commands/init-docs.md:353-372`
+根拠: `commands/init-docs.md:33-47`, `commands/init-docs.md:153-168`, `commands/init-docs.md:306-322`, `commands/init-docs.md:353-372`, `commands/init-docs.md:377-403`
 
 ### `/concept-maker` (`commands/concept-maker.md`)
 
