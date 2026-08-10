@@ -58,6 +58,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
 - 4450e96 feat(#298): gate /work on auto-approve-candidate label, swap to triage-approved on approval
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - b3a5b06 chore(#269): prefer L3 doc line citations over full-file reads in /work investigation
@@ -69,4 +70,4 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
 
-根拠: `commands/work.md:9-149`
+根拠: `commands/work.md:9-163`

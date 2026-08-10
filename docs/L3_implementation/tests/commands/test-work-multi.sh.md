@@ -29,3 +29,7 @@ Markdown workflow は直接実行可能なプログラムではないため、`t
 ## 注意事項・既知の制限
 
 静的検査であり、`EnterWorktree` を実際に呼び出す end-to-end 検証は行わない（`tests/scripts/test-link-worktree-untracked.sh` が symlink 挙動自体の functional test を担う）。workflow 文面変更時は同じ意味を保持したまま assertion も更新する必要がある。
+
+## 変更履歴（git log より自動生成）
+
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

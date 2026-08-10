@@ -30,3 +30,7 @@
 
 - `node_modules` 等セッション中に書き換わる untracked ディレクトリも symlink 対象に含まれるため、同じ依存ディレクトリを持つ複数 worktree セッションでパッケージマネージャの書き込み操作を同時実行すると衝突し得る（`commands/work-multi.md` 参照）。
 - symlink ではない実体パスが既に存在する場合は上書きせず警告のみを標準エラーに出力し処理を継続する（`set -e` によるスクリプト全体の停止はしない）。
+
+## 変更履歴（git log より自動生成）
+
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

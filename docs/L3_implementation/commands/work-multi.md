@@ -32,3 +32,7 @@ Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）
 
 - 既存 worktree への再入場（`EnterWorktree` の `path` 引数）はスコープ外。常に新規 worktree を作成する。
 - `site/node_modules` 等の依存ディレクトリが symlink 経由で複数 `/work-multi` セッション間に共有されるため、同じ依存ディレクトリを持つセッションでパッケージマネージャの書き込み操作を同時実行しないこと（`CLAUDE.md` に既知の限界として記載）。
+
+## 変更履歴（git log より自動生成）
+
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

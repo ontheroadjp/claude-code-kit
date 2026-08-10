@@ -25,6 +25,7 @@
   },
   "active_commands": [
     "commands/work.md",
+    "commands/work-multi.md",
     "commands/report-review.md",
     "commands/analyze-access.md",
     "commands/analyze-auto-approve.md",
@@ -125,6 +126,7 @@
     "skills/auto-approve-hazard-scan/SKILL.md",
     "skills/codex-review/SKILL.md",
     "skills/work/SKILL.md",
+    "skills/work-multi/SKILL.md",
     "skills/report-review/SKILL.md",
     "skills/triage-issues/SKILL.md",
     "skills/triage-issues-for-auto-approve/SKILL.md",

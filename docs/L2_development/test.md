@@ -2,9 +2,9 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が4本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はない。`tests/hooks/test-approval-hooks.sh` は `.github/workflows/test.yml` の `approval-hooks` job で CI 実行されるが、`tests/commands/test-report-review.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest は現状ローカル検証のみである。
+このリポジトリには Bash で直接実行する shell tests が7本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はない。`tests/hooks/test-approval-hooks.sh` は `.github/workflows/test.yml` の `approval-hooks` job で CI 実行されるが、`tests/commands/test-report-review.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/commands/test-workflow-contracts.sh`・`tests/commands/test-work-multi.sh`・`tests/install/test-install.sh`・`tests/scripts/test-link-worktree-untracked.sh`・pytest は現状ローカル検証のみである。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh`, `tests/install/test-install.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh`, `tests/commands/test-workflow-contracts.sh`, `tests/commands/test-work-multi.sh`, `tests/install/test-install.sh`, `tests/scripts/test-link-worktree-untracked.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
 
 ## Hook safety test
 
@@ -36,6 +36,22 @@ bash tests/commands/test-coding-guidelines.sh
 
 根拠: `tests/commands/test-coding-guidelines.sh:1-53`
 
+```bash
+bash tests/commands/test-workflow-contracts.sh
+```
+
+`test-workflow-contracts.sh` は `docs-sync.md`・`init-docs.md`・`task.md`・`git-pr.md` 間の契約（HARD STOP からの自動委譲、standalone mode のデフォルト、`/task` が docs-sync の内部エスカレーションを意識しないこと、PR 作成責務が `/git-pr` にあること等）を静的検証する。
+
+根拠: `tests/commands/test-workflow-contracts.sh:1-47`
+
+```bash
+bash tests/commands/test-work-multi.sh
+```
+
+`test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードとブランチ命名規則分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を確認する（issue #296）。
+
+根拠: `tests/commands/test-work-multi.sh:1-84`
+
 ## Installer contract test
 
 `tests/install/test-install.sh` は temporary fixture repository と isolated HOME を作成し、`install.sh` を2回実行する。repository の `templates/*.md` が `~/.claude/templates/` と `~/.codex/templates/` の両方へ個別 symlink されること、旧 `~/.config/claude-code-kit/templates` が作成されないこと、再実行しても結果が変わらないことを検証する。
@@ -45,6 +61,18 @@ bash tests/install/test-install.sh
 ```
 
 根拠: `tests/install/test-install.sh:1-71`, `tests/README.md`
+
+## Worktree untracked-file link test
+
+`tests/scripts/test-link-worktree-untracked.sh` は `scripts/link-worktree-untracked.sh` の symlink 挙動を、一時 git リポジトリを使った functional test で検証する（issue #296）。
+
+```bash
+bash tests/scripts/test-link-worktree-untracked.sh
+```
+
+トップレベル untracked ファイル/ディレクトリの symlink、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性を確認する。
+
+根拠: `tests/scripts/test-link-worktree-untracked.sh:1-90`
 
 ## Log analysis script tests
 
@@ -74,5 +102,5 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-report-review.sh`, `test-coding-guidelines.sh`, `test-install.sh`）と pytest は CI に登録されていない。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-report-review.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-install.sh`, `test-link-worktree-untracked.sh`）と pytest は CI に登録されていない。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。

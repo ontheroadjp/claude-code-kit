@@ -24,3 +24,7 @@
 ## 注意事項・既知の制限
 
 `node_modules` のような「セッション中に書き換わる」性質そのものはこのテストでは検証していない（symlink が正しい場所に作られることのみを検証する）。並行書き込みによる衝突リスクは `commands/work-multi.md`・`CLAUDE.md` の既知の限界として文書化するに留めている。
+
+## 変更履歴（git log より自動生成）
+
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

@@ -28,9 +28,9 @@ core-toolkit-for-claude/
 
 ### `commands/`
 
-Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md` へ、auto-approve-candidate issue は `/triage-issues-for-auto-approve` の実行案内で終了し、それ以外の実装は `task.md` または `patch.md` に委譲する。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する（作成後の自動 review はない）。
+Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md` へ、auto-approve-candidate issue は `/triage-issues-for-auto-approve` の実行案内で終了し、それ以外の実装は `task.md` または `patch.md` に委譲する。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する（作成後の自動 review はない）。`work-multi.md` は `work.md` と同一ワークフローを `EnterWorktree` 隔離下で実行する明示的 opt-in 入口で、意図的な並行セッション利用時にのみ使う（issue #296）。
 
-根拠: `commands/work.md:1-149`, `commands/report-review.md:1-14`, `commands/git-pr.md:62-65`, `commands/README.md`
+根拠: `commands/work.md:1-163`, `commands/work-multi.md:1-50`, `commands/report-review.md:1-14`, `commands/git-pr.md:62-65`, `commands/README.md`
 
 ### `skills/`
 
@@ -46,9 +46,9 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 ### `tests/`
 
-shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/commands/test-coding-guidelines.sh` は coding layerの合成・routing・repository非依存性、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
+shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/commands/test-coding-guidelines.sh` は coding layerの合成・routing・repository非依存性、`tests/commands/test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`tests/commands/test-work-multi.sh` は work-multi 関連ファイルの契約（issue #296）、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性、`tests/scripts/test-link-worktree-untracked.sh` は untracked symlink の functional test（issue #296）、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh:1-53`, `tests/install/test-install.sh:1-71`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh:1-53`, `tests/commands/test-workflow-contracts.sh:1-47`, `tests/commands/test-work-multi.sh:1-84`, `tests/install/test-install.sh:1-71`, `tests/scripts/test-link-worktree-untracked.sh:1-90`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
 
 ### `templates/`
 
@@ -70,9 +70,9 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 
 ### `scripts/` と `setup_statusline.sh`
 
-`setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/statusline.sh` は `jq` と `bc` を使って context / rate limit 情報を表示する。`scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py`（および共通処理 `scripts/lib/analyze_common.py`）は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する Python script で、対応する `/analyze-*` command から呼ばれる。
+`setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/statusline.sh` は `jq` と `bc` を使って context / rate limit 情報を表示する。`scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py`（および共通処理 `scripts/lib/analyze_common.py`）は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する Python script で、対応する `/analyze-*` command から呼ばれる。`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、`EnterWorktree` が作成した worktree に元の working tree の untracked/ignored ファイル・ディレクトリを symlink する（issue #296）。
 
-根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/analyze_access.py:1-6`, `scripts/README.md`
+根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/analyze_access.py:1-6`, `scripts/link-worktree-untracked.sh:1-33`, `scripts/README.md`
 
 ### `logs/`
 

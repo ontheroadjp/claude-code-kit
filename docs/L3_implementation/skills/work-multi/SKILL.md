@@ -26,3 +26,7 @@ Codex で `/work-multi` を利用可能にする薄い wrapper。実際の workf
 ## 注意事項・既知の制限
 
 `commands/work-multi.md` が欠落・読み取り不能な場合は work-multi workflow を実行できない旨を報告するに留める。
+
+## 変更履歴（git log より自動生成）
+
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
