@@ -12,6 +12,7 @@ Claude Code のステータス表示とトークン使用量確認のための�
 | `analyze_auto_approve.py` | `logs/auto-approve/*.log` を集計し JSON を出力する（`/analyze-auto-approve` から呼ばれる） |
 | `analyze_token_usage.py` | `logs/token-usage/*.log` を集計し JSON を出力する（`/analyze-token-usage` から呼ばれる） |
 | `lib/analyze_common.py` | 上記3スクリプトが共有する対象月解決・ログファイル列挙・JSON出力の共通処理 |
+| `link-worktree-untracked.sh` | `EnterWorktree` が作成した worktree に、元の working tree の untracked/ignored ファイル・ディレクトリを symlink する（`/work-multi` から呼ばれる） |
 
 ## statusline.sh
 
@@ -78,3 +79,11 @@ python3 scripts/analyze_token_usage.py --all
 ```
 
 `analyze_token_usage.py` は `logs/token-usage/*.log` がセッションごとに累積値を毎ターン追記する形式であることを踏まえ、セッションIDごとに最終行（最大値）のみを集計に用いる（`scripts/show-token-usage.sh --sum` 等は行単位で単純合算するため、セッションをまたいだ比較には注意すること）。
+
+## link-worktree-untracked.sh
+
+`git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトするため、`commands/work-multi.md` が新規 worktree に切り替えた直後に、元の working tree の untracked/ignored ファイル・ディレクトリを symlink するために使う。`.git`・`.claude`（`EnterWorktree` 自身が worktree を格納する予約ディレクトリ）は対象から除外する。
+
+```bash
+bash scripts/link-worktree-untracked.sh <元の working tree の絶対パス>
+```

@@ -20,6 +20,10 @@ template の実体は repository の `templates/` に保持する。Claude Code 
 
 根拠: `CLAUDE.md:32-47`
 
+コマンド一覧に `work-multi.md` を持つ（issue #296）。`/work` と同一ワークフローを `EnterWorktree` 隔離下で実行する明示的 opt-in 入口で、AI が自動選択するデフォルトルーティングには含めない（通常作業は引き続き `/work` がデフォルト）。並行セッションのバッチが分かった時点で最初のセッションを含む全セッションに使うという運用ルール、および `node_modules` 等の依存ディレクトリが symlink 経由で複数セッション間に共有されるという既知の限界を明記する。
+
+根拠: `CLAUDE.md:23`
+
 「リポジトリへの操作ルール（必須）」節は、安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）について、read-only な解決ステップ → リテラル値埋め込みの2段階（resolve-then-embed）に分けることを AI に義務付ける。これは `hooks/auto-approve-readonly.sh` がコマンドテキストを実行せずに静的判定のみ行うという制約（推測・実行禁止）に対応するための運用側のルールであり、hook 側の `is_rm_f_on_safe_literal_path` によるリテラルパス自動承認と対になっている。
 
 根拠: `CLAUDE.md:60-70`, `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`）, issue #248

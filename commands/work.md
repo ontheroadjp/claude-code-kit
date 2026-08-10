@@ -8,9 +8,11 @@
 
 ### G-0: main ブランチへの切り替え
 
-`git checkout main` を実行し、main ブランチに切り替える。
+まず `git rev-parse --show-toplevel` を実行し、その結果が `.claude/worktrees/` を含むかを判定する。含む場合（`EnterWorktree` が作成した worktree 内で実行されている場合。例: `/work-multi`）は `main` が主 worktree で既にチェックアウトされているため `git checkout main` を実行せずスキップし、G-1 へ進む。含まない場合は `git checkout main` を実行し、main ブランチに切り替える（通常の非 worktree checkout ではこの分岐は常に false になるため、以下は従来と同一の動作である）。
 
 （issue #261 で追記: 以前はここで前回の `/work` 呼び出しの `session-approved` を空文字列で防御的にクリアしていたが、廃止した。`hooks/auto-approve-readonly.sh` の Write ハンドラは「ファイルが absent の場合のみ」無条件承認する初回書き込みブランチに入るため、この空書き込みは `hooks/cleanup-session.sh`（Stop hook）が正常に削除済みの absent 状態を「exists-empty」状態に変換してしまい、直後の `task.md`/`patch.md` Step 2 の実承認内容の書き込みが既存内容（空）との差分比較で毎回確実にスコープ拡大としてブロックされる原因になっていた。Stop hook が正常に動作していれば `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）は、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする。`rm -f` への回帰は検討したが不採用とした: commit 87ce937（fix #250）が `session-approved` を `rm -f` の自動承認対象から明示的に除外しており（`is_rm_protected_path`）、これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴を塞ぐためのもの。G-0 を `rm -f` に戻すと、この抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。）
+
+（issue #296 で追記: worktree パスガードを追加した。`EnterWorktree` は常に `.claude/worktrees/<name>` 配下に worktree を作成する固定仕様のため（ツール自身の仕様）、この配下にいるかどうかは `git checkout main` を試行する前に確実に判定できる。実機検証の結果、worktree 内で `git checkout main` を実行すると `main` は主 worktree で既にチェックアウトされているため `fatal: 'main' is already used by worktree at '<主worktreeのパス>'` で必ず失敗することを確認した。この失敗を実行してからエラー文言を解釈するのではなく、事前のパスチェックで確実に回避する設計とした。通常の非 worktree checkout では `git checkout main` は workspace が clean であれば元のブランチとの分岐状況に関わらず常に成功することも実機で確認済みであり、このガードは非 worktree の場合の挙動に一切影響しない。）
 
 ### G-1: docs/.ai/repo.profile.json の存在確認
 - 存在しない場合: /init-docs の実行を促して終了する
@@ -43,6 +45,18 @@
 
 ## 開始判定とルーティング
 
+### ブランチ分類
+
+以降の (A)/(B) 判定は、現在のブランチ名が `main` かどうかの単純比較ではなく、`/task`・`/patch` が作業ブランチに使う命名規則のいずれかに一致するかで行う:
+
+- `/task`（`task.md`）の命名規則: `feat/`, `change/`, `fix/`, `test/`, `chore-`
+- `/patch`（`patch.md`）の命名規則: `patch/`
+
+いずれかの prefix に一致する場合 → (B) 再開・エスカレーション
+一致しない場合（`main` 自身、および `EnterWorktree` が作成する `worktree-` prefix のブランチを含む、上記いずれにも一致しない全てのブランチ）→ (A) 新規作業
+
+（issue #296 で追記: 以前は「現在ブランチが main か」の単純比較だったが、worktree 内で G-0 の `git checkout main` がスキップされるケース（ブランチ名が `worktree-<name>`）を正しく (A) 新規作業として扱うために、判定基準を「`/task`・`/patch` が実際に作成する命名規則に一致するか」へ変更した。通常の非 worktree checkout では、`git checkout main` が成功した時点でブランチは必ず文字通り `main` になり、これはどの命名規則にも一致しないため (A) に分類される。checkout が失敗して非 main ブランチのまま残るのは、既存の `/task`・`/patch` フローが作成した命名規則付きブランチ上で作業中だったケースにほぼ限られるため、既存の (B) 判定結果は変わらない。）
+
 ### 現状調査（共通）
 
 (A)・(B) いずれの分岐でも、ルーティング判定または開始フェーズ報告の前に必ず以下を調査・整理する:
@@ -57,7 +71,7 @@
 この調査結果は task.md または patch.md の実装フェーズに引き継がれる。
 G-1 で Read した `docs/.ai/repo.profile.json` および現状調査で Read した `docs/L3_implementation/specification_summary.md` はコンテキスト内に保持されているため、task.md / patch.md で再度 Read しない。
 
-### (A) 現在ブランチが main の場合（新規作業）
+### (A) 上記のブランチ分類が新規作業に該当する場合
 
 ユーザーに作業の目的を尋ねる。
 
@@ -119,7 +133,7 @@ issue label の事前ルーティングに該当しなかった場合、以下�
 - G-2 は通過済みとして扱う（stash 状態も引き継ぐ）
 - patch.md の「Phase 1 Step 1」から開始する
 
-### (B) 現在ブランチが main ではない場合（再開・エスカレーション）
+### (B) 上記のブランチ分類が再開・エスカレーションに該当する場合
 
 ルーティング判定はスキップする（既に作業として進行中のため）。
 
