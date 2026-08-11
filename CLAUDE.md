@@ -13,10 +13,10 @@
 
 ## Custom / Command の使い分け（AI向けルール）
 
-**重要: PR レビューコメントへの対話対応は `/review-resolve`、それ以外の全作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。`/docs-sync` が L0 昇格候補ありを案内した場合のみ任意で `/concept-maker` を使う。**
+**重要: PR レビューコメントへの対話対応は `/review-resolve`、それ以外の全作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。`hazard-candidate` label の issue は `/work #N` の前に `/triage-issues-for-hazard` で人間審査する。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。`/docs-sync` が L0 昇格候補ありを案内した場合のみ任意で `/concept-maker` を使う。**
 
 - **review-resolve.md**: PR レビューコメント対応専用のエントリポイント。`/work` を経由せず自己完結（checkout → 実装 → commit → push → 返信）。ユーザーが `/review-resolve #N` で直接呼び出す。
-- **work.md**: review-resolve 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
+- **work.md**: review-resolve 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、hazard-candidate issue は triage-issues-for-hazard.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
   - `report` label の issue → report-review.md を Read し、実装・branch 作成を行わず評価して終了
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）
   - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → ドラフト PR 作成 → /docs-sync へ引き継ぎ）

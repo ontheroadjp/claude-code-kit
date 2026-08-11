@@ -37,6 +37,8 @@ PR レビューコメント対応は `/review-resolve`（`review-resolve.md`）�
 | `new-issue.md` | `/new-issue` | 漠然としたアイデアから issue を生成する任意 pre-/work ステップ |
 | `review-resolve.md` | `/review-resolve` | PR レビューコメントへの対応専用エントリポイント |
 | `triage-issues.md` | `/triage-issues` | open issue をドキュメントと照合して分類するスタンドアロン入口 |
+| `analyze-hazard-scan.md` | `/analyze-hazard-scan` | auto-approve と access のログから Issue 化候補を分析する |
+| `triage-issues-for-hazard.md` | `/triage-issues-for-hazard` | hazard-candidate issue を人間審査するスタンドアロン入口 |
 | `codex-review.md` | `/codex-review` | Codex CLI で PR をレビューし approve/request-changes を投稿 |
 | `git-commit.md` | `/git-commit` | コミット作成手順（WIP 正規化・Conventional Commits 形式） |
 | `git-pr.md` | `/git-pr` | `git push` と `gh pr create` を担う単一責任コマンド |

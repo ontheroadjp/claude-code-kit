@@ -1,6 +1,6 @@
 # /work
 
-全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、report issue は `commands/report-review.md`、auto-approve-candidate issue は `/triage-issues-for-auto-approve` の実行を案内して終了し、それ以外は `commands/task.md` または `commands/patch.md` を Read して委譲します。
+全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、report issue は `commands/report-review.md`、hazard-candidate issue は `/triage-issues-for-hazard` の実行を案内して終了し、それ以外は `commands/task.md` または `commands/patch.md` を Read して委譲します。
 
 ---
 
@@ -90,10 +90,10 @@ gh issue view <issue番号> --json labels --jq '.labels[].name'
     - `commands/report-review.md` を Read し、その内容に従う
     - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
     - `/report-review` の完了後に `/work` も終了する
-- label に `report` は含まれないが `auto-approve-candidate` が完全一致で含まれる場合:
+- label に `report` は含まれないが `hazard-candidate` が完全一致で含まれる場合:
     - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
-    - 「この issue には auto-approve-candidate label が付いています。実装前に `/triage-issues-for-auto-approve` を実行してハザード審査を受けてください」と報告し、`/work` を終了する
-    - このチェックは `/triage-issues-for-auto-approve` で承認され `triage-approved` label に付け替えられた issue には適用されない（label が既に外れているため自然に該当しなくなる）
+    - 「この issue には hazard-candidate label が付いています。実装前に `/triage-issues-for-hazard` を実行してハザード審査を受けてください」と報告し、`/work` を終了する
+    - このチェックは `/triage-issues-for-hazard` で承認され `triage-approved` label に付け替えられた issue には適用されない（label が既に外れているため自然に該当しなくなる）
 - いずれの label にも該当しない場合:
     - 既存どおり現状調査と2段階ルーティングへ進む
 - issue の取得に失敗した場合:

@@ -12,7 +12,7 @@
 
 全作業の通常入口。G-0 はまず `git rev-parse --show-toplevel` が `.claude/worktrees/` 配下かを判定し、配下であれば（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）main は主 worktree で既にチェックアウト済みのため `git checkout main` をスキップする。配下でなければ従来どおり `git checkout main` を実行する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
-exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。`report` に該当せず exact `auto-approve-candidate` label があれば、`/triage-issues-for-auto-approve` の実行を促して終了する（issue #298）。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。この (A)/(B) ルーティングの判定基準は、現在ブランチが `main` 自身、または `EnterWorktree` が作る固定 prefix `worktree-` で始まる場合のみ (A) 新規作業とし、それ以外の全ての非 main ブランチは (B) 再開・エスカレーション（既存の未コミット変更有無・commits ahead 有無の判定）として扱う（issue #296、PR #304 レビューで修正。当初は `/task`・`/patch` の命名規則ベースで判定していたが、命名規則に沿わない既存ブランチ上の未コミット変更を誤って (A) 新規作業扱いする不具合が指摘された）。
+exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。`report` に該当せず exact `hazard-candidate` label があれば、`/triage-issues-for-hazard` の実行を促して終了する。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
@@ -84,17 +84,17 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 根拠: `commands/concept-maker.md:1-92`
 
-### `/auto-approve-hazard-scan` (`commands/auto-approve-hazard-scan.md`)
+### `/analyze-hazard-scan` (`commands/analyze-hazard-scan.md`)
 
-`logs/auto-approve/*.log` で `user_prompt` に落ちている定型処理コマンドから allowlist 拡張候補を洗い出し、`hooks/auto-approve-readonly.sh --explain` の判定根拠をもとに AI が構造化ハザードチェックリストを作成し、既知ハザードが見つからない候補についてのみ `auto-approve-candidate` label 付き issue を起票するスタンドアロン入口（issue #284、#282 の一部）。`python3 scripts/analyze_auto_approve.py --all` の `routine_ops.patterns_needing_approval`（`sample_commands` 上位3件）を候補とし、既存 `auto-approve-candidate` issue との本文完全一致で重複除外した後、各候補について `--explain` を実行する。`--explain` は呼び出しセッション自身の session-approved ファイルを fast path として参照するため、`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE` を存在しないパスへ向けて実行し、常に「新規セッションでの判定」を診断する。ハザードチェックリストは variable expansion / absolute-path・cwd bypass / unquoted write redirect / destructive flags / 既存 allow-shape との比較の5項目固定で、`already-safe`（ログ記録時点以降に既に allow-shape 拡張済み）/ `no-known-hazard`（issue化候補）/ `hazard-found`（issue化しない）の3種類に判定する。全候補を1回でまとめて提示し、`no-known-hazard` 候補への issue 起票はユーザーの一括承認後にのみ行う。`hooks/auto-approve-readonly.sh` を含む既存コードは一切変更しない。
+`logs/auto-approve/*.log` と `logs/access/*.log` を集計し、source 固有のハザード候補を作るスタンドアロン入口。auto-approve 候補は cold-session の `--explain` と安全性チェックを根拠にし、access 候補は重複 path・phase 内訳・推定損失を根拠にする。既知ハザードのない候補だけを一括承認後に `hazard-candidate` issue として起票する。hook は変更しない。
 
-根拠: `commands/auto-approve-hazard-scan.md:1-162`
+根拠: `commands/analyze-hazard-scan.md`
 
-### `/triage-issues-for-auto-approve` (`commands/triage-issues-for-auto-approve.md`)
+### `/triage-issues-for-hazard` (`commands/triage-issues-for-hazard.md`)
 
-`/auto-approve-hazard-scan`（issue #284）が起票した `auto-approve-candidate` label 付き open issue を一覧化し、issue ごとに AI ハザード分析を開示した上で実装に進むかどうかをユーザーに確認するスタンドアロン入口（issue #285、#282 の一部）。`gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま転記し提示する（要約・言い換えはしない）。見出しが見つからない issue は本文全体をそのまま提示するフォールバックを持つ。承認は issue 単位の yes/no で、yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap した上で（`triage-approved` 未存在時はユーザー確認の上で新規作成）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内するのみに留める（issue #298）。label 付け替え以外の `gh issue` の本文編集・close・comment、および `hooks/auto-approve-readonly.sh` を含む既存コードの変更は一切行わない。`commands/triage-issues.md`（issue 衛生全般のトリアージ）とは判断基準が異なるため別ファイルとして維持し、`commands/triage-issues.md` 自体は変更しない。
+`hazard-candidate` label 付き open issue を source 固有の Diagnostic Output と Hazard Checklist を保ったまま開示し、issue ごとに実装可否を確認する。yes の場合は `hazard-candidate` → `triage-approved` へ label を swap し、`/work #N` を案内する。`/work` 自動起動や本文編集は行わない。
 
-根拠: `commands/triage-issues-for-auto-approve.md:1-116`
+根拠: `commands/triage-issues-for-hazard.md`
 
 ### `/triage-issues` (`commands/triage-issues.md`)
 

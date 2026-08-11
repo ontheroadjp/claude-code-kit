@@ -757,7 +757,7 @@ assert_no_output "$output"
 # proposed-new-label creation. Only `gh label create` is in scope; other verbs
 # and other gh subcommands must not be covered by this grant.
 printf '%s\n' 'tool:gh_label_write' > "$SESSION_FILE"
-output=$(run_auto 'gh label create --name "auto-approve-candidate" --description "d" --color "0075ca"')
+output=$(run_auto 'gh label create --name "hazard-candidate" --description "d" --color "0075ca"')
 assert_json_decision "$output" "approve"
 
 output=$(run_auto 'gh label edit bug --description "d"')
@@ -767,7 +767,7 @@ output=$(run_auto 'gh issue create --title "feat: x" --body "y"')
 assert_no_output "$output"
 
 printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
-output=$(run_auto 'gh label create --name "auto-approve-candidate" --description "d" --color "0075ca"')
+output=$(run_auto 'gh label create --name "hazard-candidate" --description "d" --color "0075ca"')
 assert_no_output "$output"
 
 printf '%s\n' 'tool:git_write' 'tool:gh_pr_write:143' > "$SESSION_FILE"
