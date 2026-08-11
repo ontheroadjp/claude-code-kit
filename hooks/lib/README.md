@@ -8,6 +8,7 @@ hook scripts 間で共有する Bash helper 関数ライブラリ。
 |---|---|
 | `approval-safety.sh` | PreToolUse hook で使う破壊的操作検出 helper |
 | `session-id.sh` | セッション ID 解決 helper |
+| `session-paths.sh` | `commands/*.md` から直接実行するセッションパス解決 CLI（issue #316） |
 
 ## session-id.sh
 
@@ -42,7 +43,27 @@ SESSION_ID="$(session_id_resolve "$payload")"
 
 ### commands/*.md での扱い
 
-`commands/work.md` / `task.md` / `patch.md` / `docs-sync.md` / `git-pr.md` の Bash スニペットは、この repo の外（ユーザーの任意のプロジェクトディレクトリ）で実行されるため、このファイルを `source` せず、同じ解決式（`CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID` → `CODEX_THREAD_ID` のハッシュ）を各ファイルにインライン展開している。式を変更する場合は両方を更新すること。
+`commands/task.md` / `patch.md` / `review-resolve.md` / `docs-sync.md` / `git-pr.md` / `triage-issues-for-auto-approve.md` の Bash スニペットは、この repo の外（ユーザーの任意のプロジェクトディレクトリ）で実行されるため、このファイルを `source` しない。以前は同じ解決式（`CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID` → `CODEX_THREAD_ID` のハッシュ）を各ファイルへインライン展開していたが、この式自体が brace expansion（`${VAR}`）と代入への command substitution（`$(...)`）を含むため、worktree 隔離セッション（`/work-multi`）では Claude Code harness の worktree 隔離ガードに拒否されていた（issue #316）。現在は `session-paths.sh` 経由で `session_id_resolve` を再利用し、各ファイルは `bash ~/.claude/hooks/lib/session-paths.sh <session-approved|session-tmp-dir>` という単一のプレーンな呼び出しのみを埋め込む。
+
+## session-paths.sh
+
+`commands/*.md` から `source` ではなく直接実行（`bash <path>/session-paths.sh <mode>`）するための CLI。内部で `session-id.sh` の `session_id_resolve` を再利用し、標準出力へ絶対パスを1行返す。
+
+### モード
+
+- `session-approved`: `hooks/cleanup-session.sh`/`hooks/auto-approve-readonly.sh` と同じ formula（`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE` → `CLAUDE_CODE_KIT_SESSION_DIR` → `CLAUDE_CODE_KIT_STATE_HOME`/`XDG_STATE_HOME` の順にオーバーライドを尊重）で session-approved ファイルの絶対パスを返す
+- `session-tmp-dir`: `CLAUDE_CODE_KIT_TMP_ROOT`（既定 `/tmp/claude-code-kit`）配下のセッション temp ディレクトリの絶対パスを返す
+
+いずれの引数でもない場合は使い方を stderr に出力して exit 1 する。
+
+### commands/*.md からの呼び出し例
+
+```bash
+bash ~/.claude/hooks/lib/session-paths.sh session-approved
+# Codex CLI: bash ~/.codex/hooks/lib/session-paths.sh session-approved
+```
+
+brace expansion も代入への command substitution も含まないため、worktree 隔離セッションでも harness に拒否されない。出力された絶対パスは resolve-then-embed 規約に従い、リテラル文字列として次の Bash 呼び出しに埋め込む。
 
 ## approval-safety.sh
 

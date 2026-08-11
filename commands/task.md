@@ -103,16 +103,11 @@ Phase 3: 最終報告
         - 作成した issue 番号を以降の起点（N）とする
         - 注: この `gh issue create` 呼び出しの時点では session-approved がまだ存在しないため、通常の確認プロンプトに従う（1 回限り。番号スコープ化のトレードオフ）
     - **issue が作成済みの場合**（ユーザーから issue 番号を受け取っていた場合）: Step 0 で確定した issue 番号を N とする
-    - 以下の Bash コマンドで session-approved ファイルの正確なパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接取得し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
-      ```bash
-      SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-      if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-          SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-      fi
-      SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-      SESSION_APPROVED_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
-      ```
-      セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 3 へ進む。
+    - 以下の Bash コマンドで session-approved ファイルの正確なパスを解決する（`hooks/lib/session-paths.sh` が `hooks/lib/session-id.sh` の `session_id_resolve` を再利用して1行で絶対パスを返す。共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため。brace expansion や代入への command substitution をコマンド自体に含めないことで worktree 隔離セッションでの harness 拒否を避ける、issue #316）:
+        - Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-approved`
+        - Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-approved`
+
+      出力された1行の絶対パスを以降 `SESSION_APPROVED_FILE` として扱う。コマンドが失敗した場合（hook が未実行でセッション ID が解決できないケース）はスキップして Step 3 へ進む。
     - Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容（1行1エントリ）:
         - 利用ツールカテゴリ（例: `tool:git_write`、`tool:gh_issue_write:<N>`、該当する場合は `tool:gh_pr_write:<N>`。N は上記で確定した issue 番号）
         - 新規作成・編集ファイルの絶対パス（例: `file:/abs/path/to/file.md`）
@@ -160,17 +155,11 @@ Phase 3: 最終報告
 
 #### Step 1. PR 本文・タイトルの準備
 
-セッション temp ディレクトリを特定する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決する）。`mkdir -p` の対象に変数参照を残すと `hooks/auto-approve-readonly.sh` が静的判定できず確認プロンプトに落ちるため、CLAUDE.md の resolve-then-embed 規約に従い、解決ステップとリテラル値埋め込みを別の Bash 呼び出しに分ける。
+セッション temp ディレクトリを特定する（`hooks/lib/session-paths.sh` が `hooks/lib/session-id.sh` の `session_id_resolve` を再利用して1行で絶対パスを返す）。`mkdir -p` の対象に変数参照を残すと `hooks/auto-approve-readonly.sh` が静的判定できず確認プロンプトに落ちるため、また brace expansion や代入への command substitution を含む解決ステップ自体が worktree 隔離セッションで harness に拒否されるため（issue #316）、CLAUDE.md の resolve-then-embed 規約に従い、解決ステップとリテラル値埋め込みを別の Bash 呼び出しに分ける。
 
 解決ステップ（read-only）:
-```bash
-SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-fi
-SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-echo "/tmp/claude-code-kit/${SESSION_ID}"
-```
+- Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-tmp-dir`
+- Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-tmp-dir`
 
 出力された絶対パスを以降 `SESSION_TMP_DIR` として使用する。実行ステップでは変数ではなくリテラル文字列として埋め込む:
 ```bash

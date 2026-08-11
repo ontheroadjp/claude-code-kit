@@ -36,16 +36,11 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 - 編集ファイル（絶対パス）
 
 ユーザーから OK が出た場合:
-    - 以下の Bash コマンドで session-approved ファイルの正確なパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接取得し、共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため）:
-      ```bash
-      SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-      if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-          SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-      fi
-      SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-      SESSION_APPROVED_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
-      ```
-      セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 3 へ進む。
+    - 以下の Bash コマンドで session-approved ファイルの正確なパスを解決する（`hooks/lib/session-paths.sh` が `hooks/lib/session-id.sh` の `session_id_resolve` を再利用して1行で絶対パスを返す。共有ファイル経由では取得しない — 複数セッション同時実行時の混線を避けるため。brace expansion や代入への command substitution をコマンド自体に含めないことで worktree 隔離セッションでの harness 拒否を避ける、issue #316）:
+        - Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-approved`
+        - Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-approved`
+
+      出力された1行の絶対パスを以降 `SESSION_APPROVED_FILE` として扱う。コマンドが失敗した場合（hook が未実行でセッション ID が解決できないケース）はスキップして Step 3 へ進む。
     - Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容（1行1エントリ）:
         - `tool:git_write`
         - 新規作成・編集ファイルの絶対パス（例: `file:/abs/path/to/file.md`）

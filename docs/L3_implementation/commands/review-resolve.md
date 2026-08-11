@@ -26,7 +26,7 @@ Step 4:   完了報告
 
 `/work` を経由する `task.md`/`patch.md` は Step 2（プラン確認）で `tool:git_write` 等を session-approved ファイルへ 1 度だけ書き込み、以降のセッション内 git 書き込みを自動承認する。`/review-resolve` はこのゲートを持たず、`git fetch`/`checkout`（Step 1.6）や `git push`（Step 3 選択1）が毎回個別の許可プロンプトを要求していた。
 
-これを解消するため、Step 1（PR 存在確認）後・Step 1.6（fetch/checkout）前に session-approved ゲートを追加した。ユーザーに一度だけ確認し、OK であれば `tool:git_write` のみを session-approved ファイルへ書き込む。task.md/patch.md と同じ仕組み（`$CLAUDE_CODE_SESSION_ID` から直接パスを導出し、共有ポインタファイルは経由しない）を再利用している。
+これを解消するため、Step 1（PR 存在確認）後・Step 1.6（fetch/checkout）前に session-approved ゲートを追加した。ユーザーに一度だけ確認し、OK であれば `tool:git_write` のみを session-approved ファイルへ書き込む。task.md/patch.md と同じ仕組み（`hooks/lib/session-paths.sh session-approved` から直接パスを導出し、共有ポインタファイルは経由しない。issue #316）を再利用している。
 
 **`tool:gh_issue_write`/`tool:gh_pr_write` は対象外:** Step 3 のコメント返信（選択 1〜3）は `gh issue comment`/`gh pr comment` ではなく `gh api repos/{owner}/{repo}/(pulls/<N>/comments/<id>/replies|issues/<N>/comments) --method POST -f body=...` を使っている。session-approved の `tool:gh_issue_write`/`tool:gh_pr_write` カテゴリはリテラルサブコマンド（`gh issue comment` 等）にのみマッチし、`gh api ... --method POST` にはマッチしないため、このゲートを追加してもコメント返信は自動承認されず、引き続き通常の許可フローに従う（`hooks/auto-approve-readonly.sh` の `is_safe_git_read_command`/`check_session_approved` は `gh api` の write 系操作を意図的に allowlist-shape の対象外としている）。
 
@@ -46,7 +46,7 @@ Step 4:   完了報告
 
 - 呼び出し元: ユーザーが直接 `/review-resolve <PR番号>` で起動（`/work` からは呼ばれない）
 - 参照する hook: `hooks/auto-approve-readonly.sh`（`check_session_approved` の `tool:git_write` カテゴリ）
-- session-approved パス解決: `commands/task.md`/`commands/patch.md` と同じ導出ロジック（`$CLAUDE_CODE_SESSION_ID` / `$CODEX_THREAD_ID` ハッシュ）
+- session-approved パス解決: `commands/task.md`/`commands/patch.md` と同じ導出ロジック（`hooks/lib/session-paths.sh session-approved` を直接実行、issue #316）
 
 ## 注意事項・既知の制限
 
@@ -55,6 +55,7 @@ Step 4:   完了報告
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
 - 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
 - 051fd5f fix(#113): post gh pr review instead of issue comment, add APPROVED to review-resolve

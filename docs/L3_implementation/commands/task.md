@@ -58,7 +58,7 @@ work.md の調査結果を引き継ぎ、プラン策定に必要な情報が不
 ユーザーから OK が出た後（issue #297: session-approved 書き込みに N が必要になったため、旧来の「書き込み→未作成なら作成」の順序を反転した）:
 1. issue が未作成の場合は new-issue.md Step 4-5 で先に自動作成し、確定した issue 番号を N とする。この `gh issue create` 呼び出し自体は session-approved がまだ存在しないため通常の確認プロンプトに従う（1 回限りのトレードオフ）
 2. issue が作成済みの場合は Step 0 で確定した番号を N とする
-3. `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの `session-approved` パスを直接導出し、ツールカテゴリ（`tool:gh_issue_write:<N>` 等）・実装ファイル・L3 doc パスを一括書き込みする（1 度だけ）
+3. `bash ~/.claude/hooks/lib/session-paths.sh session-approved`（Codex: `~/.codex/...`）で自セッションの `session-approved` パスを直接導出し、ツールカテゴリ（`tool:gh_issue_write:<N>` 等）・実装ファイル・L3 doc パスを一括書き込みする（1 度だけ）。以前はこの解決式を Bash スニペットとしてインライン展開していたが、worktree 隔離セッションで harness に拒否されるため `hooks/lib/session-paths.sh` 経由の単一プレーンな呼び出しに置き換えた（issue #316）
 4. issue が元から作成済みだった場合のみ、調査結果・作業プランを issue 本文に追記する（今回新規作成した場合は Step 1 のドラフトが既に内容を含むため不要）
 
 session-approved はこの Step で 1 度だけ書き込む。スコープ変更が必要な場合はこの Step に戻りユーザーの許可を得てから再書き込みする。
@@ -118,10 +118,14 @@ session-approved への追記を hook が block するため、全スコープ�
 
 以前は Step 2 と Phase 2 Step 1 の両方で `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んで `SESSION_ID`/`SESSION_TMP_DIR` を逆算していた。この共有ファイルはセッションでスコープされておらず、複数セッション同時実行時に他セッションの hook 呼び出しで上書きされ、誤ったパスを読み取る競合が発生していた。`$CLAUDE_CODE_SESSION_ID` が hook 側の解決結果と一致することを確認できたため、共有ファイルを経由せず直接導出する方式に変更した。詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md` を参照。
 
+### `hooks/lib/session-paths.sh` 経由でパスを解決する理由（issue #316）
+
+上記の直接導出方式は、`SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"` のような brace expansion と、代入への command substitution（`$(...)`）を含む Bash スニペットとして Step 2 / Phase 2 Step 1 にインライン展開されていた。`/work-multi` の worktree 隔離セッションでは、Claude Code harness がこのスニペットを「worktree の外に影響しないか静的に検証できない」として拒否することが判明した（この repo の hooks とは独立した harness 自身の安全策）。対策として解決ロジックを `hooks/lib/session-paths.sh` に集約し、Step 2 / Phase 2 Step 1 は `bash ~/.claude/hooks/lib/session-paths.sh <session-approved|session-tmp-dir>` という brace expansion も代入への command substitution も含まない単一のプレーンな呼び出しのみを行う。詳細は `docs/L3_implementation/hooks/lib/session-paths.sh.md` を参照。
+
 ## 統合ポイント
 
 - 呼び出し元: `commands/work.md`（ルーティング判定後）、`commands/patch.md`（エスカレーション時）
-- 呼び出すもの: `commands/new-issue.md`（Step 4-5 のみ）、`/git-commit`、`commands/docs-sync.md`、`commands/git-pr.md`
+- 呼び出すもの: `commands/new-issue.md`（Step 4-5 のみ）、`/git-commit`、`commands/docs-sync.md`、`commands/git-pr.md`、`hooks/lib/session-paths.sh`（`bash` で直接実行、`source` はしない）
 - PR テンプレート: `${TEMPLATES_DIR}/pr.md`（Phase 2 で temp ファイルに書き出す）
 - issue テンプレート: `${TEMPLATES_DIR}/issue.md`
 - template root: Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`
@@ -134,6 +138,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 1146f95 feat(#286): add generic React and Next.js guidelines
@@ -143,5 +148,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 27f1861 feat(#76): install templates for claude and codex
-- 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
-- 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows

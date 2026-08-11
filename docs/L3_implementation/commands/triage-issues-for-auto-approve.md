@@ -51,6 +51,7 @@ session-approved に候補 issue 番号ごとの `tool:gh_issue_write:<N>` を�
 ## 統合ポイント
 
 - 呼び出し元: なし（スタンドアロン entry point。ユーザーが直接起動する）
+- 呼び出すもの: `hooks/lib/session-paths.sh session-approved`（Step 1.5 で `bash` により直接実行し session-approved パスを解決する。以前はインライン展開していたが worktree 隔離セッションで harness に拒否されるため issue #316 で置き換えた）
 - 参照するもの: `/auto-approve-hazard-scan` が起票した `auto-approve-candidate` label 付き issue（`gh issue list`）
 - 書き込み先: 対象 issue の label（`yes` 時の `auto-approve-candidate` → `triage-approved` swap）、`triage-approved` label 自体（未存在時のみ新規作成）
 - 連携先: `commands/work.md` の auto-approve-candidate ゲート（`triage-approved` への付け替えでゲートを解除する）
@@ -66,6 +67,7 @@ session-approved に候補 issue 番号ごとの `tool:gh_issue_write:<N>` を�
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 4450e96 feat(#298): gate /work on auto-approve-candidate label, swap to triage-approved on approval
 - 7aa4615 feat(#285): add /triage-issues-for-auto-approve command

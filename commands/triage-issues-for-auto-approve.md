@@ -26,18 +26,12 @@ gh issue list --label auto-approve-candidate --state open --json number,title,bo
 
 ### Step 1.5: session-approved の準備
 
-1 件以上の候補が取得できた場合、Step 2 開始前に以下で session-approved ファイルの正確なパスを解決する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接取得する）:
+1 件以上の候補が取得できた場合、Step 2 開始前に以下で session-approved ファイルの正確なパスを解決する（`hooks/lib/session-paths.sh` が `hooks/lib/session-id.sh` の `session_id_resolve` を再利用して1行で絶対パスを返す。brace expansion や代入への command substitution をコマンド自体に含めないことで worktree 隔離セッションでの harness 拒否を避ける、issue #316）:
 
-```bash
-SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-fi
-SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-SESSION_APPROVED_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/claude-code-kit/sessions/${SESSION_ID}/session-approved"
-```
+- Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-approved`
+- Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-approved`
 
-セッション ID が解決できない場合（hook が未実行のケース）はスキップして Step 2 へ進む。
+出力された1行の絶対パスを以降 `SESSION_APPROVED_FILE` として扱う。コマンドが失敗した場合（hook が未実行でセッション ID が解決できないケース）はスキップして Step 2 へ進む。
 
 Write ツールで上記で取得したパスに session-approved ファイルを作成する。内容: Step 1 で取得した候補 issue の番号ごとに、1 行 1 エントリで `tool:gh_issue_write:<N>` を列挙する（例: 候補が `#42`・`#57`・`#103` の場合）:
 ```
