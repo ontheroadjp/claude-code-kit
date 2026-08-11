@@ -1,6 +1,6 @@
-# /auto-approve-hazard-scan
+# /analyze-hazard-scan
 
-`logs/auto-approve/*.log` で `user_prompt` に落ちている定型処理コマンドから allowlist 拡張の候補を洗い出し、`hooks/auto-approve-readonly.sh --explain` の判定根拠をもとに AI が構造化ハザードチェックリストを作成し、既知ハザードが見つからない候補についてのみ `auto-approve-candidate` label 付き GitHub issue を起票する、issue #284 のパイプラインです。
+`logs/auto-approve/*.log` と `logs/access/*.log` を分析し、実装提案を `hazard-candidate` label 付き GitHub issue として起票するスタンドアロンのパイプラインです。auto-approve は安全な allowlist 拡張候補、access は重複読みによる運用ロス候補を扱います。
 
 - `/work`・`/task`・`/patch`・`/new-issue`・`/triage-issues` とは独立したスタンドアロンのワークフローです
 - **hook（`hooks/auto-approve-readonly.sh`）や他の既存コードの変更は一切行いません** — このパイプライン唯一の書き込みは `gh issue create`（および初回のみ `gh label create`）です
@@ -20,13 +20,15 @@
 
 ```bash
 python3 scripts/analyze_auto_approve.py --all
+python3 scripts/analyze_access.py --all
 ```
 
-標準出力の JSON から `routine_ops.patterns_needing_approval` を候補抽出の根拠として保持する（`--all` で全期間のログを対象にし、候補の見落としを防ぐ）。コマンドがゼロ以外で終了した場合はエラーをそのまま報告して終了する。
+標準出力の JSON だけを根拠として保持する。`--all` で全期間のログを対象にし、候補の見落としを防ぐ。いずれかのコマンドがゼロ以外で終了した場合はエラーをそのまま報告して終了する。access の生ログは直接 Read しない。
 
 ### Step 2: 候補コマンドの抽出
 
-`patterns_needing_approval` の各パターンについて、`sample_commands`（頻度降順）の上位 3 件を候補コマンドとして抽出する。件数が 3 件未満のパターンは全件を候補にする。この時点でのコマンド文字列は生ログ由来の literal な文字列として扱い、推測で正規化・書き換えしない。
+- auto-approve: `patterns_needing_approval` の各パターンについて、`sample_commands`（頻度降順）の上位 3 件を候補コマンドとして抽出する。件数が 3 件未満のパターンは全件を候補にする。コマンド文字列は literal として扱い、推測で正規化・書き換えしない。
+- access: `top_duplicate_files` の上位 3 件を候補として抽出する。各候補は path、count、by_phase と、全体の `redundant_access_waste` を証拠として保持する。count が 1 以下の候補は除外する。
 
 ### Step 3: 重複チェック
 
@@ -34,12 +36,12 @@ python3 scripts/analyze_auto_approve.py --all
 gh label list --json name --jq '.[].name'
 ```
 
-- `auto-approve-candidate` label が存在しない場合（初回実行）: 重複チェック対象なしとして Step 4 へ進む
+- `hazard-candidate` label が存在しない場合（初回実行）: 重複チェック対象なしとして Step 4 へ進む
 - 存在する場合:
     ```bash
-    gh issue list --label auto-approve-candidate --state all --json number,title,body,url --limit 200
+    gh issue list --label hazard-candidate --state all --json number,title,body,url --limit 200
     ```
-    各候補コマンドについて、既存 issue の本文に同一のコマンド文字列（完全一致）が含まれていないか確認する。含まれていれば「既に提案済み」として当該候補を候補リストから除外する
+    auto-approve 候補は同一の candidate command、access 候補は同一の candidate path が、同じ source とともに本文に完全一致で含まれているか確認する。含まれていれば「既に提案済み」として当該候補を除外する。
 
 ### Step 4: `--explain` 診断の取得
 
@@ -50,11 +52,11 @@ CLAUDE_CODE_KIT_SESSION_APPROVED_FILE=/nonexistent/session-approved \
   bash hooks/auto-approve-readonly.sh --explain "<候補コマンド>"
 ```
 
-重複除外後の各候補コマンドについてこれを実行し、出力（セグメント分割・マッチした allow-shape・session-approved 状態・verdict）をそのハザードチェックリストの根拠として保持する。
+重複除外後の auto-approve 候補についてこれを実行し、出力（セグメント分割・マッチした allow-shape・session-approved 状態・verdict）をハザードチェックリストの根拠として保持する。access 候補はコマンド承認ログではないため `--explain` を実行しない。
 
 ### Step 5: ハザードチェックリストの作成
 
-各候補コマンドについて、`hooks/auto-approve-readonly.sh` の該当関数（`is_safe_git_read_command` / `is_safe_local_git_write_command` / `is_safe_gh_command` 等、対象コマンドファミリーに応じたもの）を Read し、以下の観点で構造化評価を行う。推測・一般論ではなく、実際の関数定義・regex・Step 4 の `--explain` 出力を根拠にする:
+auto-approve 候補は、`hooks/auto-approve-readonly.sh` の該当関数（`is_safe_git_read_command` / `is_safe_local_git_write_command` / `is_safe_gh_command` 等）を Read し、以下の観点で構造化評価を行う。推測・一般論ではなく、実際の関数定義・regex・Step 4 の `--explain` 出力を根拠にする:
 
 | チェック項目 | 確認内容 |
 |---|---|
@@ -69,12 +71,24 @@ CLAUDE_CODE_KIT_SESSION_APPROVED_FILE=/nonexistent/session-approved \
 - `no-known-hazard`: `--explain` が `user_prompt` を返し、かつ上記チェックで具体的な懸念が見つからず、最小限の allow-shape 拡張候補として提案できる
 - `hazard-found`: `--explain` が `user_prompt` を返したが、具体的な懸念が1つ以上見つかった（理由を明記）。この候補は issue を起票しない
 
+access 候補は `scripts/analyze_access.py --all` の JSON のみを根拠に、以下を確認する:
+
+| チェック項目 | 確認内容 |
+|---|---|
+| Repetition | `count` が 1 を超え、重複アクセスとして集計されているか |
+| Phase attribution | `by_phase` がある場合、最多の発生元 phase を特定できるか |
+| Measurable impact | `redundant_access_waste` にセッション・トークン・コストの根拠があるか |
+| Actionability | 対象 path または主因 phase に対する具体的な調査・改善案を提案できるか |
+| Scope boundary | 生ログや未集計データへの推測、auto-approve allowlist 変更を提案していないか |
+
+access の Verdict は `no-known-hazard`（上記を満たし、改善提案が具体的）または `hazard-found`（根拠・実行可能性が不足）のいずれかとする。
+
 ### Step 6: ユーザーへの一括提示・承認
 
 全候補（`already-safe` / `no-known-hazard` / `hazard-found` 全て）を1回でまとめて提示する:
 
 ```
-## Auto-Approve Hazard Scan Results (N candidates)
+## Hazard Scan Results (N candidates)
 
 ### No known hazard — issue 起票候補 (N)
 - <pattern>: `<command>` — <1行要約>
@@ -89,7 +103,7 @@ CLAUDE_CODE_KIT_SESSION_APPROVED_FILE=/nonexistent/session-approved \
 各候補の詳細（ハザードチェックリスト全項目・`--explain` 出力・提案する allow-shape 変更）も合わせて提示する。
 
 **ユーザーに確認する:**
-「`no-known-hazard` の候補について `auto-approve-candidate` issue を起票します。よろしいですか？（yes / no / 一部のみ選択したい）」
+「`no-known-hazard` の候補について `hazard-candidate` issue を起票します。よろしいですか？（yes / no / 一部のみ選択したい）」
 
 - `no` → 起票せず終了する
 - `yes` → 全ての `no-known-hazard` 候補を Step 7 で起票する
@@ -97,20 +111,20 @@ CLAUDE_CODE_KIT_SESSION_APPROVED_FILE=/nonexistent/session-approved \
 
 ### Step 7: label 確認・issue 起票
 
-`auto-approve-candidate` label が存在しない場合（Step 3 で確認済み）、作成をユーザーに提案する:
-- name: `auto-approve-candidate`
-- description: `AI-proposed auto-approve allowlist extension candidate, pending human review`
+`hazard-candidate` label が存在しない場合（Step 3 で確認済み）、作成をユーザーに提案する:
+- name: `hazard-candidate`
+- description: `AI-proposed operational hazard candidate, pending human review`
 - color: 任意の未使用色（例: `#0e8a16`）
 
 承認を得てから:
 ```bash
-gh label create "auto-approve-candidate" --description "AI-proposed auto-approve allowlist extension candidate, pending human review" --color "0e8a16"
+gh label create "hazard-candidate" --description "AI-proposed operational hazard candidate, pending human review" --color "0e8a16"
 ```
 
 承認された各候補について起票する（タイトル・本文は英語）:
 
 ```bash
-gh issue create --title "<English title>" --label "auto-approve-candidate" --body-file - <<'EOF'
+gh issue create --title "<English title>" --label "hazard-candidate" --body-file - <<'EOF'
 ## Overview
 [Proposed allow-shape extension — what command shape and why]
 
@@ -118,19 +132,15 @@ gh issue create --title "<English title>" --label "auto-approve-candidate" --bod
 - Pattern: <pattern name>
 - Log-observed frequency: <count>
 - Candidate command: `<command>`
-- Source: logs/auto-approve/*.log via /analyze-auto-approve (--all)
+- Source: <logs/auto-approve/*.log via /analyze-auto-approve (--all), or logs/access/*.log via /analyze-access (--all)>
 
-## --explain Output
+## Diagnostic Output
 ```
-<hooks/auto-approve-readonly.sh --explain の出力>
+<auto-approve: hooks/auto-approve-readonly.sh --explain output; access: not applicable>
 ```
 
 ## Hazard Checklist
-- Variable expansion: <PASS/該当なし の根拠>
-- Absolute-path / cwd bypass: <同上>
-- Unquoted write redirect: <同上>
-- Destructive flags: <同上>
-- Nearest existing allow-shape: <関数名と、マッチしない理由>
+<source-specific checklist and evidence>
 
 ## Proposed Change (not implemented here)
 [対象関数・regexの変更概要]
@@ -145,7 +155,7 @@ EOF
 ### Step 8: 完了報告
 
 ```
-## Auto-Approve Hazard Scan Complete
+## Hazard Scan Complete
 
 候補総数: N 件（うち重複除外: N 件）
 - 起票: N 件（issue 番号・URL 一覧）
@@ -158,5 +168,5 @@ EOF
 ## スコープ外
 
 - `hooks/auto-approve-readonly.sh` を含む既存コード・hookの変更（`/review-resolve` またはユーザーが手動で行う `/work` が担う）
-- 起票した issue への `/work` の自動起動（`/triage-issues-for-auto-approve`（issue #285）または `/work #N` をユーザーが個別に呼ぶ）
+- 起票した issue への `/work` の自動起動（`/triage-issues-for-hazard` または `/work #N` をユーザーが個別に呼ぶ）
 - ユーザー一括承認なしの issue 自動起票

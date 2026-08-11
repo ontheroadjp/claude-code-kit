@@ -37,6 +37,8 @@ skills/
 | `new-issue/` | `commands/new-issue.md` | issue 生成 |
 | `review-resolve/` | `commands/review-resolve.md` | PR レビューコメント対応 |
 | `triage-issues/` | `commands/triage-issues.md` | issue トリアージ |
+| `analyze-hazard-scan/` | `commands/analyze-hazard-scan.md` | auto-approve と access のハザード候補を分析 |
+| `triage-issues-for-hazard/` | `commands/triage-issues-for-hazard.md` | hazard-candidate issue の人間審査 |
 | `codex-review/` | `commands/codex-review.md` | Codex による PR レビュー |
 | `git-commit/` | `commands/git-commit.md` | コミット作成 |
 | `git-pr/` | `commands/git-pr.md` | push と PR 作成 |
