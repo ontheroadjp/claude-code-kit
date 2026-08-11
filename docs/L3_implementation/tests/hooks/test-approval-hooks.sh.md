@@ -13,7 +13,7 @@
 主なカバレッジ:
 - Bash allowlist の境界（Git / GitHub CLI / Unix read tools / curl / npm / mise / journalctl / gsettings / gnome-extensions / gdbus / gresource / dpkg / tmux 等）の positive / negative ペア(`gh --version`・`mise current`/`ls`/`list` の positive case、`mise use`/`install`/`settings set` の negative case を含む。issue #276)
 - `for VAR in LIST; do ...; done` ループ（`;` 区切り・改行区切り）の read-only body の positive case と、unsafe body・C-style `for ((...))`・`$()` 経由の unsafe list・`in` 省略形の negative case（issue #224）
-- `git add`/`git commit -m`/`git fetch` の narrow allow-shape（session-approved 不要で無条件承認される3パターン）の positive / negative ペア（`-A`/`--all`/`.`/`*`、`--amend`/`--no-verify`/`-a`、refspec/`+`強制指定 等は negative）
+- `git add`/`git commit -m`/`git fetch`/`git checkout main`・`git switch main` の narrow allow-shape（session-approved 不要で無条件承認されるパターン）の positive / negative ペア（`-A`/`--all`/`.`/`*`、`--amend`/`--no-verify`/`-a`、refspec/`+`強制指定、`main` 以外のブランチ名・`--`・`-b`/`-c`・追加トークン 等は negative。`--force`/`checkout .` は destructive guard により session 状態に関わらず block されることも固定。issue #289）
 - variable expansion 除外（unquoted / double-quoted `$VAR` の smuggling）の negative case と、flag-invariant なコマンドでの positive case（`git add`/`git commit`/`git fetch` の allow-shape に対する smuggling も含む）
 - `$(...)` command substitution の read-only 検証（`_extract_subshell_contents` / `_strip_subshells` / `_subshells_are_safe` 経由）
 - session-approved fast path、destructive guard、working repo dynamic defense（WIP commit）
@@ -21,7 +21,7 @@
 - `xargs`/`find -exec`（issue #254）: read-only な wrapped command を持つ `xargs`（分離/添字形の `-I`、`-0`、`-n`/`-P`、`--` marker、パイプライン経由）と `find -exec`/`-execdir`（`\;`/`+` 終端、複数 `-exec` 節）の positive case、unsafe な wrapped command・終端記号欠落・一部の節だけ unsafe・認識対象外の xargs オプション（long option・クラスタ化）・`sh -c` のような未対応 wrapped command・変数展開による smuggling の negative case。`-fprintf` は `-exec` 系と異なりコマンドをラップしないため既存の `-delete` と同様に無条件拒否のままであることも固定
 - `--explain "<command>"` 診断モード（issue #283）: `run_auto_explain` ヘルパーで argv 経由で起動し、named 関数一致（`is_safe_unix_read_tool_command`）、どの named 関数にも session-approved にも一致しない場合（session-approved ファイル不在の状態も含む）、destructive guard による block、コマンド未指定時の usage メッセージ、session-approved fast path が成立するケース、fast path は不成立だが named 関数一致と `check_session_approved` 一致の両方を1コマンド内で踏むケース（`git status && git checkout foo`）を検証。出力が PreToolUse JSON プロトコル（`{"decision": ...}`）を一切含まないことも固定
 
-根拠: `tests/hooks/test-approval-hooks.sh:22-100`, `tests/hooks/test-approval-hooks.sh:240-360`, `tests/hooks/test-approval-hooks.sh`（`--explain` 診断モードセクション）
+根拠: `tests/hooks/test-approval-hooks.sh:22-100`, `tests/hooks/test-approval-hooks.sh:240-374`, `tests/hooks/test-approval-hooks.sh:674-680`, `tests/hooks/test-approval-hooks.sh`（`--explain` 診断モードセクション）
 
 ## 重要な設計判断
 

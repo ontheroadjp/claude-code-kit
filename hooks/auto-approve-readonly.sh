@@ -905,14 +905,17 @@ is_safe_git_read_command() {
     return 1
 }
 
-# git add / commit / fetch in their narrow known-safe shapes: unlike
-# tool:git_write (which requires one-time per-session user consent because it
-# also covers push/checkout/branch/stash), these three cannot affect anything
-# outside the local repository — add only stages, commit only records local
-# history, and the accepted fetch shape only updates local remote-tracking
-# refs. Approved unconditionally, independent of session-approved state.
-# Each branch is a positive allow-shape (not a denylist of dangerous flags),
-# per docs/L0_concept/policy.md's allowlist-shape design principle.
+# git add / commit / fetch / checkout main / switch main in their narrow
+# known-safe shapes: unlike tool:git_write (which requires one-time
+# per-session user consent because it also covers push/checkout/branch/
+# stash), these cannot affect anything outside the local repository — add
+# only stages, commit only records local history, the accepted fetch shape
+# only updates local remote-tracking refs, and checkout/switch to the fixed,
+# non-force literal "main" target cannot discard uncommitted changes (git
+# itself refuses without --force). Approved unconditionally, independent of
+# session-approved state. Each branch is a positive allow-shape (not a
+# denylist of dangerous flags), per docs/L0_concept/policy.md's
+# allowlist-shape design principle.
 is_safe_local_git_write_command() {
     local seg
     # See is_safe_git_read_command for why this must run on the raw,
@@ -947,6 +950,15 @@ is_safe_local_git_write_command() {
     if printf '%s' "$seg" | grep -qE '^git[[:space:]]+fetch(\s|$)'; then
         [ "$seg" = "git fetch" ] && return 0
         printf '%s' "$seg" | grep -qE '^git[[:space:]]+fetch[[:space:]]+[A-Za-z0-9][A-Za-z0-9._/-]*[[:space:]]*$' && return 0
+        return 1
+    fi
+
+    # git checkout main / git switch main: exact literal "main" target only,
+    # no flags, no extra tokens. Mirrors check_session_approved()'s existing
+    # (session-gated) checkout/switch allow-shape but narrows it to a single
+    # named, non-force target so it can be granted unconditionally.
+    if printf '%s' "$seg" | grep -qE '^git[[:space:]]+(checkout|switch)(\s|$)'; then
+        printf '%s' "$seg" | grep -qE '^git[[:space:]]+(checkout|switch)[[:space:]]+main[[:space:]]*$' && return 0
         return 1
     fi
 

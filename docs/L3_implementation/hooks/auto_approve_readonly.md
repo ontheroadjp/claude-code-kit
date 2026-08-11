@@ -5,7 +5,7 @@
 `hooks/auto-approve-readonly.sh` は Claude Code / Codex CLI の PreToolUse hook である。通常操作の不要な許可プロンプトを減らしつつ、自動承認を次の3種類に限定する。
 
 1. 永続状態を変更しない読み取り専用操作
-2. ローカルリポジトリの外に一切影響しない narrow な git write 操作（`git add`/`git commit -m`/`git fetch`。共有・remote 状態は変更しない）
+2. ローカルリポジトリの外に一切影響しない narrow な git write 操作（`git add`/`git commit -m`/`git fetch`/`git checkout main`・`git switch main`。共有・remote 状態は変更しない）
 3. 現在セッションでユーザーが承認したファイルまたはツールカテゴリに属する操作
 
 この分類に確信を持てない操作は出力なしで終了し、クライアントの通常許可フローへ戻す。破壊的操作は allowlist より先に評価し、session-approved が存在しても block する。
@@ -140,7 +140,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | dpkg（`is_safe_dpkg_query_command`） | `-l`/`--list`, `-L`/`--listfiles`, `-s`/`--status`, `-S`/`--search` のいずれか1つのみを含む形 | `-i`/`-r`/`-P`/`--configure` 等の変更系、上記フラグを2つ以上組み合わせた形 |
 | gresource | `list`, `list-sections` | `compile`（バイナリのリソースバンドルをディスクに書き出す） |
 | tmux | `display-message`, `list-windows`, `list-sessions`, `list-panes`, `show-options` | `send-keys`（他のpane/sessionへの入力注入）、`kill-*`、`new-session` 等のセッション変更系 |
-| Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、複数トークン |
+| Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>`、`git checkout main` / `git switch main` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、複数トークン。`checkout`/`switch`: `main` 以外のブランチ名、追加トークン、フラグ全般（destructive guard が別途 `--force`/`checkout .` を session 状態に関わらず block する） |
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
 
@@ -158,9 +158,9 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 ### `is_safe_local_git_write_command`: session-approved 不要な local git write
 
-`git add`/`git commit`/`git fetch` は `tool:git_write`（session-approved カテゴリ）にも属するが、この3パターンに限っては**セッション同意なしで無条件承認**する専用関数 `is_safe_local_git_write_command` を `is_safe_git_read_command` の直後に追加している。
+`git add`/`git commit`/`git fetch`/`git checkout main`・`git switch main` は `tool:git_write`（session-approved カテゴリ）にも属するが、これらのパターンに限っては**セッション同意なしで無条件承認**する専用関数 `is_safe_local_git_write_command` を `is_safe_git_read_command` の直後に追加している。
 
-**なぜ無条件で安全か:** この3操作はローカルリポジトリの外に一切影響しない。`add` はステージングのみ、`commit` はローカル履歴への記録のみ、許可される `fetch` の形（引数なし、または remote 名のみ）はローカルの remote-tracking ref を更新するだけで working tree・push・共有状態には触れない。これは Write/Edit tool が working repo 内のファイルを既に無条件承認している設計（動的防御セクション参照）と同じ「共有状態への影響がない」境界線上にある。
+**なぜ無条件で安全か:** これらの操作はローカルリポジトリの外に一切影響しない。`add` はステージングのみ、`commit` はローカル履歴への記録のみ、許可される `fetch` の形（引数なし、または remote 名のみ）はローカルの remote-tracking ref を更新するだけで working tree・push・共有状態には触れない。`checkout main`/`switch main`（フラグなし・追加トークンなしのリテラル `main` 単独形のみ）は、git 自身が未コミット変更を破棄するブランチ切り替えを `--force` なしでは拒否するため、この形状は working tree に対しても非破壊的である（`--force` や `checkout .` は destructive guard が session 状態に関わらず block するため、この allow-shape に到達する前に排除される）。これは Write/Edit tool が working repo 内のファイルを既に無条件承認している設計（動的防御セクション参照）と同じ「共有状態への影響がない」境界線上にある。
 
 一方で `git push`・`gh issue`/`gh pr` の書き込みは GitHub 上で他者から見える共有状態を変更するため、恒久 allowlist には追加せず `tool:git_write`/`tool:gh_issue_write`/`tool:gh_pr_write`（session-approved、1セッション1回のユーザー同意）に留める。
 
@@ -169,8 +169,9 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 - `git add`: 各トークンが `-` 始まりでなく、かつ `.`/`*` 単独でもないことを要求する。1つでも該当すれば unsafe。
 - `git commit`: セグメント全体が `git commit (-m|--message) "..."` または `git commit (-m|--message) '...'` に完全一致することを要求する（`$(...)` はこのチェックより前段で `__SUBSHELL_SAFE__` に置換・再帰検証済みのため、ヒアドキュメント経由の複数行メッセージもこの形に収まる）。
 - `git fetch`: `git fetch` 単体、または `git fetch <remote>`（英数字始まりの単一トークン。`--all` のような `-` 始まりトークンは除外）のみ許可する。
+- `git checkout main` / `git switch main`: セグメント全体が `git (checkout|switch) main`（末尾の空白のみ許容）に完全一致することを要求する。他ブランチ名、`--`、`-b`/`-c` 等の追加トークン・フラグは全て除外され、`tool:git_write`（session-approved）の従来経路にフォールスルーする。
 
-根拠: `hooks/auto-approve-readonly.sh`（`is_safe_local_git_write_command`、`is_safe_git_read_command` 直後）, issue #221
+根拠: `hooks/auto-approve-readonly.sh`（`is_safe_local_git_write_command`、`is_safe_git_read_command` 直後）, issue #221, issue #289
 
 ### `is_safe_dpkg_query_command`: dpkg の read-only クエリ限定 allow-shape
 
