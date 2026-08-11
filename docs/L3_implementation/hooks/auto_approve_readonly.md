@@ -287,7 +287,7 @@ destructive guard に該当する操作は category があっても block する
 
 ### issue/PR 番号スコープ化（issue #297）
 
-`tool:gh_issue_write`/`tool:gh_pr_write` は元々セッション全体に対する広い許可だった（対象 issue/PR 番号を一切見ずカテゴリ一致のみで承認）。`commands/triage-issues-for-auto-approve.md` のように untrusted な issue 本文を AI のコンテキストへ読み込んだ上で複数 issue をループ処理するフローでは、prompt injection が成功した場合に無関係な issue/PR への書き込みを誘発できる余地があった。この issue でグラント自体を対象番号にスコープし、blast radius を「そのグラントが指す番号」に縮小した。
+`tool:gh_issue_write`/`tool:gh_pr_write` は元々セッション全体に対する広い許可だった（対象 issue/PR 番号を一切見ずカテゴリ一致のみで承認）。`commands/triage-issues-for-hazard.md` のように untrusted な issue 本文を AI のコンテキストへ読み込んだ上で複数 issue をループ処理するフローでは、prompt injection が成功した場合に無関係な issue/PR への書き込みを誘発できる余地があった。この issue でグラント自体を対象番号にスコープし、blast radius を「そのグラントが指す番号」に縮小した。
 
 `check_session_approved()` の `tool:gh_issue_write:*`/`tool:gh_pr_write:*` 分岐は、`category` から `:` 以降を `N` として抽出し、数字のみであることを検証する（非数値・空文字は grant として一切機能しない — fail closed）。`create` はそもそも対象となる既存番号が存在しないため（issue/PR がまだ存在しない時点で呼ばれる）、N の値に関わらず該当カテゴリの grant が1行でも存在すれば承認する。それ以外の verb（`gh issue edit/close/delete/comment/reopen <N>`、`gh pr edit/close/comment/reopen/ready/review/checkout/merge <N>`）は、コマンド中の対象番号が grant の N と完全一致する場合のみ承認する。`session-approved` に複数の numbered grant（例: `tool:gh_issue_write:42` と `tool:gh_issue_write:57`）を並べることで、複数 issue を扱うフローでも issue ごとに個別のグラントを持てる。
 

@@ -38,7 +38,7 @@
 ## 統合ポイント
 
 - 呼び出し元: `hooks/auto-approve-readonly.sh`、`hooks/cleanup-session.sh`、`hooks/lib/session-paths.sh`（いずれも `source` して使用）
-- 参照（`session-paths.sh` 経由の間接呼び出し、`source` はしない）: `commands/task.md`、`commands/patch.md`、`commands/review-resolve.md`、`commands/docs-sync.md`、`commands/git-pr.md`、`commands/triage-issues-for-auto-approve.md`
+- 参照（`session-paths.sh` 経由の間接呼び出し、`source` はしない）: `commands/task.md`、`commands/patch.md`、`commands/review-resolve.md`、`commands/docs-sync.md`、`commands/git-pr.md`、`commands/triage-issues-for-hazard.md`
 - 呼び出すもの: なし（外部コマンドなし。`sha256sum`/`cksum` に依存）
 
 ## 注意事項

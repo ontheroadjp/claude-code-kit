@@ -20,13 +20,14 @@
 ## 統合ポイント
 
 - 参照元: `hooks/auto-approve-readonly.sh`、`hooks/guard-destructive-cmd.sh`、`hooks/cleanup-session.sh`（実際に source する）、`hooks/lib/session-paths.sh`（`session-id.sh` を source する）
-- 参照元（直接実行）: `commands/task.md`・`patch.md`・`review-resolve.md`・`docs-sync.md`・`git-pr.md`・`triage-issues-for-auto-approve.md`（`session-paths.sh` を `bash` で直接実行）
+- 参照元（直接実行）: `commands/task.md`・`patch.md`・`review-resolve.md`・`docs-sync.md`・`git-pr.md`・`triage-issues-for-hazard.md`（`session-paths.sh` を `bash` で直接実行）
 - 関連: `docs/L3_implementation/hooks/auto_approve_readonly.md`、`docs/L3_implementation/hooks/lib/session-id.sh.md`、`docs/L3_implementation/hooks/lib/session-paths.sh.md`
 
 根拠: `hooks/lib/README.md:1-55`, `hooks/lib/approval-safety.sh:1-87`
 
 ## 変更履歴（git log より自動生成）
 
+- c3d9528 feat(#321): remove legacy hazard workflow remnants
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 3656e6e docs(#175): add README.md to each module directory

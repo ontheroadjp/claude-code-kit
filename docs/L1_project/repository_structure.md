@@ -28,7 +28,7 @@ core-toolkit-for-claude/
 
 ### `commands/`
 
-Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md` へ、auto-approve-candidate issue は `/triage-issues-for-auto-approve` の実行案内で終了し、それ以外の実装は `task.md` または `patch.md` に委譲する。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する（作成後の自動 review はない）。`work-multi.md` は `work.md` と同一ワークフローを `EnterWorktree` 隔離下で実行する明示的 opt-in 入口で、意図的な並行セッション利用時にのみ使う（issue #296）。
+Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常入口で、report issue は `report-review.md` へ、hazard-candidate issue は `/triage-issues-for-hazard` の実行案内で終了し、それ以外の実装は `task.md` または `patch.md` に委譲する。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する（作成後の自動 review はない）。`work-multi.md` は `work.md` と同一ワークフローを `EnterWorktree` 隔離下で実行する明示的 opt-in 入口で、意図的な並行セッション利用時にのみ使う（issue #296）。
 
 根拠: `commands/work.md:1-163`, `commands/work-multi.md:1-50`, `commands/report-review.md:1-14`, `commands/git-pr.md:62-65`, `commands/README.md`
 
