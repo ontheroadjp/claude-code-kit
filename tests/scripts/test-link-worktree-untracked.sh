@@ -53,11 +53,14 @@ assert_absent() {
     echo "pkg" > site/node_modules/pkg.js
 )
 
-# --- run against destination worktree ---
+# --- run against destination worktree (no session-paths.sh installed: must
+# not error, and must not write a manifest) ---
+NO_HOOKS_HOME="${TMP_DIR}/no-hooks-home"
+mkdir -p "$NO_HOOKS_HOME"
 (
     cd "$DST_DIR"
     git init -q >/dev/null
-    bash "$SCRIPT" "$SRC_DIR"
+    HOME="$NO_HOOKS_HOME" bash "$SCRIPT" "$SRC_DIR"
 )
 
 assert_symlink_to "${DST_DIR}/untracked.txt" "${SRC_DIR}/untracked.txt" \
@@ -76,12 +79,42 @@ assert_absent "${DST_DIR}/.claude/settings.local.json" \
 # --- idempotency: running again must not fail or duplicate ---
 (
     cd "$DST_DIR"
-    bash "$SCRIPT" "$SRC_DIR"
+    HOME="$NO_HOOKS_HOME" bash "$SCRIPT" "$SRC_DIR"
 )
 if [ -L "${DST_DIR}/untracked.txt" ]; then
     printf 'PASS: %s\n' 're-running the script is idempotent'
 else
     printf 'FAIL: %s\n' 're-running the script is idempotent'
+    failures=$((failures + 1))
+fi
+
+# --- manifest: when hooks/lib/session-paths.sh is resolvable, the symlinked
+# paths are recorded so callers can distinguish "symlink I created" from a
+# real uncommitted change (issue #318) ---
+WITH_HOOKS_HOME="${TMP_DIR}/with-hooks-home"
+SESSION_TMP_DIR="${TMP_DIR}/session-tmp"
+mkdir -p "${WITH_HOOKS_HOME}/.claude/hooks/lib" "$SESSION_TMP_DIR"
+cat > "${WITH_HOOKS_HOME}/.claude/hooks/lib/session-paths.sh" <<EOF
+#!/bin/bash
+echo "${SESSION_TMP_DIR}"
+EOF
+
+DST_DIR2="${TMP_DIR}/dst2"
+mkdir -p "$DST_DIR2"
+(
+    cd "$DST_DIR2"
+    git init -q >/dev/null
+    HOME="$WITH_HOOKS_HOME" bash "$SCRIPT" "$SRC_DIR"
+)
+
+MANIFEST="${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt"
+if [ -f "$MANIFEST" ] \
+    && grep -qxF 'untracked.txt' "$MANIFEST" \
+    && grep -qxF 'untracked_dir' "$MANIFEST" \
+    && grep -qxF 'site/node_modules' "$MANIFEST"; then
+    printf 'PASS: %s\n' 'manifest lists every symlinked relative path when session-paths.sh is resolvable'
+else
+    printf 'FAIL: %s\n' 'manifest lists every symlinked relative path when session-paths.sh is resolvable'
     failures=$((failures + 1))
 fi
 

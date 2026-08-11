@@ -20,9 +20,9 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/work-multi` (`commands/work-multi.md`)
 
-`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、`scripts/link-worktree-untracked.sh` で元の working tree の untracked/ignored ファイル・ディレクトリ（`.git`・`.claude` を除く）を symlink する。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
+`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、`scripts/link-worktree-untracked.sh` で元の working tree の untracked/ignored ファイル・ディレクトリ（`.git`・`.claude` を除く）を symlink する。この symlink群は `.gitignore` のディレクトリ限定パターンに一致せず `git status` に `??`/`!!` として現れるため、`scripts/link-worktree-untracked.sh` が書き出す manifest（`worktree-untracked-symlinks.txt`）を後続の `commands/work.md` G-2・`commands/task.md` Phase 2 が突き合わせる（issue #318）。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
 
-根拠: `commands/work-multi.md:1-50`
+根拠: `commands/work-multi.md:1-52`
 
 ### `/report-review` (`commands/report-review.md`)
 
@@ -246,9 +246,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
 
-`tests/scripts/test-link-worktree-untracked.sh` は `scripts/link-worktree-untracked.sh` の symlink 挙動を functional に検証する。一時 git リポジトリを用意し、トップレベル untracked ファイル/ディレクトリ、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性を確認する（issue #296）。
+`tests/scripts/test-link-worktree-untracked.sh` は `scripts/link-worktree-untracked.sh` の symlink 挙動を functional に検証する。一時 git リポジトリを用意し、トップレベル untracked ファイル/ディレクトリ、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性、および `hooks/lib/session-paths.sh` が解決可能な場合の manifest（`worktree-untracked-symlinks.txt`）書き出しを確認する（issue #296、issue #318）。
 
-根拠: `tests/scripts/test-link-worktree-untracked.sh:1-93`
+根拠: `tests/scripts/test-link-worktree-untracked.sh:1-126`
 
 ## Install and Status Line
 
@@ -262,9 +262,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `scripts/analyze_access.py:1-6`, `scripts/analyze_auto_approve.py:1-6`, `scripts/analyze_token_usage.py:1-9`, `scripts/lib/analyze_common.py:1`
 
-`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、引数に取った元の working tree に対して `git status --porcelain -z --ignored=matching` の NUL 区切り出力から `??`/`!!` エントリを列挙し、`.git`・`.claude` とその配下を除く全てを現在の working tree（新しい worktree）の同一相対パスへ symlink する（issue #296、PR #304 レビューで `git clean -ndx` の人間向け出力パースから変更）。
+`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、引数に取った元の working tree に対して `git status --porcelain -z --ignored=matching` の NUL 区切り出力から `??`/`!!` エントリを列挙し、`.git`・`.claude` とその配下を除く全てを現在の working tree（新しい worktree）の同一相対パスへ symlink する（issue #296、PR #304 レビューで `git clean -ndx` の人間向け出力パースから変更）。symlink 化したパスは `.gitignore` のディレクトリ限定パターンに一致せず `git status` に `??`/`!!` として現れるため、`hooks/lib/session-paths.sh` が解決可能な場合は symlink 化した相対パス一覧を session tmp directory 配下の `worktree-untracked-symlinks.txt` に書き出す。`commands/work.md` G-2・`commands/task.md` Phase 2 はこの manifest と突き合わせてから「差分があるか」を判定する（issue #318）。
 
-根拠: `scripts/link-worktree-untracked.sh:1-40`
+根拠: `scripts/link-worktree-untracked.sh:1-59`
 
 ## VitePress Site and CI
 

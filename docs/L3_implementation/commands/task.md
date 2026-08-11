@@ -82,7 +82,7 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 ### Phase 2: PR 本文の準備
 
-ガード: main 以外のブランチ、コミットが 1 件以上存在、ワークスペースがクリーンであること。
+ガード: main 以外のブランチ、コミットが 1 件以上存在、ワークスペースがクリーンであること。worktree 隔離セッションの場合、`commands/work.md` G-2 と同じ manifest 突き合わせ（`hooks/lib/session-paths.sh session-tmp-dir` で解決した `worktree-untracked-symlinks.txt` と `git status` を比較し、完全一致またはその親ディレクトリのエントリを除外）をクリーン判定の前に行う（issue #318）。
 
 実行 agent に応じた `${TEMPLATES_DIR}/pr.md`（Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`）を使って英語で PR 本文・タイトルを作成し、session temp directory に `pr-title.txt` と `pr-body.md` を書き出す。この時点では push も PR 作成も行わない。
 
@@ -122,10 +122,15 @@ session-approved への追記を hook が block するため、全スコープ�
 
 上記の直接導出方式は、`SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"` のような brace expansion と、代入への command substitution（`$(...)`）を含む Bash スニペットとして Step 2 / Phase 2 Step 1 にインライン展開されていた。`/work-multi` の worktree 隔離セッションでは、Claude Code harness がこのスニペットを「worktree の外に影響しないか静的に検証できない」として拒否することが判明した（この repo の hooks とは独立した harness 自身の安全策）。対策として解決ロジックを `hooks/lib/session-paths.sh` に集約し、Step 2 / Phase 2 Step 1 は `bash ~/.claude/hooks/lib/session-paths.sh <session-approved|session-tmp-dir>` という brace expansion も代入への command substitution も含まない単一のプレーンな呼び出しのみを行う。詳細は `docs/L3_implementation/hooks/lib/session-paths.sh.md` を参照。
 
+### Phase 2 クリーン判定で manifest を突き合わせる理由（issue #318）
+
+`scripts/link-worktree-untracked.sh` が worktree 隔離セッション向けに作成する symlink は `.gitignore` のディレクトリ限定パターンに一致せず `git status` に `??`/`!!` として現れる。突き合わせずに従来の「クリーンでなければ stash」ロジックだけを適用すると、無害な symlink 群が毎回 stash され、後続処理で意図せず退避されるリスクがある。`hooks/lib/session-paths.sh session-tmp-dir` は Phase 2 Step 1 で PR 本文の書き出し先としてどのみち解決するため、同じ session tmp directory 配下の manifest を読むだけで追加の依存を増やさずに対応できる。
+
 ## 統合ポイント
 
 - 呼び出し元: `commands/work.md`（ルーティング判定後）、`commands/patch.md`（エスカレーション時）
 - 呼び出すもの: `commands/new-issue.md`（Step 4-5 のみ）、`/git-commit`、`commands/docs-sync.md`、`commands/git-pr.md`、`hooks/lib/session-paths.sh`（`bash` で直接実行、`source` はしない）
+- Phase 2 クリーン判定の manifest: `scripts/link-worktree-untracked.sh` が書き出す `worktree-untracked-symlinks.txt`（issue #318）
 - PR テンプレート: `${TEMPLATES_DIR}/pr.md`（Phase 2 で temp ファイルに書き出す）
 - issue テンプレート: `${TEMPLATES_DIR}/issue.md`
 - template root: Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`
@@ -138,6 +143,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
@@ -147,4 +153,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
-- 27f1861 feat(#76): install templates for claude and codex
