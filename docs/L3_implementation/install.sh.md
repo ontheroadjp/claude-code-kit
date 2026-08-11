@@ -11,8 +11,8 @@
 ## 動作概要
 
 1. repository root を解決する。
-2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
-3. repository 内の commands / hooks / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。
+2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.claude/hooks/lib`, `~/.codex/hooks/lib`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
+3. repository 内の commands / hooks / hooks/lib / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。`hooks/lib/*.sh` は `commands/*.md` が `bash ~/.claude/hooks/lib/session-paths.sh <mode>` のように直接実行するために symlink する（issue #316）。存在しないファイルに対する glob 展開を避けるため `[ -e "$src" ] || continue` で空展開をスキップする。
 4. `jq` がない場合は settings 更新をスキップして終了する。
 5. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
 6. migration helper でバージョン間の hook 変更を適用する。

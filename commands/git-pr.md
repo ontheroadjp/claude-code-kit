@@ -17,18 +17,14 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 
 ### Step 1: セッション temp ディレクトリの特定
 
-セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決する:
+`hooks/lib/session-paths.sh` が `hooks/lib/session-id.sh` の `session_id_resolve` を再利用して1行で絶対パスを返す（brace expansion や代入への command substitution をコマンド自体に含めないことで worktree 隔離セッションでの harness 拒否を避ける、issue #316）:
 
-```bash
-SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-fi
-SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
-```
+- Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-tmp-dir`
+- Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-tmp-dir`
 
-- セッション ID が特定できない場合: temp ファイルなしとして Step 2 へ進む
+出力された1行の絶対パスを以降 `SESSION_TMP_DIR` として扱う。
+
+- コマンドが失敗した場合（セッション ID が特定できない場合）: temp ファイルなしとして Step 2 へ進む
 
 ### Step 2: PR タイトルの準備
 

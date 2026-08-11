@@ -7,6 +7,8 @@ COMMANDS_TARGET="${HOME}/.claude/commands"
 CODEX_COMMANDS_TARGET="${HOME}/.codex/commands"
 HOOKS_TARGET="${HOME}/.claude/hooks"
 CODEX_HOOKS_TARGET="${HOME}/.codex/hooks"
+HOOKS_LIB_TARGET="${HOME}/.claude/hooks/lib"
+CODEX_HOOKS_LIB_TARGET="${HOME}/.codex/hooks/lib"
 SKILLS_TARGET="${HOME}/.codex/skills"
 CLAUDE_TEMPLATES_TARGET="${HOME}/.claude/templates"
 CODEX_TEMPLATES_TARGET="${HOME}/.codex/templates"
@@ -15,6 +17,8 @@ mkdir -p "$COMMANDS_TARGET"
 mkdir -p "$CODEX_COMMANDS_TARGET"
 mkdir -p "$HOOKS_TARGET"
 mkdir -p "$CODEX_HOOKS_TARGET"
+mkdir -p "$HOOKS_LIB_TARGET"
+mkdir -p "$CODEX_HOOKS_LIB_TARGET"
 mkdir -p "$SKILLS_TARGET"
 mkdir -p "$CLAUDE_TEMPLATES_TARGET"
 mkdir -p "$CODEX_TEMPLATES_TARGET"
@@ -48,6 +52,22 @@ for src in "$REPO_DIR"/hooks/*.sh; do
   name="$(basename "$src")"
   ln -sf "$src" "${CODEX_HOOKS_TARGET}/${name}"
   echo "  ${CODEX_HOOKS_TARGET}/${name} -> ${src}"
+done
+
+echo "Linking hooks/lib -> ${HOOKS_LIB_TARGET}"
+for src in "$REPO_DIR"/hooks/lib/*.sh; do
+  [ -e "$src" ] || continue
+  name="$(basename "$src")"
+  ln -sf "$src" "${HOOKS_LIB_TARGET}/${name}"
+  echo "  ${HOOKS_LIB_TARGET}/${name} -> ${src}"
+done
+
+echo "Linking hooks/lib -> ${CODEX_HOOKS_LIB_TARGET}"
+for src in "$REPO_DIR"/hooks/lib/*.sh; do
+  [ -e "$src" ] || continue
+  name="$(basename "$src")"
+  ln -sf "$src" "${CODEX_HOOKS_LIB_TARGET}/${name}"
+  echo "  ${CODEX_HOOKS_LIB_TARGET}/${name} -> ${src}"
 done
 
 echo "Linking skills -> ${SKILLS_TARGET}"

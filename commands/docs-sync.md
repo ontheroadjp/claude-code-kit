@@ -36,15 +36,11 @@
 
 #### Step 2. セッション temp からの補助情報取得
 
-セッション temp ディレクトリを特定する（セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決する）:
-```bash
-SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-fi
-SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
-```
+セッション temp ディレクトリを特定する（`hooks/lib/session-paths.sh` が `hooks/lib/session-id.sh` の `session_id_resolve` を再利用して1行で絶対パスを返す。brace expansion や代入への command substitution をコマンド自体に含めないことで worktree 隔離セッションでの harness 拒否を避ける、issue #316）:
+- Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-tmp-dir`
+- Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-tmp-dir`
+
+出力された1行の絶対パスを以降 `SESSION_TMP_DIR` として扱う。
 
 - `${SESSION_TMP_DIR}/pr-body.md` が存在する場合:
     - 「/docs-sync への引き継ぎ事項」セクションが存在する場合のみ解析する
@@ -201,15 +197,11 @@ Step 2 で変更履歴を更新した各 L3 doc について、`git diff main...
 
 **セッション temp への書き出し（常に実行）:**
 
-セッション temp ディレクトリを特定する（Step 2 で取得済みの場合は再利用。セッション ID は `$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から直接解決する）:
-```bash
-SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-fi
-SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
-```
+セッション temp ディレクトリを特定する（Step 2 で取得済みの場合は再利用。`hooks/lib/session-paths.sh` が `hooks/lib/session-id.sh` の `session_id_resolve` を再利用して1行で絶対パスを返す。issue #316）:
+- Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-tmp-dir`
+- Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-tmp-dir`
+
+出力された1行の絶対パスを以降 `SESSION_TMP_DIR` として扱う。
 
 `${SESSION_TMP_DIR}` が特定できた場合: `${SESSION_TMP_DIR}/pr-docs-sync-result.md` を書き出す:
 

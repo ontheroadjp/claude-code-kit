@@ -29,15 +29,11 @@ Step 7: 結果報告（PR URL。ここでフロー完結）
 ### SESSION_TMP_DIR の導出
 
 ```bash
-SESSION_ID="${CLAUDE_CODE_KIT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$SESSION_ID" ] && [ -n "${CODEX_THREAD_ID:-}" ]; then
-    SESSION_ID="codex-$(printf '%s' "$CODEX_THREAD_ID" | sha256sum | cut -c1-16)"
-fi
-SESSION_ID="$(printf '%s' "$SESSION_ID" | tr -c 'A-Za-z0-9._-' '_')"
-SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
+bash ~/.claude/hooks/lib/session-paths.sh session-tmp-dir
+# Codex CLI: bash ~/.codex/hooks/lib/session-paths.sh session-tmp-dir
 ```
 
-`$CLAUDE_CODE_SESSION_ID`（Codex は `$CODEX_THREAD_ID` のハッシュ）から自セッションの ID を直接導出する。以前は `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んでディレクトリ名からセッション ID を逆算していたが、複数セッション同時実行時に他セッションのファイルを誤って参照する競合があったため（issue #210）、共有ファイルを経由しない方式に変更した。詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md` を参照。
+出力された1行の絶対パスを `SESSION_TMP_DIR` として使用する。以前は `${STATE_ROOT}/current-session-approved-path` という共有ポインタファイルを読んでディレクトリ名からセッション ID を逆算しており（複数セッション同時実行時に他セッションのファイルを誤って参照する競合があったため issue #210 で廃止）、その後は `$CLAUDE_CODE_SESSION_ID` から直接導出する Bash スニペットをインライン展開していた。このインライン式は brace expansion と代入への command substitution を含んでおり、`/work-multi` の worktree 隔離セッションでは harness に拒否されることが判明したため、`hooks/lib/session-paths.sh` を直接実行する単一のプレーンな呼び出しに置き換えた（issue #316）。詳細は `docs/L3_implementation/hooks/lib/session-id.sh.md`、`docs/L3_implementation/hooks/lib/session-paths.sh.md` を参照。
 
 ### temp ファイルの優先順位
 
@@ -74,7 +70,7 @@ Step 7 の結果報告（PR URL）でこのコマンドの責務は完結する�
 ## 統合ポイント
 
 - 呼び出し元: `commands/task.md`（Phase 2 Step 1 から `/docs-sync` 完了後に自動呼び出し）、ユーザーの手動呼び出し
-- 呼び出すもの: `git push`・`gh pr create`（このコマンドは他の command/skill を呼び出さない）
+- 呼び出すもの: `git push`・`gh pr create`・`hooks/lib/session-paths.sh`（`bash` で直接実行。このコマンドは他の command/skill を呼び出さない）
 - fallback PR template: `${TEMPLATES_DIR}/pr.md`
 - 依存 temp ファイル（任意）:
     - `SESSION_TMP_DIR/pr-title.txt`（`/task` が書き出す）

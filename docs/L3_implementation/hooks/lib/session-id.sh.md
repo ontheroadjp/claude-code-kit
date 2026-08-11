@@ -29,14 +29,16 @@
 
 実機セッションで `$CLAUDE_CODE_SESSION_ID`（Bash tool 実行シェルの環境変数）が hook の解決結果（`payload.session_id` 由来）と完全一致することを確認できたため、コマンド側が共有ファイルを経由せず環境変数から直接セッション ID を得られるようにした。これにより `current-session-approved-path` への書き込みは不要になり、`hooks/auto-approve-readonly.sh` から完全に削除した。
 
-### commands/*.md では `source` せずインライン展開する理由
+### commands/*.md では `source` せず `hooks/lib/session-paths.sh` 経由で使う理由（issue #316 で変更）
 
-`commands/*.md` の Bash スニペットは、この repo ではなくユーザーの任意のプロジェクトディレクトリで実行される。`hooks/auto-approve-readonly.sh` は自分自身の symlink を `readlink` してこの repo の場所を解決できるが（`BASH_SOURCE[0]` 経由）、markdown 埋め込みの Bash スニペットにはその仕組みがなく、任意の作業ディレクトリからこの repo の `hooks/lib/session-id.sh` を確実に `source` する手段がない（`readlink -f` は macOS 標準の BSD readlink では利用できない等、環境依存の脆さもある）。そのため、同じ解決式をコマンド側に短くインライン展開する方式を採用した。式を変更する場合は両方（このファイルと各 `commands/*.md`）を更新する必要がある。
+`commands/*.md` の Bash スニペットは、この repo ではなくユーザーの任意のプロジェクトディレクトリで実行される。`hooks/auto-approve-readonly.sh` は自分自身の symlink を `readlink` してこの repo の場所を解決できるが（`BASH_SOURCE[0]` 経由）、markdown 埋め込みの Bash スニペットにはその仕組みがなく、任意の作業ディレクトリからこの repo の `hooks/lib/session-id.sh` を確実に `source` する手段がない（`readlink -f` は macOS 標準の BSD readlink では利用できない等、環境依存の脆さもある）。
+
+以前はこの制約への対処として、`session_id_resolve` と同じ解決式（`CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID` → `CODEX_THREAD_ID` のハッシュ）を `commands/*.md` に短くインライン展開していた。しかしこの式自体が brace expansion（`${VAR}`）と代入への command substitution（`$(...)`）を含むため、`/work-multi` の worktree 隔離セッションでは Claude Code harness の worktree 隔離ガードにコマンドごと拒否されることが判明した（issue #316）。現在は `hooks/lib/session-paths.sh`（`session_id_resolve` を内部で `source` して再利用する直接実行 CLI）を新設し、`commands/*.md` は `bash ~/.claude/hooks/lib/session-paths.sh <mode>` という単一のプレーンな呼び出しのみを埋め込む。`session-id.sh` 自体は今も `source` されない（`source` するのは新設した `session-paths.sh` の役目）。
 
 ## 統合ポイント
 
-- 呼び出し元: `hooks/auto-approve-readonly.sh`、`hooks/cleanup-session.sh`（いずれも `source` して使用）
-- 参照（インライン展開、`source` はしない）: `commands/work.md`、`commands/task.md`、`commands/patch.md`、`commands/docs-sync.md`、`commands/git-pr.md`
+- 呼び出し元: `hooks/auto-approve-readonly.sh`、`hooks/cleanup-session.sh`、`hooks/lib/session-paths.sh`（いずれも `source` して使用）
+- 参照（`session-paths.sh` 経由の間接呼び出し、`source` はしない）: `commands/task.md`、`commands/patch.md`、`commands/review-resolve.md`、`commands/docs-sync.md`、`commands/git-pr.md`、`commands/triage-issues-for-auto-approve.md`
 - 呼び出すもの: なし（外部コマンドなし。`sha256sum`/`cksum` に依存）
 
 ## 注意事項

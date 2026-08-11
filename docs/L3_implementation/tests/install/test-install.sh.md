@@ -2,24 +2,25 @@
 
 ## 目的・役割
 
-`tests/install/test-install.sh` は `install.sh` の template symlink contract を実ユーザー環境へ副作用を与えずに検証する shell test である。
+`tests/install/test-install.sh` は `install.sh` の template symlink contract と `hooks/lib/*.sh` symlink contract（issue #316）を実ユーザー環境へ副作用を与えずに検証する shell test である。
 
 根拠: `tests/install/test-install.sh:1-19`
 
 ## 動作の概要
 
-fixture repository と一時 HOME を作成し、fixture にコピーした installer を2回実行する。各実行後、Claude/Codex 両 template target の symlink と link target を検証する。
+fixture repository と一時 HOME を作成し、fixture にコピーした installer を2回実行する。各実行後、Claude/Codex 両 template target の symlink・link target、および `hooks/lib/*.sh` の Claude/Codex 両 target への symlink を検証する。
 
-根拠: `tests/install/test-install.sh:9-30`, `tests/install/test-install.sh:57-71`
+根拠: `tests/install/test-install.sh:9-32`, `tests/install/test-install.sh:60-80`
 
 ## 主要な判定ロジック・フロー
 
 - `assert_symlink` は link の存在と `readlink` の完全一致を確認する
 - `assert_template_links` は repository 内4 template を target ごとに検証する
+- `assert_hooks_lib_links` は fixture の `hooks/lib/example-lib.sh` が `~/.claude/hooks/lib/` と `~/.codex/hooks/lib/` の両方へ symlink されることを検証する（issue #316: `install.sh` に追加した `hooks/lib/*.sh` symlink ループの回帰防止）
 - fresh HOME に legacy template target が作られないことを確認する
 - installer 再実行後も同じ contract が成立することを確認する
 
-根拠: `tests/install/test-install.sh:32-69`
+根拠: `tests/install/test-install.sh:34-73`
 
 ## 重要な設計判断
 

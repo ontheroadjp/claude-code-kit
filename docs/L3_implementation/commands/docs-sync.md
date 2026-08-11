@@ -112,7 +112,7 @@ citation は対象読み後、読み取った内容に対象ファイルへ対�
 - `docs/L3_implementation/` 配下のファイルは Phase 3 Step 2 の L3 変更履歴更新の対象外（自己参照ループを防ぐ）
 - push・PR 作成は行わない（`/git-pr` が担う）
 - HARD STOP 時は `/init-docs` の documentation-only mode を自動実行し、完了後は commit・結果書き出しへ復帰する
-- セッション temp ディレクトリの特定（Phase 1 Step 2、Phase 3 Step 3）は `${STATE_ROOT}/current-session-approved-path`（共有ポインタファイル）を経由せず、`$CLAUDE_CODE_SESSION_ID` から直接導出する（issue #210。複数セッション同時実行時の混線を防ぐため）
+- セッション temp ディレクトリの特定（Phase 1 Step 2、Phase 3 Step 3）は `${STATE_ROOT}/current-session-approved-path`（共有ポインタファイル）を経由せず、`hooks/lib/session-paths.sh session-tmp-dir` から直接導出する（issue #210。複数セッション同時実行時の混線を防ぐため。issue #316 で inline スニペットから `session-paths.sh` 呼び出しへ変更）
 
 ## 変更履歴（git log より自動生成）
 
