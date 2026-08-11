@@ -160,7 +160,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 `git add`/`git commit`/`git fetch`/`git checkout main`・`git switch main` は `tool:git_write`（session-approved カテゴリ）にも属するが、これらのパターンに限っては**セッション同意なしで無条件承認**する専用関数 `is_safe_local_git_write_command` を `is_safe_git_read_command` の直後に追加している。
 
-**なぜ無条件で安全か:** これらの操作はローカルリポジトリの外に一切影響しない。`add` はステージングのみ、`commit` はローカル履歴への記録のみ、許可される `fetch` の形（引数なし、または remote 名のみ）はローカルの remote-tracking ref を更新するだけで working tree・push・共有状態には触れない。`checkout main`/`switch main`（フラグなし・追加トークンなしのリテラル `main` 単独形のみ）は、git 自身が未コミット変更を破棄するブランチ切り替えを `--force` なしでは拒否するため、この形状は working tree に対しても非破壊的である（`--force` や `checkout .` は destructive guard が session 状態に関わらず block するため、この allow-shape に到達する前に排除される）。これは Write/Edit tool が working repo 内のファイルを既に無条件承認している設計（動的防御セクション参照）と同じ「共有状態への影響がない」境界線上にある。
+**なぜ無条件で安全か:** これらの操作はローカルリポジトリの外に一切影響しない。`add` はステージングのみ、`commit` はローカル履歴への記録のみ、許可される `fetch` の形（引数なし、または remote 名のみ）はローカルの remote-tracking ref を更新するだけで working tree・push・共有状態には触れない。`checkout main`/`switch main`（フラグなし・追加トークンなしのリテラル `main` 単独形のみ）は、git 自身が **未コミット変更を破棄するブランチ切り替えを `--force` なしでは拒否する** ため、作業内容の消失を引き起こさない（`--force` や `checkout .` は destructive guard が session 状態に関わらず block するため、この allow-shape に到達する前に排除される）。ただし、現在のブランチと `main` で内容が異なる **追跡済みファイル** は、working tree がクリーンであれば `main` の内容へ書き換わる（これは `checkout`/`switch` の通常の意味論であり、変更の「消失」ではなく、`git checkout <元のブランチ>` で常に元の状態へ戻せる）。この「未コミット変更を破棄しない」という性質は、Write/Edit tool が working repo 内のファイルを既に無条件承認している設計（動的防御セクション参照）と同じ「共有状態への影響がない」境界線上にある。
 
 一方で `git push`・`gh issue`/`gh pr` の書き込みは GitHub 上で他者から見える共有状態を変更するため、恒久 allowlist には追加せず `tool:git_write`/`tool:gh_issue_write`/`tool:gh_pr_write`（session-approved、1セッション1回のユーザー同意）に留める。
 
