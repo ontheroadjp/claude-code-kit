@@ -103,7 +103,7 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 - 最小更新方針を確定する:
     - 事実更新（パス/設定値/コマンド/型/エンドポイント）
     - 手順更新（setup/run/test）
-    - 仕様サマリ更新（specification_summary は該当箇所のみ。Phase 1 Step 2 で citation を取得済みの場合はその行範囲を `offset`/`limit` で対象読みし、独自の再特定は行わない。citation がない場合のみ Glob/Grep 等で該当箇所を特定する）
+    - 仕様サマリ更新（specification_summary は該当箇所のみ。Phase 1 Step 2 で citation を取得済みの場合はその行範囲を `offset`/`limit` で対象読みし、読み取った内容が対象ファイル（`Specific docs sections to update` フィールドが言及するファイル）に対応する `###` 見出しを含んでいるか検証する。含んでいれば独自の再特定は行わない。含んでいない（citation の行範囲がずれている、または誤っている＝stale citation）場合、または citation がない場合は Glob/Grep 等で該当箇所を独自に特定する）
 - **L0_concept の扱い**: `/docs-sync` では L0_concept（concept.md / policy.md）を一切更新しない
     - L0 は「意思決定の記録」であり、git diff から機械的に追従できる性質ではないため
     - L0 相当の記述を検知した場合の扱いは Phase 3 Step 2b（L0 昇格候補のキューイング）を参照。`/init-docs` へは促さない（`/init-docs` は L0 が存在しない場合の新規作成のみを行い、既存 L0 の更新経路ではない）
@@ -150,7 +150,7 @@ SESSION_TMP_DIR="/tmp/claude-code-kit/${SESSION_ID}"
 
 ##### HARD STOP（/init-docs が必要）:
 - (A) 根拠が辿れず、更新対象 docs を特定できない
-- (B) citation がなく、かつ独自探索でも specification_summary.md の「該当箇所」が特定できない（全体書換えしか手がない状態）
+- (B) citation の検証に失敗した（stale citation）、または citation がなく、かつ独自探索でも specification_summary.md の「該当箇所」が特定できない（全体書換えしか手がない状態）
 
 該当した場合は Phase 1 Step 4 の「HARD STOP からの自動復旧」と同じ手順を実行する。
 

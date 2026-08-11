@@ -87,6 +87,8 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 
 `/work` の投資調査時点で `/task` が既に specification_summary.md の該当セクションを特定しているにもかかわらず、`/docs-sync` が独自に再探索していたため、月間アクセスレポートで specification_summary.md が重複読み込みの上位ファイルになっていた（23回/月）。`templates/pr.md` の `Specific docs sections to update` フィールドを citation の運び手として使い、`/task` Phase 2 Step 1 で `docs/L3_implementation/specification_summary.md:<line-range>` 形式の citation を書き込み、`/docs-sync` Phase 1 Step 2 で解析、Phase 2 で `offset`/`limit` の対象読みとして再利用する。citation がない standalone `/docs-sync` 呼び出しでは既存の独自探索にフォールバックし、挙動を変えない。
 
+citation は対象読み後、読み取った内容に対象ファイルへ対応する `###` 見出しが含まれているかを検証する。行番号のズレや誤った citation（stale citation）で検証に失敗した場合は独自探索へフォールバックし、それでも該当箇所を特定できない場合は HARD STOP (B) として扱う（PR #312 の Codex CLI レビュー指摘を受けて追加。当初は「citation があれば無条件に独自の再特定を行わない」としていたが、これだと stale citation を渡された場合に誤った箇所を更新するか、更新不能でも探索・HARD STOP に進めない不整合があった）。
+
 ### HARD STOP（/init-docs が必要なケース）
 
 以下の場合は docs-sync の前提（局所更新）が崩れているため `/init-docs` の documentation-only mode へ自動委譲する:
