@@ -752,6 +752,24 @@ assert_no_output "$output"
 output=$(run_auto 'gh issue edit 42 --add-label bug')
 assert_no_output "$output"
 
+# tool:gh_label_write (issue #301): bare category (no numbered target, unlike
+# gh_issue_write/gh_pr_write) that covers commands/new-issue.md's Step 4
+# proposed-new-label creation. Only `gh label create` is in scope; other verbs
+# and other gh subcommands must not be covered by this grant.
+printf '%s\n' 'tool:gh_label_write' > "$SESSION_FILE"
+output=$(run_auto 'gh label create --name "auto-approve-candidate" --description "d" --color "0075ca"')
+assert_json_decision "$output" "approve"
+
+output=$(run_auto 'gh label edit bug --description "d"')
+assert_no_output "$output"
+
+output=$(run_auto 'gh issue create --title "feat: x" --body "y"')
+assert_no_output "$output"
+
+printf '%s\n' 'tool:git_write' > "$SESSION_FILE"
+output=$(run_auto 'gh label create --name "auto-approve-candidate" --description "d" --color "0075ca"')
+assert_no_output "$output"
+
 printf '%s\n' 'tool:git_write' 'tool:gh_pr_write:143' > "$SESSION_FILE"
 
 output=$(run_auto_file_tool "Write" "${SESSION_TMP_DIR}/scratch.txt")

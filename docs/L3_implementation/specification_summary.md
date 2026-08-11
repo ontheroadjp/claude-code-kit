@@ -106,7 +106,9 @@ open issue が溜まったタイミングで実行するスタンドアロンの
 
 実装を伴わず、rough idea から issue draft を作成して `gh issue create` する任意 pre-`/work` flow。scope 分割方針（分割しない／Phase分割／親子issue分割／単体分割）はユーザー選択必須で、親子issue分割を選んだ場合は子issueを先に作成し、GitHub の task list 機能（`- [ ] #<子issue番号>`）で親issueに進捗を自動連動させる。issue 本文は実行 agent に応じて `~/.claude/templates/issue.md` または `~/.codex/templates/issue.md` を使う。
 
-根拠: `commands/new-issue.md:1-146`
+Step 2 は個別の内容確認を求めず、Step 4 でドラフトとラベル（既存採用 or 新規提案）をまとめて一度に提示し、単一承認で「ドラフト内容」「ラベル（採用/新規作成）」「`gh issue create` の実行」を一括認可する（issue #301）。standalone 起動時は承認後に session-approved へ `tool:gh_issue_write`（新規ラベルが必要な場合は `tool:gh_label_write` も）を書き込み、以降のハーネス許可プロンプトを不要にする。`commands/task.md` が Step 4〜5 のみを呼び出す issue 自動生成経路では、task.md 自身のプラン承認・session-approved 書き込みと二重にならないよう、この単一承認・session-approved 書き込みをスキップする。
+
+根拠: `commands/new-issue.md:1-172`, issue #301
 
 ### `/review-resolve` (`commands/review-resolve.md`)
 
@@ -156,7 +158,7 @@ PreToolUse hook。Read、session temp / session-listed file、read-only Bash、`
 
 安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）は、hook がコマンドテキストを実行せずに値を検証できないため、read-only な解決ステップ → リテラル値埋め込みという2段階（resolve-then-embed、`CLAUDE.md` に規約化）に分けることをエージェントに求める。hook はリテラル引数のみを `is_rm_protected_path`/`is_in_working_repo` と照合する（issue #248, #250）。
 
-根拠: `hooks/auto-approve-readonly.sh:1-2063`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
+根拠: `hooks/auto-approve-readonly.sh:1-2068`, `hooks/lib/approval-safety.sh:1-119`, `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/auto_approve_readonly.md`, `CLAUDE.md`
 
 ### `hooks/lib/approval-safety.sh`
 
@@ -224,7 +226,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 `tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp boundary、working repo dynamic defense、quoted heredoc と nested subshell の走査、`guard-destructive-cmd.sh` の JSON block output を検証する。`rm [-f] <literal-path>` は repo 内 path を positive case、repo root・`.git`・変数・glob・session-approved 自身を negative case として固定する。さらに issue #261 の回帰防止として、absent な session-approved への初回実承認 write は通り、exists-empty から実内容への拡張は block される Write-handler state transition を固定する。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-1163`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1340`
 
 `tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
 

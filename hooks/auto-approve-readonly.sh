@@ -1153,6 +1153,9 @@ check_session_approved() {
                 printf '%s' "$seg" | grep -qE '^gh[[:space:]]+pr[[:space:]]+create(\s|$)' && return 0
                 printf '%s' "$seg" | grep -qE "^gh[[:space:]]+pr[[:space:]]+(edit|close|comment|reopen|ready|review|checkout|merge)[[:space:]]+${gh_pr_n}(\s|\$)" && return 0
                 ;;
+            tool:gh_label_write)
+                printf '%s' "$seg" | grep -qE '^gh[[:space:]]+label[[:space:]]+create(\s|$)' && return 0
+                ;;
         esac
     done < "$SESSION_APPROVED_FILE"
     return 1
