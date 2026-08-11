@@ -58,6 +58,7 @@ Facts の再現性を担保するため、集計はすべて決定的な正規�
 
 ## 変更履歴（git log より自動生成）
 
+- d2cd65b feat(#308): add phase-tagged duplicate access breakdown to /analyze-access
 - a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
 - 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - 8d0793a feat(#214): track per-session redundant file reads in /analyze-access

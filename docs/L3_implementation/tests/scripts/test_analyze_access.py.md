@@ -46,6 +46,7 @@ SESSION_4（issue #308）は既存の3セッションとは別に追加した、
 
 ## 変更履歴（git log より自動生成）
 
+- d2cd65b feat(#308): add phase-tagged duplicate access breakdown to /analyze-access
 - a565c97 feat(#252): add hook execution-time aggregation to /analyze-* commands
 - 594905d feat(#216): redesign /analyze-* reports around KPI dashboards and findings
 - 8d0793a feat(#214): track per-session redundant file reads in /analyze-access
