@@ -549,6 +549,8 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 880ee07 feat(#301): consolidate /new-issue draft/label/creation approval into Step 4
+- a38d7ad feat(#290): accept a single branch token in git fetch <remote> allow-shape
 - 16babcc feat(#289): allow bare 'git checkout main' / 'git switch main' unconditionally
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 5748c69 feat(#283): add --explain diagnostic mode to auto-approve-readonly.sh
