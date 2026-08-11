@@ -250,7 +250,9 @@ run_parallel_group "approve" \
     "git commit --message 'fix: correct typo'" \
     'git fetch' \
     'git fetch origin' \
-    'git -C /tmp fetch origin'
+    'git -C /tmp fetch origin' \
+    'git checkout main' \
+    'git switch main'
 
 run_parallel_group "NO_OUTPUT" \
     'if [ -f README.md ]; then touch unsafe; fi' \
@@ -363,7 +365,13 @@ run_parallel_group "NO_OUTPUT" \
     'git fetch origin +main:main' \
     'git fetch origin main:main' \
     'git fetch --all' \
-    'git fetch --prune origin'
+    'git fetch --prune origin' \
+    'git checkout other-branch' \
+    'git switch other-branch' \
+    'git checkout -- main' \
+    'git checkout -b main' \
+    'git switch -c main' \
+    'git checkout main extra-arg'
 
 # Quote-aware write-redirect detection: a '>' used as a comparison operator
 # inside a single-quoted script (not a real file-write redirect) must not be
@@ -667,7 +675,9 @@ run_parallel_group "block" \
     'git push origin +main:main' \
     'git checkout -f main' \
     'git checkout --force main' \
+    'git checkout main --force' \
     'git switch --force main' \
+    'git checkout .' \
     'git branch --delete --force old-branch' \
     'git branch -df old-branch'
 
