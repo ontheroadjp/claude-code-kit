@@ -22,7 +22,13 @@
 
 `git status --porcelain` を実行する。
 
-差分がある場合、以下の選択肢をユーザーに提示する:
+`git rev-parse --show-toplevel` が `.claude/worktrees/` を含む場合（worktree 隔離セッション。例: `/work-multi`）、`scripts/link-worktree-untracked.sh` が作成した symlink が `.gitignore` のディレクトリ限定パターン（末尾 `/`）に一致せず `??`/`!!` として現れることがある（issue #318）。この場合、以下で manifest を解決する:
+- Claude Code: `bash ~/.claude/hooks/lib/session-paths.sh session-tmp-dir`
+- Codex CLI: `bash ~/.codex/hooks/lib/session-paths.sh session-tmp-dir`
+
+出力された絶対パス配下の `worktree-untracked-symlinks.txt` が存在する場合、`git status` の各エントリのパスについて、manifest 中のいずれかの行と完全一致するか、またはいずれかの行の親ディレクトリである場合（例: `git status` 側が `.pytest_cache/` と集約表示され、manifest 側は `.pytest_cache/.gitignore` 等の個別ファイルを列挙している場合）に除外してから「差分があるか」を判定する。manifest が存在しない場合（worktree 隔離セッションでない、または `hooks/lib/session-paths.sh` 未インストール）は `git status` の出力をそのまま扱う。
+
+除外後もなお差分がある場合、以下の選択肢をユーザーに提示する:
 
 **未コミットの変更が検出されました。どう扱いますか？**
 1. **今回の作業に乗せる** — 現在の変更をこの作業の一部として扱う

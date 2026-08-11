@@ -19,8 +19,9 @@ Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）
 - `.claude` を丸ごと除外したのは、`EnterWorktree` 自身が worktree を `.claude/worktrees/<name>` 配下に作成する固定仕様のため。`.claude` を symlink すると、新しい worktree の中に worktrees ディレクトリ自身への自己参照ループが生じる。副作用として worktree は `.claude/settings.local.json`（ローカル権限設定）を引き継がない（安全側＝確認プロンプト増加の方向のみ）。
 - node_modules 等セッション中に書き換わる依存ディレクトリも一律 symlink の対象に含まれる。これは worktree 隔離の目的（共有可変状態の衝突防止）と部分的に矛盾するトレードオフだが、対象リポジトリ非依存の汎用実装を優先し、既知の限界として `CLAUDE.md` に文書化するに留めた（リポジトリごとの依存ディレクトリ名を個別に除外するとリポジトリ固有の特別扱いが必要になり、この toolkit の汎用性の前提と矛盾するため）。
 - `ExitWorktree` は明示的なユーザー指示がない限り呼ばない。セッション終了時の keep/remove 確認は harness の既存機能に委ねる。
+- symlink 化した untracked/ignored パスは `.gitignore` のディレクトリ限定パターン（末尾 `/`）に一致せず `git status` に `??`/`!!` として現れる（実機で `ExitWorktree` が無害な symlink を「未コミットの変更」として検出し `discard_changes` を要求する事例で発覚。issue #318）。git 側の ignore 判定を変える案（`extensions.worktreeConfig` + 各 worktree 専用 `core.excludesFile`）を実機検証し機能することを確認したが、目的は「git status を完全にクリーンにする」ことではなく「予期しない untracked ファイルを見た際に無駄な調査（`ls -la`・`readlink` 等）をせず即座に判別できる」ことであるため、git 設定を変更しないスコープの小さい manifest 方式（`scripts/link-worktree-untracked.sh` が symlink 化したパス一覧を session tmp directory に書き出し、`commands/work.md` G-2・`commands/task.md` Phase 2 が突き合わせる）を採用した。`ExitWorktree` 自体の判定（harness 機能のため変更不可）は変わらないが、manifest と突き合わせれば既知のものと即座に判別できる。
 
-根拠: `commands/work-multi.md:23-35`, `commands/work-multi.md:48-50`, issue #296
+根拠: `commands/work-multi.md:23-35`, `commands/work-multi.md:48-50`, issue #296, issue #318
 
 ## 統合ポイント
 

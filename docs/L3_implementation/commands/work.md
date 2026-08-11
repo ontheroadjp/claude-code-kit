@@ -10,6 +10,8 @@
 
 G-0 は `git rev-parse --show-toplevel` が `.claude/worktrees/` を含むかを先に判定し、含む場合（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）は `git checkout main` をスキップする。含まない場合は従来どおり `git checkout main` を実行する（issue #296、`commands/work.md:9-15`）。
 
+G-2 のワークスペース確認は、worktree 隔離セッションの場合、`hooks/lib/session-paths.sh session-tmp-dir` で解決した session tmp directory 配下の `worktree-untracked-symlinks.txt`（存在する場合）と `git status --porcelain` の出力を突き合わせ、manifest に列挙されたパスと完全一致またはその親ディレクトリであるエントリを除外してから「差分があるか」を判定する。`scripts/link-worktree-untracked.sh` が作成した symlink は `.gitignore` のディレクトリ限定パターンに一致せず `??`/`!!` として現れるための対処（issue #318）。manifest が存在しない場合は従来通り `git status` の出力をそのまま扱う。
+
 issue 番号が指定された場合は、実装向け調査より先に issue labels を取得する（`gh issue view <N> --json labels` を1回だけ呼び出し、以下2つの判定を同じ結果に対して行う）。name が `report` と完全一致する label があれば `commands/report-review.md` に委譲して終了し、実装 branch や `/task`・`/patch` flow には進まない。`report` に該当せず `auto-approve-candidate` と完全一致する label がある場合は、`/triage-issues-for-auto-approve` の実行を促すメッセージを出して `/work` を終了し、`/task`・`/patch` へのルーティングやブランチ作成は行わない（issue #298）。どちらの label にも該当しない issue は既存どおり issue 起点の `/task` へ進み、issue がない作業は docs 変更の要否によって `/task` または `/patch` に分岐する。
 
 根拠: `commands/work.md:71-131`
@@ -39,7 +41,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
     - 対処として `rm -f` への回帰も検討したが不採用とした。commit 87ce937（fix #250）は `session-approved` を `rm -f` の自動承認対象から明示的に除外している（`is_rm_protected_path`）。これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴（過去に許可された実際のスコープを、確認なしに削除→再構築で置き換える）を塞ぐためのものであり、G-0 を `rm -f` に戻すとこの抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。同じ理由で、hook 側の Write ハンドラを「既存内容が空なら absent と同等に扱う」よう変更する案（`Write` 経由で同種の抜け穴が開く）も不採用とした。
     - 最終的に、G-0 の防御的クリア自体を削除する方針を採った。Stop hook が正常に動作している通常ケースでは `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして無条件承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）のみ、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする（新しい自動承認ロジックは追加しない）。
 
-根拠: `commands/work.md:9-15`, `commands/work.md:48-56`, `commands/work.md:75-95`, `commands/work.md:133-150`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定）, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, PR #304
+根拠: `commands/work.md:9-15`, `commands/work.md:21-29`, `commands/work.md:48-56`, `commands/work.md:75-95`, `commands/work.md:133-150`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定）, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, PR #304
 
 ## 統合ポイント
 
@@ -49,6 +51,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - issue なし、docs 変更なし: `commands/patch.md`
 - 調査起点: `docs/.ai/repo.profile.json` の `primary_docs`
 - worktree 隔離入口: `commands/work-multi.md`（`EnterWorktree` で worktree に切り替えた後、この `commands/work.md` を無改変のまま Read して実行する。issue #296）
+- G-2 の manifest 突き合わせ: `hooks/lib/session-paths.sh`（`bash` で直接実行）、`scripts/link-worktree-untracked.sh` が書き出す `worktree-untracked-symlinks.txt`（issue #318）
 
 ## 注意事項・既知の制限
 
