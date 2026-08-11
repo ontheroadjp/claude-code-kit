@@ -273,10 +273,17 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 | `tool:git_write` | add, commit, merge, fetch, `pull --ff-only`, stash push/pop/apply, non-force push, branch checkout/switch, non-force branch operation | force option / `+refspec` push, pull without `--ff-only`, pull rebase/no-ff/force, checkoutによるpath復元, checkout/switch force, forced branch deletion |
 | `tool:gh_issue_write:<N>` | `gh issue create`（N非依存、常時）、`gh issue (edit\|close\|delete\|comment\|reopen) <N> ...`（対象番号が grant の N と一致する場合のみ） | 対象番号が N と不一致、N が非数値の grant |
 | `tool:gh_pr_write:<N>` | `gh pr create`（N非依存、常時）、`gh pr (edit\|close\|comment\|reopen\|ready\|review\|checkout\|merge) <N> ...`（対象番号が grant の N と一致する場合のみ） | 対象番号が N と不一致、N が非数値の grant、`checkout` に非数値（branch名/URL）が渡された場合 |
+| `tool:gh_label_write` | `gh label create ...` | `gh label` の他 verb（edit/delete/list 等）、`gh issue`/`gh pr` の write |
 
 destructive guard に該当する操作は category があっても block する。
 
 根拠: `hooks/auto-approve-readonly.sh:707-748`, `hooks/lib/approval-safety.sh`
+
+### `tool:gh_label_write`（issue #301）
+
+`commands/new-issue.md` Step 4 が、既存ラベルに適切なものがなく新規ラベルを提案するケースで使う category。`tool:git_write` と同様、対象を特定のリソース番号にスコープしない bare category として実装した（`gh label create` はそもそも対象となる既存ラベル名を検査する必要がない操作のため、`tool:gh_issue_write:<N>`/`tool:gh_pr_write:<N>` のような numbered grant にする理由がない）。`gh issue`/`gh pr` の write action とは別の GitHub リソース（label）を対象とするため、既存の `tool:gh_issue_write`/`tool:gh_pr_write` を流用せず独立した category とした。
+
+根拠: `hooks/auto-approve-readonly.sh:1156-1158`, `tests/hooks/test-approval-hooks.sh`（`tool:gh_label_write` の positive/negative ケース）, `commands/new-issue.md`, issue #301
 
 ### issue/PR 番号スコープ化（issue #297）
 
