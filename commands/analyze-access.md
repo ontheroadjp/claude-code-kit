@@ -49,7 +49,7 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 
 **裏付けデータ（Evidence）**:
 - 対象月（`months`）、セッション数（`session_count`）、総アクセス数、セッションあたり平均アクセス数
-- 重複アクセス上位ファイル（`top_duplicate_files`、全セッション横断の合算）
+- 重複アクセス上位ファイル（`top_duplicate_files`、全セッション横断の合算。各エントリは発生元 phase/command 別の内訳 `by_phase` を持つ）
 - 無駄な再読み込みが多いセッション上位（`top_redundant_sessions`。各要素は日時・指示内容・無駄な再読み込み回数・重複ファイル一覧・そのセッションで実際にファイルを修正したか（`modified`）を持つ）
 - hook 処理時間の分布（`duration_ms_stats.sample_count` / `median_ms` / `max_ms`）
 
@@ -58,6 +58,7 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 Facts のみを根拠に、統計そのものではなく「何が改善できるか」を主役として整理する:
 
 - **主要な発見（Key Findings）**: KPI・Evidence から読み取れる重要な所見を優先度順に列挙する。各所見には根拠となる具体的な数値をインラインで引用する（例:「`estimated_waste_ratio_pct` が12%、うち `/path/to/file` への重複が最多で…」）。`top_redundant_sessions` のうち `modified: false`（変更につながらなかった＝純粋なロス）のセッションは優先的に取り上げる。`duration_ms_stats.avg_ms` / `p95_ms` を用いて hook 処理時間が有意な水準か（判断基準の例: 数百 ms 未満は無視できる水準、秒単位に近い場合は要注意）を必ず言及する
+- `top_duplicate_files` の上位エントリごとに `by_phase`（phase/command 別内訳）を用いて重複クラスタの主因を明示的に特定し所見に含める（例:「`hooks/auto-approve-readonly.sh` への重複は work phase が72%（38/53回）を占め、/work の investigation phase が主因」）。単一 phase に偏っていない場合は「複数 phase にまたがる」旨を明記する。これは所見の一部として毎回必須（issue #308）
 - 各発見に対応する **Proposal**（改善提案）を最低1つ添える。優先度（高/中/低）・理由・実施した場合の見込み効果を記す（例: 頻出アクセスファイルを `docs/.ai/repo.profile.json` の investigation 起点に加える 等）
 - **Opinion**（Facts からの推測）は所見に含めてよいが、事実と明確に書き分ける
 - **Risks and Unknowns**: サンプル数が少ない・偏りがある等、解釈の限界を別枠でまとめる
