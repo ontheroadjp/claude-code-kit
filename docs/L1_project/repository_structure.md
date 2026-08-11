@@ -48,7 +48,7 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-report-review.sh` は Markdown workflow の必須句・禁止操作、`tests/commands/test-coding-guidelines.sh` は coding layerの合成・routing・repository非依存性、`tests/commands/test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`tests/commands/test-work-multi.sh` は work-multi 関連ファイルの契約（issue #296）、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性、`tests/scripts/test-link-worktree-untracked.sh` は untracked symlink の functional test（issue #296）、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh:1-53`, `tests/commands/test-workflow-contracts.sh:1-47`, `tests/commands/test-work-multi.sh:1-83`, `tests/install/test-install.sh:1-71`, `tests/scripts/test-link-worktree-untracked.sh:1-93`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh:1-53`, `tests/commands/test-workflow-contracts.sh:1-47`, `tests/commands/test-work-multi.sh:1-83`, `tests/install/test-install.sh:1-71`, `tests/scripts/test-link-worktree-untracked.sh:1-126`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
 
 ### `templates/`
 
@@ -72,7 +72,7 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 
 `setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/statusline.sh` は `jq` と `bc` を使って context / rate limit 情報を表示する。`scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py`（および共通処理 `scripts/lib/analyze_common.py`）は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する Python script で、対応する `/analyze-*` command から呼ばれる。`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、`EnterWorktree` が作成した worktree に元の working tree の untracked/ignored ファイル・ディレクトリを symlink する（issue #296）。
 
-根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/analyze_access.py:1-6`, `scripts/link-worktree-untracked.sh:1-40`, `scripts/README.md`
+根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/analyze_access.py:1-6`, `scripts/link-worktree-untracked.sh:1-59`, `scripts/README.md`
 
 ### `logs/`
 

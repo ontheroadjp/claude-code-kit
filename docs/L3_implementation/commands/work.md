@@ -62,6 +62,8 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
+- 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
 - 4450e96 feat(#298): gate /work on auto-approve-candidate label, swap to triage-approved on approval
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
@@ -70,8 +72,5 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
 - 1e3b7fa fix(#227): avoid rm -f confirmation prompt in /work G-0 by clearing session-approved via Write tool
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
-- 0297a81 feat(#126): add report review workflow
-- 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
-- 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
 
 根拠: `commands/work.md:9-160`

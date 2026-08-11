@@ -41,4 +41,6 @@ symlink ループ開始前に、`${HOME}/.claude/hooks/lib/session-paths.sh`（�
 
 ## 変更履歴（git log より自動生成）
 
+- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
+- 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

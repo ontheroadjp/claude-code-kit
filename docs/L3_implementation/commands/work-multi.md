@@ -36,4 +36,5 @@ Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）
 
 ## 変更履歴（git log より自動生成）
 
+- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

@@ -70,9 +70,9 @@ bash tests/install/test-install.sh
 bash tests/scripts/test-link-worktree-untracked.sh
 ```
 
-トップレベル untracked ファイル/ディレクトリの symlink、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性を確認する。
+トップレベル untracked ファイル/ディレクトリの symlink、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性、および `hooks/lib/session-paths.sh` が解決可能な場合の manifest（`worktree-untracked-symlinks.txt`）書き出しを確認する（issue #318）。
 
-根拠: `tests/scripts/test-link-worktree-untracked.sh:1-93`
+根拠: `tests/scripts/test-link-worktree-untracked.sh:1-126`
 
 ## Log analysis script tests
 

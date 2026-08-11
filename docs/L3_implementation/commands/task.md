@@ -143,6 +143,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
@@ -152,4 +153,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
-- 27f1861 feat(#76): install templates for claude and codex
