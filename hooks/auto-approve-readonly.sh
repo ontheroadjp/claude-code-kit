@@ -944,12 +944,14 @@ is_safe_local_git_write_command() {
         return 1
     fi
 
-    # git fetch: bare, or a single plain remote-name argument only. No
-    # refspec (":") and no flags — in particular no force ("+") refspec,
-    # which could overwrite a local branch non-fast-forward.
+    # git fetch: bare, a single plain remote-name argument, or a remote name
+    # plus a single branch-name argument. No refspec (":") and no flags —
+    # in particular no force ("+") refspec, which could overwrite a local
+    # branch non-fast-forward. Both tokens share the same safe character
+    # class, which already excludes "+" and ":".
     if printf '%s' "$seg" | grep -qE '^git[[:space:]]+fetch(\s|$)'; then
         [ "$seg" = "git fetch" ] && return 0
-        printf '%s' "$seg" | grep -qE '^git[[:space:]]+fetch[[:space:]]+[A-Za-z0-9][A-Za-z0-9._/-]*[[:space:]]*$' && return 0
+        printf '%s' "$seg" | grep -qE '^git[[:space:]]+fetch[[:space:]]+[A-Za-z0-9][A-Za-z0-9._/-]*([[:space:]]+[A-Za-z0-9][A-Za-z0-9._/-]*)?[[:space:]]*$' && return 0
         return 1
     fi
 

@@ -250,7 +250,9 @@ run_parallel_group "approve" \
     "git commit --message 'fix: correct typo'" \
     'git fetch' \
     'git fetch origin' \
+    'git fetch origin main' \
     'git -C /tmp fetch origin' \
+    'git -C /tmp fetch origin main' \
     'git checkout main' \
     'git switch main'
 
@@ -364,6 +366,8 @@ run_parallel_group "NO_OUTPUT" \
     'git commit -m "unterminated' \
     'git fetch origin +main:main' \
     'git fetch origin main:main' \
+    'git fetch origin +main' \
+    'git fetch origin main extra' \
     'git fetch --all' \
     'git fetch --prune origin' \
     'git checkout other-branch' \

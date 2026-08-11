@@ -140,7 +140,7 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 | dpkg（`is_safe_dpkg_query_command`） | `-l`/`--list`, `-L`/`--listfiles`, `-s`/`--status`, `-S`/`--search` のいずれか1つのみを含む形 | `-i`/`-r`/`-P`/`--configure` 等の変更系、上記フラグを2つ以上組み合わせた形 |
 | gresource | `list`, `list-sections` | `compile`（バイナリのリソースバンドルをディスクに書き出す） |
 | tmux | `display-message`, `list-windows`, `list-sessions`, `list-panes`, `show-options` | `send-keys`（他のpane/sessionへの入力注入）、`kill-*`、`new-session` 等のセッション変更系 |
-| Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>`、`git checkout main` / `git switch main` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、複数トークン。`checkout`/`switch`: `main` 以外のブランチ名、追加トークン、フラグ全般（destructive guard が別途 `--force`/`checkout .` を session 状態に関わらず block する） |
+| Git local write（`is_safe_local_git_write_command`） | `git add <明示パス...>`、`git commit -m/--message "<message>"`（単一クォート文字列）、`git fetch` / `git fetch <remote単一トークン>` / `git fetch <remote> <branch単一トークン>`、`git checkout main` / `git switch main` | `add`: `-A`/`--all`/`.`/`*`。`commit`: `-m`/`--message` 以外の任意フラグ（`--amend`/`--no-verify`/`-a` 等）。`fetch`: refspec（`:`）、`+`強制指定、3トークン以上。`checkout`/`switch`: `main` 以外のブランチ名、追加トークン、フラグ全般（destructive guard が別途 `--force`/`checkout .` を session 状態に関わらず block する） |
 
 `git -C <directory>` は `-C` prefix を正規化した後、同じ Git 判定を適用する。
 
@@ -160,7 +160,7 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 `git add`/`git commit`/`git fetch`/`git checkout main`・`git switch main` は `tool:git_write`（session-approved カテゴリ）にも属するが、これらのパターンに限っては**セッション同意なしで無条件承認**する専用関数 `is_safe_local_git_write_command` を `is_safe_git_read_command` の直後に追加している。
 
-**なぜ無条件で安全か:** これらの操作はローカルリポジトリの外に一切影響しない。`add` はステージングのみ、`commit` はローカル履歴への記録のみ、許可される `fetch` の形（引数なし、または remote 名のみ）はローカルの remote-tracking ref を更新するだけで working tree・push・共有状態には触れない。`checkout main`/`switch main`（フラグなし・追加トークンなしのリテラル `main` 単独形のみ）は、git 自身が **未コミット変更を破棄するブランチ切り替えを `--force` なしでは拒否する** ため、作業内容の消失を引き起こさない（`--force` や `checkout .` は destructive guard が session 状態に関わらず block するため、この allow-shape に到達する前に排除される）。ただし、現在のブランチと `main` で内容が異なる **追跡済みファイル** は、working tree がクリーンであれば `main` の内容へ書き換わる（これは `checkout`/`switch` の通常の意味論であり、変更の「消失」ではなく、`git checkout <元のブランチ>` で常に元の状態へ戻せる）。この「未コミット変更を破棄しない」という性質は、Write/Edit tool が working repo 内のファイルを既に無条件承認している設計（動的防御セクション参照）と同じ「共有状態への影響がない」境界線上にある。
+**なぜ無条件で安全か:** これらの操作はローカルリポジトリの外に一切影響しない。`add` はステージングのみ、`commit` はローカル履歴への記録のみ、許可される `fetch` の形（引数なし、remote 名のみ、または remote 名 + 単一ブランチ名）はローカルの remote-tracking ref を更新するだけで working tree・push・共有状態には触れない。`checkout main`/`switch main`（フラグなし・追加トークンなしのリテラル `main` 単独形のみ）は、git 自身が **未コミット変更を破棄するブランチ切り替えを `--force` なしでは拒否する** ため、作業内容の消失を引き起こさない（`--force` や `checkout .` は destructive guard が session 状態に関わらず block するため、この allow-shape に到達する前に排除される）。ただし、現在のブランチと `main` で内容が異なる **追跡済みファイル** は、working tree がクリーンであれば `main` の内容へ書き換わる（これは `checkout`/`switch` の通常の意味論であり、変更の「消失」ではなく、`git checkout <元のブランチ>` で常に元の状態へ戻せる）。この「未コミット変更を破棄しない」という性質は、Write/Edit tool が working repo 内のファイルを既に無条件承認している設計（動的防御セクション参照）と同じ「共有状態への影響がない」境界線上にある。
 
 一方で `git push`・`gh issue`/`gh pr` の書き込みは GitHub 上で他者から見える共有状態を変更するため、恒久 allowlist には追加せず `tool:git_write`/`tool:gh_issue_write`/`tool:gh_pr_write`（session-approved、1セッション1回のユーザー同意）に留める。
 
@@ -168,10 +168,10 @@ Unix read tools 正規表現は、`cat`/`ls`/`grep` 等のようにフラグ・�
 
 - `git add`: 各トークンが `-` 始まりでなく、かつ `.`/`*` 単独でもないことを要求する。1つでも該当すれば unsafe。
 - `git commit`: セグメント全体が `git commit (-m|--message) "..."` または `git commit (-m|--message) '...'` に完全一致することを要求する（`$(...)` はこのチェックより前段で `__SUBSHELL_SAFE__` に置換・再帰検証済みのため、ヒアドキュメント経由の複数行メッセージもこの形に収まる）。
-- `git fetch`: `git fetch` 単体、または `git fetch <remote>`（英数字始まりの単一トークン。`--all` のような `-` 始まりトークンは除外）のみ許可する。
+- `git fetch`: `git fetch` 単体、`git fetch <remote>`、または `git fetch <remote> <branch>`（各トークンは英数字始まりの単一トークン。`--all` のような `-` 始まりトークンは除外）のみ許可する。両トークンとも同じ安全文字クラス（`[A-Za-z0-9._/-]`）を使うため、`+`強制指定や`:`区切りの destination-ref 構文は構造的に排除される。3トークン以上（例: `git fetch origin main extra`）は不一致のため `tool:git_write`（session-approved）へフォールスルーする（issue #290）。
 - `git checkout main` / `git switch main`: セグメント全体が `git (checkout|switch) main`（末尾の空白のみ許容）に完全一致することを要求する。他ブランチ名、`--`、`-b`/`-c` 等の追加トークン・フラグは全て除外され、`tool:git_write`（session-approved）の従来経路にフォールスルーする。
 
-根拠: `hooks/auto-approve-readonly.sh`（`is_safe_local_git_write_command`、`is_safe_git_read_command` 直後）, issue #221, issue #289
+根拠: `hooks/auto-approve-readonly.sh`（`is_safe_local_git_write_command`、`is_safe_git_read_command` 直後）, issue #221, issue #289, issue #290
 
 ### `is_safe_dpkg_query_command`: dpkg の read-only クエリ限定 allow-shape
 
