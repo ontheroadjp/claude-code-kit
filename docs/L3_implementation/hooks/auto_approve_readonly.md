@@ -542,6 +542,7 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 16babcc feat(#289): allow bare 'git checkout main' / 'git switch main' unconditionally
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 5748c69 feat(#283): add --explain diagnostic mode to auto-approve-readonly.sh
 - 8d684e6 fix(#280): remove 120-char truncation from auto-approve decision log
@@ -551,4 +552,3 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - 202a7eb refactor(#257): extract _heredoc_skip_end_index and make subshell span scanner heredoc-aware
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
-- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention

@@ -43,6 +43,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- 16babcc feat(#289): allow bare 'git checkout main' / 'git switch main' unconditionally
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 2429f81 refactor: parallelize independent run_auto loops in approval hook tests
 - 5748c69 feat(#283): add --explain diagnostic mode to auto-approve-readonly.sh
@@ -52,4 +53,3 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
 - af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
 - f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
-- e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
