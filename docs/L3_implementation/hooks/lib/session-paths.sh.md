@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`hooks/lib/session-paths.sh` は `commands/*.md`（`/task`・`/patch`・`/review-resolve`・`/docs-sync`・`/git-pr`・`/triage-issues-for-auto-approve`）が session-approved ファイルおよび SESSION_TMP_DIR の絶対パスを取得するための直接実行 CLI である。`hooks/lib/session-id.sh` の `session_id_resolve` を内部で再利用する。
+`hooks/lib/session-paths.sh` は `commands/*.md`（`/task`・`/patch`・`/review-resolve`・`/docs-sync`・`/git-pr`・`/triage-issues-for-hazard`）が session-approved ファイルおよび SESSION_TMP_DIR の絶対パスを取得するための直接実行 CLI である。`hooks/lib/session-id.sh` の `session_id_resolve` を内部で再利用する。
 
 根拠: `hooks/lib/session-paths.sh:1-35`, issue #316
 
@@ -36,7 +36,7 @@
 
 ## 統合ポイント
 
-- 呼び出し元: `commands/task.md`、`commands/patch.md`、`commands/review-resolve.md`、`commands/docs-sync.md`、`commands/git-pr.md`、`commands/triage-issues-for-auto-approve.md`（いずれも `bash <installed-path>/session-paths.sh <mode>` として直接実行）
+- 呼び出し元: `commands/task.md`、`commands/patch.md`、`commands/review-resolve.md`、`commands/docs-sync.md`、`commands/git-pr.md`、`commands/triage-issues-for-hazard.md`（いずれも `bash <installed-path>/session-paths.sh <mode>` として直接実行）
 - 呼び出すもの: `hooks/lib/session-id.sh`（`session_id_resolve` を `source` して利用）
 - インストール: `install.sh` が `hooks/lib/*.sh` を `~/.claude/hooks/lib/` と `~/.codex/hooks/lib/` の両方へ symlink する
 

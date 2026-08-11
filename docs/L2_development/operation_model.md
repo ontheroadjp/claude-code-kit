@@ -2,16 +2,16 @@
 
 ## 通常作業フロー
 
-`/review-resolve` 以外の作業は `/work` から開始する。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、以降の review・merge は自動実行しない。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、`auto-approve-candidate` label があれば `/triage-issues-for-auto-approve` の実行を案内して終了し、どちらでもなければ現状調査後に task または patch へ進む。
+`/review-resolve` 以外の作業は `/work` から開始する。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、以降の review・merge は自動実行しない。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、`hazard-candidate` label があれば `/triage-issues-for-hazard` の実行を案内して終了し、どちらでもなければ現状調査後に task または patch へ進む。
 
 根拠: `commands/work.md:7-149`
 
 ## ルーティング
 
-issue 番号がある場合は最初に exact `report` label、次に exact `auto-approve-candidate` label を判定する（同じ `gh issue view --json labels` 呼び出しの結果を使う）。
+issue 番号がある場合は最初に exact `report` label、次に exact `hazard-candidate` label を判定する（同じ `gh issue view --json labels` 呼び出しの結果を使う）。
 
 - `report` label の issue: `commands/report-review.md` を Read し、read-only 評価で終了する。
-- `report` に該当せず `auto-approve-candidate` label の issue: `/triage-issues-for-auto-approve` の実行を促し、`/work` を終了する（issue #298）。`/triage-issues-for-auto-approve` で `yes` 承認され `triage-approved` label に付け替えられた issue はこの分岐に該当しなくなる。
+- `report` に該当せず `hazard-candidate` label の issue: `/triage-issues-for-hazard` の実行を促し、`/work` を終了する。`/triage-issues-for-hazard` で `yes` 承認され `triage-approved` label に付け替えられた issue はこの分岐に該当しなくなる。
 - どちらの label にも該当しない issue: 次の実装 routing を行う。
 
 - issue 起点、または docs 変更が必要な場合: `commands/task.md` を Read し task flow を実行する。
@@ -83,17 +83,17 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 根拠: `commands/analyze-access.md:16-87`, `commands/analyze-auto-approve.md:17-92`, `commands/analyze-token-usage.md:16-92`, `scripts/lib/analyze_common.py:30-77`
 
-## auto-approve-hazard-scan flow
+## analyze-hazard-scan flow
 
-`auto-approve-hazard-scan.md` は `python3 scripts/analyze_auto_approve.py --all` の `routine_ops.patterns_needing_approval`（`sample_commands` 上位3件）を候補として抽出し、既存の `auto-approve-candidate` issue と本文完全一致で重複除外した上で、各候補を `hooks/auto-approve-readonly.sh --explain` で診断する。`--explain` は呼び出しセッション自身の session-approved ファイルを参照するため、`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE=/nonexistent/session-approved` を指定して常に「新規セッションでの判定」を診断する。診断結果と該当 `is_safe_*` 関数の実装を根拠に、AI が variable expansion / absolute-path・cwd bypass / unquoted write redirect / destructive flags / 既存 allow-shape との比較の5項目ハザードチェックリストを作成し、`already-safe` / `no-known-hazard` / `hazard-found` のいずれかに判定する。全候補をまとめて提示し、`no-known-hazard` 候補への `auto-approve-candidate` issue 起票はユーザーの一括承認後にのみ行う。`hooks/auto-approve-readonly.sh` を含む既存コードは変更しない。
+`analyze-hazard-scan.md` は auto-approve と access のログを分析する。auto-approve 候補は `python3 scripts/analyze_auto_approve.py --all` の `routine_ops.patterns_needing_approval` から抽出し、cold-session の `hooks/auto-approve-readonly.sh --explain` と安全性チェックリストで診断する。access 候補は `python3 scripts/analyze_access.py --all` の重複 path・phase 内訳・推定損失を根拠に抽出し、コマンド承認ログではないため `--explain` を実行しない。いずれも source と候補 command/path により既存 issue と重複除外し、`no-known-hazard` の候補だけをユーザー一括承認後に `hazard-candidate` issue として起票する。hook自体は変更しない。
 
-根拠: `commands/auto-approve-hazard-scan.md:1-162`
+根拠: `commands/analyze-hazard-scan.md:1-171`
 
-## triage-issues-for-auto-approve flow
+## triage-issues-for-hazard flow
 
-`triage-issues-for-auto-approve.md` は `gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま開示する（見出しが見つからない場合は本文全体を表示）。候補が1件以上あれば session-approved に候補 issue 番号ごとの `tool:gh_issue_write:<N>` を書き込む（`gh issue edit <N> --add-label/--remove-label` を対象番号一致の場合のみ自動承認するため、issue #297）。issue ごとに「実装に進みますか？（yes/no）」を確認し、yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap してから（未存在なら確認の上 `gh label create`）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内する（issue #298）。no の場合、および `gh issue` 本文編集・close・comment は行わない。
+`triage-issues-for-hazard.md` は `gh issue list --label hazard-candidate --state open` で候補を取得し、issue 本文の source 固有の Diagnostic Output と Hazard Checklist を開示する。候補が1件以上あれば session-approved に候補 issue 番号ごとの `tool:gh_issue_write:<N>` を書き込む。issue ごとに「実装に進みますか？（yes/no）」を確認し、yes の場合は `hazard-candidate` → `triage-approved` へ label を swap してから（未存在なら確認の上 `gh label create`）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内する。no の場合、および `gh issue` 本文編集・close・comment は行わない。
 
-根拠: `commands/triage-issues-for-auto-approve.md:1-120`
+根拠: `commands/triage-issues-for-hazard.md:1-115`
 
 ## ローカル・CI コマンド
 

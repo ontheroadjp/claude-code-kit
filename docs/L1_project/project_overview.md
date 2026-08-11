@@ -10,7 +10,7 @@
 
 | 領域 | 実装 | 役割 | 根拠 |
 |---|---|---|---|
-| 作業入口 | `commands/work.md` | main への checkout、workspace gate、report-review/task/patch ルーティング（auto-approve-candidate issue は `/triage-issues-for-auto-approve` へ誘導して終了） | `commands/work.md:7-149` |
+| 作業入口 | `commands/work.md` | main への checkout、workspace gate、report-review/task/patch ルーティング（hazard-candidate issue は `/triage-issues-for-hazard` へ誘導して終了） | `commands/work.md:7-149` |
 | report 評価 | `commands/report-review.md` | `report` label の issue を read-only で評価し、意見と提案を標準出力へ提示 | `commands/report-review.md:1-91` |
 | ログ分析 | `commands/analyze-access.md`, `analyze-auto-approve.md`, `analyze-token-usage.md` | `logs/access`・`logs/auto-approve`・`logs/token-usage` を `scripts/analyze_*.py` で集計し、KPIダッシュボード→Key Findings & Proposals→Evidence の順で構成したレポートと HTML を `logs/reports/` へ出力する read-only workflow | `commands/analyze-access.md:1-85`, `scripts/analyze_access.py:1-6` |
 | docs あり実装 | `commands/task.md` | issue 確認/生成、プラン承認、実装、L3 per-file doc、`/docs-sync`・`/git-pr` 引き継ぎ | `commands/task.md:30-184` |
@@ -19,9 +19,9 @@
 | docs 初期化 | `commands/init-docs.md` | repo 再観測、repo profile 生成、L0-L3 docs 生成（L0 は存在しない場合のみ）、整合性検証、ユーザー確認後の draft PR | `commands/init-docs.md:1-423` |
 | L0 昇格 | `commands/concept-maker.md` | `docs/.ai/l0_candidates.md` の L0 昇格候補をユーザーとの壁打ちと明示的承認を経て `docs/L0_concept/` へ追記する唯一の経路。branch + commit → ユーザーが ff-merge | `commands/concept-maker.md:1-92` |
 | review 対応 | `commands/review-resolve.md` | PR review コメント取得、対応方針選択、実装/返信/push | `commands/review-resolve.md:1-175` |
-| auto-approve候補起票 | `commands/auto-approve-hazard-scan.md` | `/analyze-auto-approve` の候補コマンドを `hooks/auto-approve-readonly.sh --explain` で診断し、AIがハザードチェックリストを作成、既知ハザードなしの候補のみユーザー一括承認後に `auto-approve-candidate` issue を起票するスタンドアロン入口。hook自体は変更しない | `commands/auto-approve-hazard-scan.md:1-162` |
+| ハザード候補起票 | `commands/analyze-hazard-scan.md` | auto-approve と access のログを分析し、source 固有の診断とハザードチェックリストにより、既知ハザードなしの候補のみユーザー一括承認後に `hazard-candidate` issue を起票するスタンドアロン入口。hook自体は変更しない | `commands/analyze-hazard-scan.md:1-171` |
 | issue トリアージ | `commands/triage-issues.md` | open issue を stale/inconsistent/duplicated/unclear/ready に分類し、ユーザー承認後に各アクションを実行するスタンドアロン入口 | `commands/triage-issues.md:1-178` |
-| auto-approve候補レビュー | `commands/triage-issues-for-auto-approve.md` | `auto-approve-candidate` label 付き open issue を一覧化し、issue ごとにハザード分析を開示、yes/no ゲートを経て yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap した上で `/work #N` の実行を案内するスタンドアロン入口。`/work` は自身で呼ばない | `commands/triage-issues-for-auto-approve.md:1-120` |
+| ハザード候補レビュー | `commands/triage-issues-for-hazard.md` | `hazard-candidate` label 付き open issue を一覧化し、source 固有のハザード分析を開示、yes/no ゲートを経て yes の場合は `hazard-candidate` → `triage-approved` へ label を swap した上で `/work #N` の実行を案内するスタンドアロン入口。`/work` は自身で呼ばない | `commands/triage-issues-for-hazard.md:1-115` |
 | issue 作成 | `commands/new-issue.md` | 漠然としたアイデアから issue を作成する任意 pre-step | `commands/new-issue.md:1-126` |
 | coding 原則 | `commands/coding-*.md` | general / py / js / ts / sh に React / Next.js framework layerを合成する汎用実装規約 | `commands/coding-general.md:1-52`, `commands/coding-react.md:1-43`, `commands/coding-nextjs.md:1-43` |
 | Codex skills | `skills/*/SKILL.md` | 25個の wrapper が対応する command markdown を Source of Truth として実行する | `skills/*/SKILL.md` 実体一覧 |
@@ -40,13 +40,13 @@
 ## エントリポイント
 
 - AI 作業の通常入口は `/work`。根拠: `commands/work.md:1-4`, `README.md:63-85`
-- report issue は `/work #N` から `/report-review` へ委譲される。auto-approve-candidate issue は `/work #N` が実装ルーティングをせず `/triage-issues-for-auto-approve` の実行を案内して終了する（issue #298）。根拠: `commands/work.md:64-83`, `commands/report-review.md:1-3`
+- report issue は `/work #N` から `/report-review` へ委譲される。hazard-candidate issue は `/work #N` が実装ルーティングをせず `/triage-issues-for-hazard` の実行を案内して終了する。根拠: `commands/work.md:83-96`, `commands/report-review.md:1-3`
 - `/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、作成後の自律 review は行わない。根拠: `commands/git-pr.md:62-65`, `CLAUDE.md:15`
 - PR review コメント対応は `/review-resolve #N`。根拠: `commands/review-resolve.md:1-6`
 - idea から issue を作る任意入口は `/new-issue`。根拠: `commands/new-issue.md:1-9`
 - open issue を整理する任意入口は `/triage-issues`。根拠: `commands/triage-issues.md:1-9`
-- `logs/auto-approve/*.log` から allowlist 拡張候補を洗い出し、ユーザー一括承認後に `auto-approve-candidate` issue を起票する任意入口は `/auto-approve-hazard-scan`。hook自体は変更しない。根拠: `commands/auto-approve-hazard-scan.md:1-9`
-- `auto-approve-candidate` issue のハザード分析を開示し、実装着手を人間の承認ゲート越しに `/work #N` へ案内する任意入口は `/triage-issues-for-auto-approve`。yes 回答時のみ `auto-approve-candidate` → `triage-approved` の label 付け替えを行い（`/work` 側の auto-approve-candidate ゲートを解除する）、それ以外は変更しない。`/work` は自身で呼ばない。根拠: `commands/triage-issues-for-auto-approve.md:1-20`, issue #298
+- auto-approve と access のログから source 固有のハザード候補を洗い出し、ユーザー一括承認後に `hazard-candidate` issue を起票する任意入口は `/analyze-hazard-scan`。hook自体は変更しない。根拠: `commands/analyze-hazard-scan.md:1-171`
+- `hazard-candidate` issue の source 固有のハザード分析を開示し、実装着手を人間の承認ゲート越しに `/work #N` へ案内する任意入口は `/triage-issues-for-hazard`。yes 回答時のみ `hazard-candidate` → `triage-approved` の label 付け替えを行い（`/work` 側の gate を解除する）、それ以外は変更しない。`/work` は自身で呼ばない。根拠: `commands/triage-issues-for-hazard.md:1-115`
 - `/docs-sync` が L0 昇格候補ありを案内した場合の任意入口は `/concept-maker`。L0（`docs/L0_concept/`）への唯一の AI 書き込み経路（`/init-docs` の初回新規作成を除く）。根拠: `commands/concept-maker.md:1-92`
 - VitePress site の CI entry は `.github/workflows/deploy.yml` の `npm run docs:build`。根拠: `.github/workflows/deploy.yml:31-37`
 - アプリケーション runtime の `main.*` / `server.*` / `app.*` は存在しない。実行入口は Markdown commands、shell installers/tests、VitePress npm scripts、GitHub Actions である。根拠: `rg --files -uu -g '!.git/**'`、`site/package.json:4-8`、`.github/workflows/deploy.yml:17-52`

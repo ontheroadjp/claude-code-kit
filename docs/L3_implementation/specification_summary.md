@@ -174,7 +174,7 @@ PreToolUse hook で共有する Bash safety helper。system directory 破壊、b
 
 ### `hooks/lib/session-paths.sh`
 
-`commands/task.md`・`patch.md`・`review-resolve.md`・`docs-sync.md`・`git-pr.md`・`triage-issues-for-auto-approve.md` が `source` ではなく `bash ~/.claude/hooks/lib/session-paths.sh <session-approved|session-tmp-dir>`（Codex: `~/.codex/...`）として直接実行するセッションパス解決 CLI（issue #316）。内部で `session-id.sh` の `session_id_resolve` を再利用し、標準出力へ絶対パスを1行返す。`session-approved` モードは `hooks/cleanup-session.sh`/`hooks/auto-approve-readonly.sh` と同じ formula（`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE` → `CLAUDE_CODE_KIT_SESSION_DIR` → `CLAUDE_CODE_KIT_STATE_HOME`/`XDG_STATE_HOME` の順にオーバーライドを尊重）で解決し、`session-tmp-dir` モードは `CLAUDE_CODE_KIT_TMP_ROOT`（既定 `/tmp/claude-code-kit`）配下の絶対パスを返す。`install.sh` が `hooks/lib/*.sh` を `~/.claude/hooks/lib/`・`~/.codex/hooks/lib/` へ symlink することで、`commands/*.md` からインストール済みパス経由で直接実行できる。
+`commands/task.md`・`patch.md`・`review-resolve.md`・`docs-sync.md`・`git-pr.md`・`triage-issues-for-hazard.md` が `source` ではなく `bash ~/.claude/hooks/lib/session-paths.sh <session-approved|session-tmp-dir>`（Codex: `~/.codex/...`）として直接実行するセッションパス解決 CLI（issue #316）。内部で `session-id.sh` の `session_id_resolve` を再利用し、標準出力へ絶対パスを1行返す。`session-approved` モードは `hooks/cleanup-session.sh`/`hooks/auto-approve-readonly.sh` と同じ formula（`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE` → `CLAUDE_CODE_KIT_SESSION_DIR` → `CLAUDE_CODE_KIT_STATE_HOME`/`XDG_STATE_HOME` の順にオーバーライドを尊重）で解決し、`session-tmp-dir` モードは `CLAUDE_CODE_KIT_TMP_ROOT`（既定 `/tmp/claude-code-kit`）配下の絶対パスを返す。`install.sh` が `hooks/lib/*.sh` を `~/.claude/hooks/lib/`・`~/.codex/hooks/lib/` へ symlink することで、`commands/*.md` からインストール済みパス経由で直接実行できる。
 
 根拠: `hooks/lib/session-paths.sh:1-37`, `docs/L3_implementation/hooks/lib/session-paths.sh.md`, issue #316
 
