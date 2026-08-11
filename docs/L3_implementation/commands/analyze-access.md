@@ -28,8 +28,9 @@ Step 5: 標準出力へレポートパスと KPI・上位の発見/提案を提�
 - HTML レポートは外部リソース参照なしの単一自己完結ファイルとし、末尾に raw JSON を `<details>` で埋め込んで監査可能にする
 - **Primary KPI** は `redundant_access_waste.estimated_waste_ratio_pct`（重複読み込みによる推定ロス率）。**Supporting KPI** は `sessions_with_duplicates_ratio` / `redundant_accesses_total` / `redundant_access_waste.estimated_wasted_tokens` / `estimated_wasted_cost_usd` / `duration_ms_stats.avg_ms` / `duration_ms_stats.p95_ms`（`hooks/log-access-stop.sh` 自体の実行時間）。これら以外の Facts（`months` / `session_count` / `top_duplicate_files` / `top_redundant_sessions` / `duration_ms_stats.sample_count` 等）は Evidence（裏付けデータ）として、KPI・所見の後ろに補助的に配置する
 - `top_redundant_sessions` は日時・指示内容・無駄な再読み込み回数・重複ファイル一覧に加え、そのセッションで実際に修正が発生したか（`modified`）を持つ。`modified: false` のセッション（読み直しただけで何も変わっていない＝純粋なロス）は Key Findings で優先的に取り上げる
+- `top_duplicate_files` の各エントリは phase/command 別内訳 `by_phase` を持つ（issue #308）。Step 3 は Key Findings でこの `by_phase` を用いて重複クラスタの主因となる phase/command を必ず明示することを要求する — 単に転記するだけでなく、原因帰属を毎回行うことを義務付けている点が他の Evidence フィールドと異なる
 
-根拠: `commands/analyze-access.md:16-24`, `commands/analyze-access.md:39-52`, `commands/analyze-access.md:70-83`
+根拠: `commands/analyze-access.md:16-24`, `commands/analyze-access.md:38-54`, `commands/analyze-access.md:56-64`, issue #308
 
 ## 重要な設計判断とその理由
 
@@ -38,6 +39,8 @@ Facts（決定的な集計）と Key Findings/Proposals（AI の解釈）を明�
 以前は Facts（統計テーブル）がレポートの主役で、分析は付け足しだった。目的は「重複読み込みロスをゼロにする」というチューニングであり、統計はそのためのエビデンスに過ぎないため、KPIダッシュボード → Key Findings & Proposals をメインコンテンツとし、Facts は Evidence として補助セクションに格下げした（issue #216）。同時に、目的と無関係な一般的なセッション生産性指標（フェーズ別/ツール別アクセス数、修正頻度上位ファイル、修正ゼロセッション比率）と、`/analyze-token-usage` の守備範囲と重複するだけで重複読み込みと紐付いていなかった汎用トークン集計を Facts から除外し、代わりに重複読み込みが実際にどれだけの損失を生んだかを定量化する `redundant_access_waste` を追加した。
 
 `duration_ms_stats`（hook 自体の処理時間）は issue #216 が確立した「重複読み込みロスの特定に一本化する」方針とは別軸の例外として issue #252 で追加した。これはユーザーの作業内容そのものの指標ではなく、`hooks/log-access-stop.sh` というログ記録パイプライン自体のオーバーヘッドを示す運用診断指標であり、`/analyze-auto-approve` が既に同じ枠組みで持っていた指標を揃えたもの。issue #216 が除外した「一般的な生産性指標」の再導入ではない、という区別を明示するため Step 3 でも「重複読み込みロス」の Key Findings とは独立した言及として扱う。
+
+`by_phase`（issue #308）も issue #216 が除外した「フェーズ別/ツール別アクセス数」という汎用生産性指標の再導入ではない。issue #216 が除外したのはアクセス総数をフェーズ別に集計するだけの指標（重複読み込みロスという問いに答えない）であるのに対し、`by_phase` は既存の Primary KPI が扱う「重複読み込み」という事象そのものに内訳を付与するものであり、`top_duplicate_files` という既存 Fact の粒度を上げているに過ぎない。Step 3 でこの内訳を用いた原因帰属を必須にしたのは、`hooks/auto-approve-readonly.sh` のような重複クラスタが「どの command/flow に由来するか」を特定できなければ、対応する Proposal（例: 特定コマンドの investigation phase を見直す）を書けないため。
 
 生ログを直接読ませない設計は、`logs/access/*.log` が数千行規模になり得るため、context 消費とトークンコストを抑える目的もある。
 

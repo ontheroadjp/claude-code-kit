@@ -46,9 +46,13 @@ format_modified() {
 duplicates=$(echo "$state" | jq -r '
   .accesses
   | group_by(.path)
-  | map(select(length > 1) | {path: .[0].path, count: length})
+  | map(select(length > 1) | {
+      path: .[0].path,
+      count: length,
+      by_phase: (group_by(.phase) | map({key: .[0].phase, value: length}) | from_entries)
+    })
   | sort_by(-.count)[]
-  | "  - \(.path) (\(.count)回)"
+  | "  - \(.path) (\(.count)回) [\(.by_phase | to_entries | map("\(.key):\(.value)") | join(", "))]"
 ')
 
 phases=$(echo "$state" | jq -r '
