@@ -138,6 +138,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 1146f95 feat(#286): add generic React and Next.js guidelines
@@ -147,5 +148,3 @@ session-approved への追記を hook が block するため、全スコープ�
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 27f1861 feat(#76): install templates for claude and codex
-- 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
-- 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows

@@ -58,7 +58,7 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 `/work` から呼ばれる docs 変更不要の軽微修正 flow。Step 1 では変更対象ファイルが確定した後に対応する L3 per-file doc（`docs/L3_implementation/<source-path>.md`）が存在する場合は Read する（L3 per-file doc は作成しない — docs 変更が必要になった場合は task フローへエスカレーションする）。プラン確認後に `patch/<slug>` branch で変更・commit し、ユーザーへ fast-forward merge 手順を報告する。前提が崩れた場合は issue draft を作り task flow へ移行する。
 
-根拠: `commands/patch.md:1-95`, `commands/patch.md:15-26`
+根拠: `commands/patch.md:1-90`, `commands/patch.md:15-26`
 
 ### `/docs-sync` (`commands/docs-sync.md`)
 
@@ -68,7 +68,7 @@ Phase 3 では docs・README.md 更新に加え、L3 per-file doc の変更履�
 
 Phase 1 Step 2 で pr-body.md の `Specific docs sections to update` から specification_summary.md の citation を取得済みの場合、Phase 2 でその行範囲を `offset`/`limit` で対象読みして再利用し、独自の再特定を行わない（citation がない場合は既存どおり独自探索する。issue #307）。
 
-根拠: `commands/docs-sync.md:1-217`, `commands/docs-sync.md:52`, `commands/docs-sync.md:103-104`, issue #307
+根拠: `commands/docs-sync.md:1-228`, `commands/docs-sync.md:48`, `commands/docs-sync.md:99-100`, issue #307
 
 ### `/init-docs` (`commands/init-docs.md`)
 
@@ -94,7 +94,7 @@ local tooling 観測では `gh`、`node`、`npm`、Node.js runtime manager hints
 
 `/auto-approve-hazard-scan`（issue #284）が起票した `auto-approve-candidate` label 付き open issue を一覧化し、issue ごとに AI ハザード分析を開示した上で実装に進むかどうかをユーザーに確認するスタンドアロン入口（issue #285、#282 の一部）。`gh issue list --label auto-approve-candidate --state open` で候補を取得し、issue 本文を `## Overview` / `## Evidence` / `## --explain Output` / `## Hazard Checklist` / `## Proposed Change (not implemented here)` の固定セクション見出しで分割してそのまま転記し提示する（要約・言い換えはしない）。見出しが見つからない issue は本文全体をそのまま提示するフォールバックを持つ。承認は issue 単位の yes/no で、yes の場合は `auto-approve-candidate` → `triage-approved` へ label を swap した上で（`triage-approved` 未存在時はユーザー確認の上で新規作成）、`/work` を自身で起動せず「`/work #N` を実行してください」と案内するのみに留める（issue #298）。label 付け替え以外の `gh issue` の本文編集・close・comment、および `hooks/auto-approve-readonly.sh` を含む既存コードの変更は一切行わない。`commands/triage-issues.md`（issue 衛生全般のトリアージ）とは判断基準が異なるため別ファイルとして維持し、`commands/triage-issues.md` 自体は変更しない。
 
-根拠: `commands/triage-issues-for-auto-approve.md:1-120`
+根拠: `commands/triage-issues-for-auto-approve.md:1-116`
 
 ### `/triage-issues` (`commands/triage-issues.md`)
 
@@ -112,7 +112,7 @@ open issue が溜まったタイミングで実行するスタンドアロンの
 
 PR 番号を受け取り、`tool:git_write` の session-approved ゲート（task.md/patch.md と同じ仕組み。git write のみが対象で `gh api` 経由のコメント返信は対象外）を1度だけ確認したうえで PR branch に checkout し、inline review comment・CHANGES_REQUESTED/COMMENTED/APPROVED 状態の review body comment を取得する。いずれも存在しない場合は「レビューコメントはありません」と報告して終了する。コメントごとにユーザーが対応・反対返信・理由返信・skip を選び、対応する場合は実装・commit・push・返信まで行う。
 
-根拠: `commands/review-resolve.md:1-204`
+根拠: `commands/review-resolve.md:1-199`
 
 ### `/codex-review` (`commands/codex-review.md`)
 
@@ -136,7 +136,7 @@ PR 番号を受け取り、PR ブランチに checkout し、事前に `git diff
 
 `git push` と `gh pr create` を担うスラッシュコマンド。`/task` Phase 2 から `/docs-sync` 完了後に自動呼び出しされる。SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-title.txt`（タイトル）・`pr-body.md`（本文）・`pr-docs-sync-result.md`（docs sync 結果）を参照し、存在しない場合は git diff / テンプレートから生成する。PR は ready for review として直接作成し、Step 7 の URL 報告でフローは完結する（作成後の自動 review・merge は行わない）。
 
-根拠: `commands/git-pr.md:1-70`
+根拠: `commands/git-pr.md:1-66`
 
 ## Skills
 
@@ -166,9 +166,15 @@ PreToolUse hook で共有する Bash safety helper。system directory 破壊、b
 
 ### `hooks/lib/session-id.sh`
 
-`hooks/auto-approve-readonly.sh` と `hooks/cleanup-session.sh` が共有するセッション ID 解決 helper（`session_id_resolve`/`session_id_sanitize`/`session_id_hash_key`）。両ファイルに重複していたロジックを一本化した。`commands/work.md`/`task.md`/`patch.md`/`docs-sync.md`/`git-pr.md` は任意のユーザープロジェクトディレクトリで実行されるためこのファイルを `source` せず、同じ解決式（`CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID` → `CODEX_THREAD_ID` hash）を各ファイルにインライン展開している。
+`hooks/auto-approve-readonly.sh` と `hooks/cleanup-session.sh` が共有するセッション ID 解決 helper（`session_id_resolve`/`session_id_sanitize`/`session_id_hash_key`）。両ファイルに重複していたロジックを一本化した。`commands/*.md` は任意のユーザープロジェクトディレクトリで実行されるためこのファイルを `source` しない。以前は同じ解決式を各 `commands/*.md` にインライン展開していたが、この式自体（brace expansion・代入への command substitution）が `/work-multi` の worktree 隔離セッションで harness に拒否されていたため、現在は `hooks/lib/session-paths.sh` 経由で間接的に再利用する（issue #316）。
 
 根拠: `hooks/lib/session-id.sh:1-46`, `docs/L3_implementation/hooks/lib/session-id.sh.md`
+
+### `hooks/lib/session-paths.sh`
+
+`commands/task.md`・`patch.md`・`review-resolve.md`・`docs-sync.md`・`git-pr.md`・`triage-issues-for-auto-approve.md` が `source` ではなく `bash ~/.claude/hooks/lib/session-paths.sh <session-approved|session-tmp-dir>`（Codex: `~/.codex/...`）として直接実行するセッションパス解決 CLI（issue #316）。内部で `session-id.sh` の `session_id_resolve` を再利用し、標準出力へ絶対パスを1行返す。`session-approved` モードは `hooks/cleanup-session.sh`/`hooks/auto-approve-readonly.sh` と同じ formula（`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE` → `CLAUDE_CODE_KIT_SESSION_DIR` → `CLAUDE_CODE_KIT_STATE_HOME`/`XDG_STATE_HOME` の順にオーバーライドを尊重）で解決し、`session-tmp-dir` モードは `CLAUDE_CODE_KIT_TMP_ROOT`（既定 `/tmp/claude-code-kit`）配下の絶対パスを返す。`install.sh` が `hooks/lib/*.sh` を `~/.claude/hooks/lib/`・`~/.codex/hooks/lib/` へ symlink することで、`commands/*.md` からインストール済みパス経由で直接実行できる。
+
+根拠: `hooks/lib/session-paths.sh:1-37`, `docs/L3_implementation/hooks/lib/session-paths.sh.md`, issue #316
 
 ### `hooks/guard-destructive-cmd.sh`
 
@@ -228,9 +234,13 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/commands/test-coding-guidelines.sh:1-53`
 
-`tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、Claude Code と Codex CLI の両 template directory に repository source への個別 symlink が作られること、旧 target が作成されないこと、再実行が冪等であることを検証する。
+`tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、Claude Code と Codex CLI の両 template directory に repository source への個別 symlink が作られること、旧 target が作成されないこと、再実行が冪等であることを検証する。`hooks/lib/*.sh` が Claude/Codex 両 `hooks/lib/` target へ symlink されることも合わせて検証する（issue #316）。
 
-根拠: `tests/install/test-install.sh:1-71`
+根拠: `tests/install/test-install.sh:1-85`
+
+`tests/hooks/test-session-paths.sh` は `hooks/lib/session-paths.sh`（issue #316）の functional test である。`session-approved`/`session-tmp-dir` 両モードの既定 formula、`CLAUDE_CODE_KIT_STATE_HOME`/`CLAUDE_CODE_KIT_SESSION_DIR`/`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE`/`CLAUDE_CODE_KIT_TMP_ROOT` オーバーライドの優先順位、symlink 経由実行時の自己位置解決、不正引数時の異常終了を検証する。
+
+根拠: `tests/hooks/test-session-paths.sh:1-87`
 
 `tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を静的検証する（issue #296、PR #304）。
 
@@ -242,11 +252,11 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 ## Install and Status Line
 
-`install.sh` は `commands/*.md` を `~/.claude/commands/` と `~/.codex/commands/`、`hooks/*.sh` を `~/.claude/hooks/` と `~/.codex/hooks/`、`skills/*/` を `~/.codex/skills/`、`templates/*.md` を `~/.claude/templates/` と `~/.codex/templates/` に個別 symlink する。旧 `~/.config/claude-code-kit/templates` は作成も削除もしない。その後 `jq` があれば migration helper（`remove_claude_hook` / `remove_codex_hook`）で旧 hook entry を除去してから `add_claude_hook` / `add_codex_hook` で新 entry を追加する。idempotent な設計のため複数回実行しても重複しない。Codex hooks は `/hooks` で review/trust してから利用する前提で案内する。
+`install.sh` は `commands/*.md` を `~/.claude/commands/` と `~/.codex/commands/`、`hooks/*.sh` を `~/.claude/hooks/` と `~/.codex/hooks/`、`hooks/lib/*.sh` を `~/.claude/hooks/lib/` と `~/.codex/hooks/lib/`（issue #316。`[ -e "$src" ] || continue` で空 glob 展開をスキップするガード付き）、`skills/*/` を `~/.codex/skills/`、`templates/*.md` を `~/.claude/templates/` と `~/.codex/templates/` に個別 symlink する。旧 `~/.config/claude-code-kit/templates` は作成も削除もしない。その後 `jq` があれば migration helper（`remove_claude_hook` / `remove_codex_hook`）で旧 hook entry を除去してから `add_claude_hook` / `add_codex_hook` で新 entry を追加する。idempotent な設計のため複数回実行しても重複しない。Codex hooks は `/hooks` で review/trust してから利用する前提で案内する。
 
 `setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、settings に `statusLine` を追加する。`scripts/statusline.sh` は stdin JSON から context / five-hour / seven-day rate limit を抽出して表示する。
 
-根拠: `install.sh:12-188`, `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`
+根拠: `install.sh:12-208`, `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`
 
 `scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py` は `logs/<type>/*.log` を月単位（`--month YYYY-MM` / `--all` / 省略時は最新月）でパースし、集計結果を JSON として標準出力へ出力する（対応する `/analyze-*` command から呼ばれる）。`scripts/lib/analyze_common.py` が対象月解決・ログ列挙・CLI引数定義・百分位計算（`percentile()`）を3スクリプト共通で提供する。`analyze_token_usage.py` は `logs/token-usage/*.log` がセッションごとの累積値である点を踏まえ、セッションIDごとの最終行のみを集計する。3スクリプトとも、対応する hook 自身の実行時間（`duration_ms`）を `duration_ms_stats` として集計する。
 

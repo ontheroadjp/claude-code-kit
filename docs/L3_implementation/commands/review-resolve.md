@@ -55,6 +55,7 @@ Step 4:   完了報告
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 377cdd3 feat(#221): allow-shape auto-approve for local git writes, add review-resolve session gate
 - 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
 - 051fd5f fix(#113): post gh pr review instead of issue comment, add APPROVED to review-resolve

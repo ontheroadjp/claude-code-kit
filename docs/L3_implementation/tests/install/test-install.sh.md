@@ -36,3 +36,8 @@ installer 全体を fixture で実行することで、静的文字列検査だ�
 
 - template 内容自体は検証せず、配置と symlink target の契約だけを検証する
 - legacy target は削除動作ではなく、fresh HOME で新規作成されないことを検証する
+
+## 変更履歴（git log より自動生成）
+
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
+- 27f1861 feat(#76): install templates for claude and codex

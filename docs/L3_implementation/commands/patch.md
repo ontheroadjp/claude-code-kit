@@ -120,6 +120,8 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
+- 1146f95 feat(#286): add generic React and Next.js guidelines
 - d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 27f1861 feat(#76): install templates for claude and codex
@@ -128,5 +130,3 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 - 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
 - dd29feb feat(#129): store session approvals per session
-- 4e742c9 fix(#118): guard session-approved against mid-session scope expansion
-- 83374dc feat(#108): add session-based approval to eliminate double-confirmation prompts

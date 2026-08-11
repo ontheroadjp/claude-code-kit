@@ -34,3 +34,7 @@
 ## 注意事項・既知の制限
 
 - CI（`.github/workflows/test.yml`）には未登録。`tests/hooks/test-approval-hooks.sh` のみが CI 対象で、本テストは他の `tests/install/`・`tests/scripts/` 配下のテストと同様、手動実行が前提
+
+## 変更履歴（git log より自動生成）
+
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard

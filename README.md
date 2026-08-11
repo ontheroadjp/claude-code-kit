@@ -49,6 +49,8 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 - `commands/*.md` -> `~/.codex/commands/`
 - `hooks/*.sh` -> `~/.claude/hooks/`
 - `hooks/*.sh` -> `~/.codex/hooks/`
+- `hooks/lib/*.sh` -> `~/.claude/hooks/lib/`
+- `hooks/lib/*.sh` -> `~/.codex/hooks/lib/`
 - `skills/*/` -> `~/.codex/skills/`
 - `templates/*.md` -> `~/.claude/templates/`
 - `templates/*.md` -> `~/.codex/templates/`
@@ -106,6 +108,7 @@ Local verification commands:
 
 ```bash
 bash tests/hooks/test-approval-hooks.sh
+bash tests/hooks/test-session-paths.sh
 bash tests/commands/test-report-review.sh
 bash tests/commands/test-coding-guidelines.sh
 bash tests/commands/test-work-multi.sh

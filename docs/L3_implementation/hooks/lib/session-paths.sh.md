@@ -47,4 +47,4 @@
 
 ## 変更履歴（git log より自動生成）
 
-- (このファイルは issue #316 の実装で新規作成された)
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard

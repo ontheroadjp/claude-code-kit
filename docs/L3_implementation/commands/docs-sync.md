@@ -116,6 +116,8 @@ citation は対象読み後、読み取った内容に対象ファイルへ対�
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
+- 58cded5 fix: validate specification_summary.md citations before reuse, fall back on stale ones
 - 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
 - 65a9329 feat(#302): resume task after docs-sync hard stop
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
@@ -124,6 +126,4 @@ citation は対象読み後、読み取った内容に対象ファイルへ対�
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
 - 5c9d8f2 feat(#165): extend docs-sync to auto-insert git log into L3 per-file docs
-- 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
-- f6288ac feat(#98): add git push to /docs-sync Phase 3
 - e07fe3b fix: enforce independent README.md check in docs-sync Phase 2

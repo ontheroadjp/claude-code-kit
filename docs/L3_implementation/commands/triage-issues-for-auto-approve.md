@@ -67,6 +67,7 @@ session-approved に候補 issue 番号ごとの `tool:gh_issue_write:<N>` を�
 
 ## 変更履歴（git log より自動生成）
 
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - c5776f2 feat(#297): scope tool:gh_issue_write/tool:gh_pr_write session grants to issue/PR number
 - 4450e96 feat(#298): gate /work on auto-approve-candidate label, swap to triage-approved on approval
 - 7aa4615 feat(#285): add /triage-issues-for-auto-approve command
