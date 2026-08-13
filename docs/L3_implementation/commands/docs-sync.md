@@ -120,6 +120,7 @@ citation は対象読み後、読み取った内容に対象ファイルへ対�
 
 ## 変更履歴（git log より自動生成）
 
+- 2a361fe fix(#354): avoid redundant docs-sync confirmation
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 58cded5 fix: validate specification_summary.md citations before reuse, fall back on stale ones
 - 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
