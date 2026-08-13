@@ -32,4 +32,6 @@ Markdown workflow は直接実行可能なプログラムではないため、`t
 
 ## 変更履歴（git log より自動生成）
 
+- dc5b568 fix(#324): install worktree linker for consumers
+- 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

@@ -98,6 +98,7 @@ Codex hooks は installer が登録しただけでは信頼済みとは限らな
 
 ## 変更履歴（git log より自動生成）
 
+- dc5b568 fix(#324): install worktree linker for consumers
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 214011d fix: correct keybindings.json symlink path in install.sh
 - 25a8151 fix: sync self-referential skill symlinks to .gitignore in install.sh

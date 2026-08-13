@@ -51,6 +51,8 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 - `hooks/*.sh` -> `~/.codex/hooks/`
 - `hooks/lib/*.sh` -> `~/.claude/hooks/lib/`
 - `hooks/lib/*.sh` -> `~/.codex/hooks/lib/`
+- `scripts/*.sh` -> `~/.claude/scripts/`
+- `scripts/*.sh` -> `~/.codex/scripts/`
 - `skills/*/` -> `~/.codex/skills/`
 - `templates/*.md` -> `~/.claude/templates/`
 - `templates/*.md` -> `~/.codex/templates/`

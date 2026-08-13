@@ -20,9 +20,9 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/work-multi` (`commands/work-multi.md`)
 
-`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、`scripts/link-worktree-untracked.sh` で元の working tree の untracked/ignored ファイル・ディレクトリ（`.git`・`.claude` を除く）を symlink する。この symlink群は `.gitignore` のディレクトリ限定パターンに一致せず `git status` に `??`/`!!` として現れるため、`scripts/link-worktree-untracked.sh` が書き出す manifest（`worktree-untracked-symlinks.txt`）を後続の `commands/work.md` G-2・`commands/task.md` Phase 2 が突き合わせる（issue #318）。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
+`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が Claude Code では `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI では `~/.codex/scripts/link-worktree-untracked.sh` へ symlink 配布する linker で、元の working tree の untracked/ignored ファイル・ディレクトリ（`.git`・`.claude` を除く）を symlink する（issue #324）。consumer repo 自身が linker を tracked file として持つ必要はなく、この変更を取り込む際に `./install.sh` を一度再実行して配布する。この symlink群は `.gitignore` のディレクトリ限定パターンに一致せず `git status` に `??`/`!!` として現れるため、linker が書き出す manifest（`worktree-untracked-symlinks.txt`）を後続の `commands/work.md` G-2・`commands/task.md` Phase 2 が突き合わせる（issue #318）。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
 
-根拠: `commands/work-multi.md:1-52`
+根拠: `commands/work-multi.md:1-60`, `install.sh:12-13,24-25,77-83`
 
 ### `/report-review` (`commands/report-review.md`)
 
