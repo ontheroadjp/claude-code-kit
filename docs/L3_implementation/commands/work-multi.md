@@ -8,13 +8,19 @@
 
 ## 動作概要
 
-Step 0 で (1) `pwd` を `ORIGINAL_WORKDIR` として記録し、(2) `EnterWorktree`（`path` 指定なし）で新規 worktree に切り替え、(3) installer が agent 別に配布した `link-worktree-untracked.sh` の `prepare` に元 worktree を渡して lazy linker を初期化する。`ORIGINAL_WORKDIR` はこの `prepare` 引数専用であり、切り替え後の Read・現状調査・Git 操作では新しい worktree を CWD のまま使用する。共有 checkout への `cd` や `git -C "$ORIGINAL_WORKDIR"` は行わない。Claude Code は `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI は `~/.codex/scripts/link-worktree-untracked.sh` を使う。Step 1 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
+Step 0 で (1) `pwd` を `ORIGINAL_WORKDIR` として記録し、(2) `EnterWorktree`（`path` 指定なし）で新規 worktree に切り替え、(3) installer が agent 別に配布した `link-worktree-untracked.sh` の `prepare` に元 worktree を渡して lazy linker を初期化する。`ORIGINAL_WORKDIR` はこの `prepare` 引数専用であり、切り替え後の Read・現状調査・Git 操作では新しい worktree を CWD のまま使用する。共有 checkout への `cd` や `git -C "$ORIGINAL_WORKDIR"` は行わない。Claude Code は `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI は `~/.codex/scripts/link-worktree-untracked.sh` を使う。
+
+issue 番号が親 issue を指す場合は Step 1 で実装対象を決定する。native `subIssues` と、既存の未完了 task list に列挙された子 issue を収集し、子 issue ごとの native `blockedBy` dependency を読む。`OPEN` で全 blocker が `CLOSED` の子だけを実装可能とし、複数なら収集順で最初の 1 件を選ぶ。候補がない、または GitHub の取得・dependency 情報が利用できないときは、推測せず理由を報告して終了する。親に子 issue がなければ従来どおり指定 issue を使う。選ばれた子 issue 番号を、Step 2 で `commands/work.md` へ渡す。
+
+Step 2 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
 
 根拠: `commands/work-multi.md:9-50`
 
 ## 重要な設計判断
 
 - `commands/work.md` を丸ごとコピーせず Read して委譲する薄いラッパー構成とした。`skills/work/SKILL.md` が `commands/work.md` に対して既に採用している「単一 source of truth への薄いポインタ」パターンを踏襲し、`work.md` 変更のたびに二重メンテナンスが発生するリスクを避けるため。
+- 親 issue の子 issue 選択は `subIssues` と task list の両方を読む。既存の `/new-issue` が task list を親子追跡に用いているため、native sub-issue 専用にすると既存の親 issue を入口にできなくなる。一方で実装順の判断は GitHub の構造化された `blockedBy` だけに限定し、本文の自然言語を依存関係として推測しない。
+- 複数の実装可能な子 issue は収集順で最初の 1 件を選ぶ。複数セッションで同じ親を指定しても選択根拠を再現可能にし、恣意的な優先順位付けを持ち込まないため。
 - `ORIGINAL_WORKDIR` は lazy linker が元 worktree を特定するためだけに保持し、worktree 切り替え後の CWD としては使わない。共有 checkout へ移動して Git を実行すると worktree-isolation guard に拒否され、並行実行の分離保証も損なうため。
 - `git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトするため、lazy linker は必要になった untracked/ignored path だけを symlink する。初期化時に大きな `node_modules` 等を処理せず、対象リポジトリ固有の path をあらかじめ仮定しない。
 - `.claude` を丸ごと除外したのは、`EnterWorktree` 自身が worktree を `.claude/worktrees/<name>` 配下に作成する固定仕様のため。`.claude` を symlink すると、新しい worktree の中に worktrees ディレクトリ自身への自己参照ループが生じる。副作用として worktree は `.claude/settings.local.json`（ローカル権限設定）を引き継がない（安全側＝確認プロンプト増加の方向のみ）。
@@ -26,7 +32,8 @@ Step 0 で (1) `pwd` を `ORIGINAL_WORKDIR` として記録し、(2) `EnterWorkt
 
 ## 統合ポイント
 
-- 委譲先: `commands/work.md`（無改変のまま Read して実行）
+- GitHub: `gh issue view --json number,title,body,subIssues`、`gh issue view --json number,title,state,blockedBy`
+- 委譲先: `commands/work.md`（親 issue の解決後、無改変のまま Read して実行）
 - 利用ツール: `EnterWorktree`（`.claude/worktrees/<name>` に `origin/<default-branch>` から分岐した `worktree-<name>` ブランチを作成）
 - 補助スクリプト: `install.sh` により `~/.claude/scripts/link-worktree-untracked.sh` または `~/.codex/scripts/link-worktree-untracked.sh` へ配布される `scripts/link-worktree-untracked.sh`
 
@@ -34,6 +41,7 @@ Step 0 で (1) `pwd` を `ORIGINAL_WORKDIR` として記録し、(2) `EnterWorkt
 
 - 既存 worktree への再入場（`EnterWorktree` の `path` 引数）はスコープ外。常に新規 worktree を作成する。
 - `site/node_modules` 等の依存ディレクトリが symlink 経由で複数 `/work-multi` セッション間に共有されるため、同じ依存ディレクトリを持つセッションでパッケージマネージャの書き込み操作を同時実行しないこと（`CLAUDE.md` に既知の限界として記載）。
+- 子 issue の本文に書かれた依存関係は対象にせず、GitHub native dependency のみを実装順の根拠にする。native dependency を取得できない環境では安全側で停止する。
 
 ## 変更履歴（git log より自動生成）
 
