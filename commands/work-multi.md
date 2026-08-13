@@ -48,7 +48,7 @@ bash ~/.claude/scripts/link-worktree-untracked.sh link "site/node_modules"
 
 Codex CLI では `~/.codex/scripts/` を使う。linker は source 側でその path が untracked/ignored であること、相対 path が `.git`・`.claude`・親 directory traversal を含まないこと、worktree 側に衝突する実体がないことを検証する。作成した path だけを `${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt` に一度だけ記録する。`commands/work.md` G-2・`commands/task.md` Phase 2 の `worktree-status.sh` は、この manifest と完全一致する path またはその親 directory だけを自動除外する。manifest が空なら status は通常どおりであり、単体 `/work` の挙動も変わらない。
 
-**既知の限界**: lazy link した `node_modules` 等の directory へ複数の `/work-multi` セッションが同時に書き込み操作（`npm install` 等）を行うと、その directory に限り共有可変状態の衝突が再発し得る。並行セッションで同じ依存 directory を link して書き込む操作を同時実行しないこと。
+**書き込み境界（必須）**: lazy link した path は読み取り専用として扱う。単独・並行を問わず、symlink 経由でその path を書き換えるコマンドは実行してはならない。`npm install` など package manager による依存 directory への書き込みもこれに含まれる。書き込みが必要な path は link する前に、worktree 内へ独立して作成する。symlink を含む worktree を削除しても、リンク先の元 working tree に既に書き込まれた変更は元に戻らない。
 
 ---
 
