@@ -861,6 +861,8 @@ git -C "$TEST_GIT_REPO" config user.name "Test"
 echo "initial" > "${TEST_GIT_REPO}/initial.txt"
 git -C "$TEST_GIT_REPO" add -A
 git -C "$TEST_GIT_REPO" commit --no-verify -q -m "initial commit"
+WIP_SQUASH_BASE=$(git -C "$TEST_GIT_REPO" rev-parse HEAD)
+git -C "$TEST_GIT_REPO" commit --allow-empty --no-verify -q -m "wip: test WIP squash"
 
 run_auto_in_repo() {
     local command="$1"
@@ -894,6 +896,20 @@ run_apply_patch_in_repo() {
             CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
             bash -c "cd '$TEST_GIT_REPO' && bash '$AUTO_HOOK'"
 }
+
+# Only the exact soft reset that folds the current first-parent WIP range into
+# its preceding non-WIP commit is safe without a session grant.
+output=$(run_auto_in_repo "git reset --soft ${WIP_SQUASH_BASE}")
+assert_json_decision "$output" "approve"
+
+for command in \
+    'git reset --soft HEAD' \
+    "git reset --soft ${WIP_SQUASH_BASE} --no-refresh" \
+    "git reset --mixed ${WIP_SQUASH_BASE}" \
+    'git reset --soft $WIP_SQUASH_BASE'; do
+    output=$(run_auto_in_repo "$command")
+    assert_no_output "$output"
+done
 
 # Write on repo-internal path → approved
 output=$(run_file_tool_in_repo "Write" "${TEST_GIT_REPO}/new.txt")

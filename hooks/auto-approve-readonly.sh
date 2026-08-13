@@ -1266,6 +1266,33 @@ is_rm_f_on_safe_literal_path() {
     return 0
 }
 
+# Approve only the soft reset used by /git-commit to squash the WIP commits
+# created by this hook's working-repository defense. The command shape alone
+# is not sufficient: verify the current first-parent history so that the
+# target is exactly the first non-WIP commit before HEAD's WIP range.
+is_wip_squash_soft_reset() {
+    local cmd="$1"
+    local target repo_root resolved_target commit subject expected_target=""
+
+    printf '%s' "$cmd" | grep -qE '^git[[:space:]]+reset[[:space:]]+--soft[[:space:]]+[0-9a-fA-F]{40}([0-9a-fA-F]{24})?$' || return 1
+    target=$(printf '%s' "$cmd" | awk '{print $4}')
+    repo_root=$(detect_working_repo_root) || return 1
+    resolved_target=$(git -C "$repo_root" rev-parse --verify "${target}^{commit}" 2>/dev/null) || return 1
+
+    while IFS= read -r commit; do
+        subject=$(git -C "$repo_root" log -1 --format='%s' "$commit" 2>/dev/null) || return 1
+        case "$subject" in
+            wip:*) ;;
+            *)
+                expected_target="$commit"
+                break
+                ;;
+        esac
+    done < <(git -C "$repo_root" rev-list --first-parent HEAD 2>/dev/null)
+
+    [ -n "$expected_target" ] && [ "$resolved_target" = "$expected_target" ]
+}
+
 # Each is_safe_<name>_command function below is a self-contained allow-shape
 # predicate: it checks the command-name prefix itself, so calling it on a
 # segment that belongs to a different command family simply returns 1 (no
@@ -1599,6 +1626,7 @@ is_safe_segment() {
     is_blocked_tee_command "$seg" && return 1
 
     is_safe_git_read_command "$seg" && return 0
+    is_wip_squash_soft_reset "$seg" && return 0
     is_safe_local_git_write_command "$seg" && return 0
     is_safe_gh_command "$seg" && return 0
     is_safe_cd_command "$seg" && return 0

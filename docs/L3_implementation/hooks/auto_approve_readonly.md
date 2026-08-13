@@ -81,6 +81,14 @@ Codex は hook の呼出しパスまたは `CODEX_MANAGED_BY_NPM`、`CODEX_MANAG
 13. command を quote-aware に segment 分割する（`>&<fd番号|->` は fd 複製として background operator 扱いしない）。
 14. 全 segment が読み取り専用・narrow な local git write（`git add`/`git commit -m`/`git fetch`）・または session-approved のいずれかの場合のみ承認する。
 
+### WIP squash soft reset
+
+`/git-commit` が動的防御で作成された WIP commit を最終 commit にまとめるための `git reset --soft` は、通常の session approval を必要としない。ただし `is_wip_squash_soft_reset()` は、bare な `git reset --soft <literal 40/64桁 hash>` 以外を拒否したうえで、現在の repository の first-parent history を検査する。HEAD から連続する subject `wip:` の commit 群をたどり、その直前の non-WIP commit と target が完全に一致した場合だけ承認する。
+
+この履歴照合により、同じ reset mode でも任意の target、non-WIP HEAD、追加 option、変数展開を含む形は allowlist に一致せず、通常の許可フローへ戻る。`--hard` は共有 destructive guard により従来どおり block される。
+
+根拠: `hooks/auto-approve-readonly.sh:1269-1294,1627-1629`, `commands/git-commit.md:25-54`
+
 根拠: `hooks/auto-approve-readonly.sh:806-1190`
 
 ### 実装構造: named allow-shape 関数への分割（issue #283）
