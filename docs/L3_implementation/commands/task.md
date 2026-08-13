@@ -145,6 +145,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
 - 0331e9e feat(#336): rename thread on work branch switch
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard

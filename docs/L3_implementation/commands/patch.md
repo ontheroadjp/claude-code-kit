@@ -122,6 +122,7 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 
 ## 変更履歴（git log より自動生成）
 
+- ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
 - 0331e9e feat(#336): rename thread on work branch switch
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 1146f95 feat(#286): add generic React and Next.js guidelines

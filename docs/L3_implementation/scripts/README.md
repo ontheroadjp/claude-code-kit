@@ -29,6 +29,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
 - d7a7627 feat(#212): add /analyze-access, /analyze-auto-approve, /analyze-token-usage log analysis commands
 - 3656e6e docs(#175): add README.md to each module directory

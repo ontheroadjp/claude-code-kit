@@ -39,5 +39,7 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 
 ## 変更履歴（git log より自動生成）
 
+- b37b6a6 fix(#344): add thread renaming helper
+- ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
 - 5815389 refactor(#300): delegate init-docs commit to the shared commit workflow
 - 65a9329 feat(#302): resume task after docs-sync hard stop
