@@ -74,14 +74,27 @@ G-1 で Read した `docs/.ai/repo.profile.json` および現状調査で Read �
 
 ユーザーに作業の目的を尋ねる。
 
-#### issue label の事前ルーティング
+#### 親 issue・label の事前ルーティング
 
-ユーザーが issue 番号を明示している場合、現状調査より先に以下で label を取得する:
+ユーザーが issue 番号を明示している場合、現状調査より先に以下で親 issue と label を取得する。`subIssues` は GitHub の native sub-issue、`body` は既存の未完了 task list（`- [ ] #<issue番号>`）を確認するために使う:
 
 ```bash
-gh issue view <issue番号> --json labels --jq '.labels[].name'
+gh issue view <issue番号> --json number,title,body,labels,subIssues
 ```
 
+- `subIssues.nodes[].number` と、本文の未完了 task list にある同一リポジトリの `#<issue番号>` を親の子 issue として収集する。同じ番号は一度だけ扱い、native sub-issue を先、task list を本文の出現順で続ける。
+- 子 issue が 1 件以上ある場合、各子 issue に対して次を実行し、`state` と GitHub の native dependency を取得する:
+
+```bash
+gh issue view <子issue番号> --json number,title,state,blockedBy
+```
+
+    - `state` が `OPEN` であり、`blockedBy.nodes` の全 issue が `CLOSED` である子 issue だけを「次に実行すべき issue」とする。親の子 issue 外にある blocker も未完了なら実行可能ではない。
+    - 実行可能な子 issue が複数ある場合は、上記の収集順で最初の 1 件を選ぶ。この順序を固定することで、次の着手先を再現可能にする。
+    - 子 issue ごとに番号・タイトル・state・未完了 blocker を報告し、実行可能な子 issue があればその番号・タイトル・選択理由とともに「次は `/work #<子issue番号>` を実行してください」と案内して終了する。選んだ子 issue の実装、`/task`・`/patch` へのルーティング、ブランチ作成は行わない。
+    - 実行可能な子 issue が 0 件の場合は、各子 issue の状態と未完了 blocker を報告して終了する。`/work` を呼び直したり、任意の子 issue を推測で選択したりしてはならない。
+    - GitHub の取得に失敗した場合、または `subIssues` / `blockedBy` が利用できない CLI・権限環境の場合は、エラーを報告して終了する。task list や本文中の語句から依存関係を推測してはならない。
+- 子 issue が 0 件の場合に限り、以下の label 判定へ進む。
 - label に `agenda` が完全一致で含まれる場合:
     - `commands/mtg.md` を Read し、その内容に従う
     - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
@@ -90,7 +103,7 @@ gh issue view <issue番号> --json labels --jq '.labels[].name'
     - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
     - 「この issue には hazard-candidate label が付いています。実装前に `/triage-issues-for-hazard` を実行してハザード審査を受けてください」と報告し、`/work` を終了する
     - このチェックは `/triage-issues-for-hazard` で承認され `triage-approved` label に付け替えられた issue には適用されない（label が既に外れているため自然に該当しなくなる）
-- いずれの label にも該当しない場合:
+- 親 issue ではなく、いずれの label にも該当しない場合:
     - 既存どおり現状調査と2段階ルーティングへ進む
 - issue の取得に失敗した場合:
     - エラーを報告して終了し、推測でルーティングしない

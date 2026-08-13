@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`commands/work-multi.md` が `EnterWorktree` 呼び出し、親 issue の子 issue 選択、`commands/work.md` への委譲で構成され、`work.md` のゲート定義を重複していないこと、および worktree path guard・`worktree-` prefix 判定・linker の `.git`/`.claude` 除外・共通 status helper への委譲が実際に入っていることを静的に検証する shell test。
+`commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲で構成され、親 issue の子 issue 依存関係判定を `work.md` に一元化していること、および worktree path guard・`worktree-` prefix 判定・linker の `.git`/`.claude` 除外・共通 status helper への委譲が実際に入っていることを静的に検証する shell test。
 
 根拠: `tests/commands/test-work-multi.sh:1-51`
 
@@ -13,7 +13,7 @@
 - `commands/work-multi.md` が `EnterWorktree`・agent 別 installed path（`~/.claude/scripts/` と `~/.codex/scripts/`）・`commands/work.md` への言及を含み、consumer repo 相対の `bash scripts/link-worktree-untracked.sh` を含まず、`### G-0`/`### G-1`/`### G-2` を重複定義していない
 - `ORIGINAL_WORKDIR` を Step 0.3 の linker `prepare` 引数だけに使い、共有 checkout への `cd` / `git -C` を行わず、Read・調査・Git 操作を隔離 worktree から実行することを明記している
 - lazy link した path を読み取り専用として扱い、symlink 経由の書き込みを禁止し、書き込みが必要な path を worktree 内へ独立作成するよう明記している
-- 親 issue に対して native `subIssues` と未完了 task list を収集し、native `blockedBy` が全て `CLOSED` の子 issue だけを候補にすること、複数候補は収集順で最初の 1 件を選び候補なしでは推測しないこと
+- `work-multi` 自身は親 issue の依存関係を重複取得せず `work.md` へ委譲し、`work.md` が native `subIssues` と未完了 task list を収集して、native `blockedBy` が全て `CLOSED` の最初の open 子 issue を報告のみして終了すること
 - `skills/work-multi/SKILL.md` が `skills/work/SKILL.md` と同じ scope guard パターンを持つ
 - `commands/work.md` が `.claude/worktrees/` パスガードと `worktree-` prefix ベースのブランチ分類、B.1（未コミット変更があれば継続）の保持を含む
 - `scripts/link-worktree-untracked.sh` と `scripts/worktree-status.sh` が実行権限を持ち、前者が NUL 区切り列挙と `.git`/`.claude` 除外を行い、後者が linker manifest を読む
