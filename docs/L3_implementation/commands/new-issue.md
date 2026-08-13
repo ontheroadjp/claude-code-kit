@@ -47,6 +47,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- e1354ac feat(#338): use native sub-issues for tracking
 - 880ee07 feat(#301): consolidate /new-issue draft/label/creation approval into Step 4
 - ff477c0 feat(#310): add parent/child issue split option to /new-issue
 - 27f1861 feat(#76): install templates for claude and codex
