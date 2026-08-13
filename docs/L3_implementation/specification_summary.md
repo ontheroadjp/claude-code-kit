@@ -12,7 +12,7 @@
 
 全作業の通常入口。G-0 はまず `git rev-parse --show-toplevel` が `.claude/worktrees/` 配下かを判定し、配下であれば（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）main は主 worktree で既にチェックアウト済みのため `git checkout main` をスキップする。配下でなければ従来どおり `git checkout main` を実行する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。G-2 は agent 別に配布された `worktree-status.sh` を使う。通常実行では `git status --porcelain` と同じ結果を返し、隔離 worktree の current session manifest があるときだけ自己作成 symlink を自動除外する。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
-exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。`report` に該当せず exact `hazard-candidate` label があれば、`/triage-issues-for-hazard` の実行を促して終了する。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
+exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず終了する。`agenda` に該当せず exact `hazard-candidate` label があれば、`/triage-issues-for-hazard` の実行を促して終了する。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
@@ -24,11 +24,11 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 根拠: `commands/work-multi.md:1-87`, `install.sh:12-13,24-25,77-83`
 
-### `/report-review` (`commands/report-review.md`)
+### `/mtg` (`commands/mtg.md`)
 
-`report` label の issue 専用 read-only workflow。issue context と必要な repository evidence を読み、Facts、Assessment、Opinions、Proposals、Risks and Unknowns を分離して標準出力に提示する。ファイル、Git state、GitHub issue / PR を変更せず、実装 workflow へ委譲しない。
+`agenda` label の issue を人間と AI が非線形に検討する workflow。必要に応じて Facts、Assessment、Opinions、Proposals を使うが、方向性・実装境界・close は人間だけが決定する。`/new-issue` はユーザーの明示指示でのみ実行する。
 
-根拠: `commands/report-review.md:1-91`
+根拠: `commands/mtg.md:1-77`
 
 ### `/analyze-access` (`commands/analyze-access.md`)
 
@@ -142,9 +142,9 @@ PR 番号を受け取り、PR ブランチに checkout し、事前に `git diff
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。framework layerはgeneral → JavaScript → TypeScript → React → Next.jsの依存順を明示する。現存するskill wrapperは26件でcommandsと対応する。`report-review` skillおよび`analyze-access` / `analyze-auto-approve` / `analyze-token-usage` skillはread-only境界を保持する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`mtg` skill は `/new-issue` と close をユーザー明示指示に限定する。
 
-根拠: `skills/init-docs/SKILL.md:1-14`, `skills/report-review/SKILL.md`, `skills/` 実体一覧
+根拠: `skills/init-docs/SKILL.md:1-14`, `skills/mtg/SKILL.md`, `skills/` 実体一覧
 
 ## Hooks
 
@@ -228,9 +228,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/hooks/test-approval-hooks.sh:1-1340`
 
-`tests/commands/test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、Git/GitHub write command の不在、command/skill catalog の整合性を静的検証する。
+`tests/commands/test-mtg.sh` は exact agenda label routing、非線形の検討、明示指示だけでの `/new-issue`、ユーザー主導の close、command/skill contract を静的検証する。
 
-根拠: `tests/commands/test-report-review.sh:1-73`
+根拠: `tests/commands/test-mtg.sh:1-57`
 
 `tests/commands/test-coding-guidelines.sh` はReact/Next.js layerの依存順、代表anti-pattern、task/patch routing、およびcoding commandにlocal absolute pathやrepository名が混入しないことを静的検証する。
 

@@ -62,6 +62,6 @@ bash tests/hooks/test-approval-hooks.sh
 
 ## 未確認事項
 
-`tests/hooks/test-approval-hooks.sh` は CI（`approval-hooks` job）で実行されるが、`tests/commands/test-report-review.sh`・`tests/install/test-install.sh`・`tests/scripts/`（pytest）は依然として CI に登録されておらずローカル検証のみである。ローカル test 手順は `docs/L2_development/test.md` に分離する。
+`tests/hooks/test-approval-hooks.sh` は CI（`approval-hooks` job）で実行されるが、`tests/commands/test-mtg.sh`・`tests/install/test-install.sh`・`tests/scripts/`（pytest）は依然として CI に登録されておらずローカル検証のみである。ローカル test 手順は `docs/L2_development/test.md` に分離する。
 
 根拠: `tests/` 実体一覧、`.github/workflows/test.yml:1-18`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/deploy.yml:1-53`

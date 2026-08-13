@@ -18,7 +18,7 @@
     "analyze:auto-approve": "python3 scripts/analyze_auto_approve.py --all",
     "analyze:token-usage": "python3 scripts/analyze_token_usage.py --all",
     "test:approval-hooks": "bash tests/hooks/test-approval-hooks.sh",
-    "test:report-review": "bash tests/commands/test-report-review.sh",
+    "test:mtg": "bash tests/commands/test-mtg.sh",
     "test:coding-guidelines": "bash tests/commands/test-coding-guidelines.sh",
     "test:install": "bash tests/install/test-install.sh",
     "test:analysis-scripts": "python3 -m pytest tests/scripts/"
@@ -26,7 +26,7 @@
   "active_commands": [
     "commands/work.md",
     "commands/work-multi.md",
-    "commands/report-review.md",
+    "commands/mtg.md",
     "commands/analyze-access.md",
     "commands/analyze-auto-approve.md",
     "commands/analyze-token-usage.md",
@@ -127,7 +127,7 @@
     "skills/codex-review/SKILL.md",
     "skills/work/SKILL.md",
     "skills/work-multi/SKILL.md",
-    "skills/report-review/SKILL.md",
+    "skills/mtg/SKILL.md",
     "skills/triage-issues/SKILL.md",
     "skills/triage-issues-for-hazard/SKILL.md",
     "skills/task/SKILL.md",

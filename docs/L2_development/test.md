@@ -2,9 +2,9 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が7本、pytest で実行する Python tests が `tests/scripts/` にある。package.json に test script はない。`tests/hooks/test-approval-hooks.sh` は `.github/workflows/test.yml` の `approval-hooks` job で CI 実行されるが、`tests/commands/test-report-review.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/commands/test-workflow-contracts.sh`・`tests/commands/test-work-multi.sh`・`tests/install/test-install.sh`・`tests/scripts/test-link-worktree-untracked.sh`・pytest は現状ローカル検証のみである。
+このリポジトリには Bash で直接実行する shell tests が7本、pytest で実行する Python tests が `tests/scripts/` にある。`tests/hooks/test-approval-hooks.sh` は CI 実行されるが、`tests/commands/test-mtg.sh`・他の command contract tests・installer test・pytest は現状ローカル検証のみである。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-report-review.sh`, `tests/commands/test-coding-guidelines.sh`, `tests/commands/test-workflow-contracts.sh`, `tests/commands/test-work-multi.sh`, `tests/install/test-install.sh`, `tests/scripts/test-link-worktree-untracked.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
+根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-mtg.sh`, `tests/commands/test-coding-guidelines.sh`, `tests/commands/test-workflow-contracts.sh`, `tests/commands/test-work-multi.sh`, `tests/install/test-install.sh`, `tests/scripts/test-link-worktree-untracked.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
 
 ## Hook safety test
 
@@ -21,12 +21,12 @@ bash tests/hooks/test-approval-hooks.sh
 Markdown command は直接実行可能な application code ではないため、重要な必須句と禁止操作を固定文字列で検査する。
 
 ```bash
-bash tests/commands/test-report-review.sh
+bash tests/commands/test-mtg.sh
 ```
 
-`test-report-review.sh` は exact report label routing、read-only boundary、標準出力 sections、command/skill catalog 整合性を確認する。
+`test-mtg.sh` は exact agenda label routing、非線形の検討、明示指示だけでの `/new-issue`、ユーザー主導の close、command/skill contract を確認する。
 
-根拠: `tests/commands/test-report-review.sh:1-73`
+根拠: `tests/commands/test-mtg.sh:1-57`
 
 ```bash
 bash tests/commands/test-coding-guidelines.sh
@@ -102,5 +102,5 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-report-review.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-install.sh`, `test-link-worktree-untracked.sh`）と pytest は CI に登録されていない。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-mtg.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-install.sh`, `test-link-worktree-untracked.sh`）と pytest は CI に登録されていない。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。

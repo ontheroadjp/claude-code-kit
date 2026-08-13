@@ -2,16 +2,16 @@
 
 ## 通常作業フロー
 
-`/review-resolve` 以外の作業は `/work` から開始する。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、以降の review・merge は自動実行しない。`/work` は main へ切り替え、repo profile と workspace を確認する。issue に `report` label があれば実装調査より先に report-review へ委譲し、`hazard-candidate` label があれば `/triage-issues-for-hazard` の実行を案内して終了し、どちらでもなければ現状調査後に task または patch へ進む。
+`/review-resolve` は PR review 専用、`/mtg` は agenda の対話専用である。実装は `/work` から開始する。`/work` は issue に `agenda` label があれば実装調査より先に `/mtg` へ委譲し、`hazard-candidate` label があれば審査を案内し、それ以外を task または patch へ進める。
 
 根拠: `commands/work.md:7-149`
 
 ## ルーティング
 
-issue 番号がある場合は最初に exact `report` label、次に exact `hazard-candidate` label を判定する（同じ `gh issue view --json labels` 呼び出しの結果を使う）。
+issue 番号がある場合は最初に exact `agenda` label、次に exact `hazard-candidate` label を判定する。
 
-- `report` label の issue: `commands/report-review.md` を Read し、read-only 評価で終了する。
-- `report` に該当せず `hazard-candidate` label の issue: `/triage-issues-for-hazard` の実行を促し、`/work` を終了する。`/triage-issues-for-hazard` で `yes` 承認され `triage-approved` label に付け替えられた issue はこの分岐に該当しなくなる。
+- `agenda` label の issue: `commands/mtg.md` を Read し、人間主導の対話を進める。`/new-issue` はユーザー明示指示でのみ実行する。
+- `agenda` に該当せず `hazard-candidate` label の issue: `/triage-issues-for-hazard` の実行を促し、`/work` を終了する。
 - どちらの label にも該当しない issue: 次の実装 routing を行う。
 
 - issue 起点、または docs 変更が必要な場合: `commands/task.md` を Read し task flow を実行する。
@@ -19,11 +19,11 @@ issue 番号がある場合は最初に exact `report` label、次に exact `haz
 
 根拠: `commands/work.md:64-121`
 
-## report-review flow
+## mtg flow
 
-`report-review.md` は issue title/body/labels/state/URL と必要な repository evidence を読み、Facts、Assessment、Opinions、Proposals、Risks and Unknowns を分離して標準出力へ提示する。ファイル、Git state、GitHub issue / PR を変更せず、task/patch/docs-sync/git-pr に委譲しない。
+`mtg.md` は agenda issue を起点に、方向性、フェーズ、スコープ、保留を非線形に検討する。必要な詳細化では Facts / Assessment / Opinions / Proposals を用いるが、決定・issue 起案・close は人間が明示的に行う。
 
-根拠: `commands/report-review.md:5-14`, `commands/report-review.md:20-91`
+根拠: `commands/mtg.md:1-77`
 
 ## task flow
 
@@ -109,7 +109,7 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 | `python3 scripts/analyze_auto_approve.py --all` | auto-approve logs の全期間集計 | `commands/analyze-auto-approve.md:28-36` |
 | `python3 scripts/analyze_token_usage.py --all` | token-usage logs の全期間集計 | `commands/analyze-token-usage.md:27-35` |
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
-| `bash tests/commands/test-report-review.sh` | report-review workflow contract | `tests/commands/test-report-review.sh` |
+| `bash tests/commands/test-mtg.sh` | agenda / mtg workflow contract | `tests/commands/test-mtg.sh` |
 | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition and portability contract | `tests/commands/test-coding-guidelines.sh` |
 | `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract | `tests/install/test-install.sh` |
 | `python3 -m pytest tests/scripts/` | log analysis scripts の parse / aggregate / CLI contract | `tests/scripts/` |
