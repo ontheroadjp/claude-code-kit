@@ -49,9 +49,10 @@ work.md の調査結果を引き継ぎ、プラン確認に必要な情報が不
 ### Step 3: 実行
 
 1. `git checkout -b patch/<slug>` でブランチを作成する
-2. ソースコードを修正する場合は言語対応の coding コマンド（`commands/coding-*.md`）を Read する。JSX/TSXではReact layerを追加し、`next` dependencyまたはNext.js configがあるprojectではさらにNext.js layerを追加する
-3. 変更を実施する（ユーザー確認不要）
-4. `/git-commit` を実行する（`issue_number=none`, `allowed_types=[fix, refactor, chore, style, test, docs]`、`feat` は不可）
+2. 切替直後に Git が返す現在のブランチ名を用いて、Claude Code の会話スレッド名を `/rename <作業ブランチ名>` と同じ結果になるよう更新する。ブランチ名を推測・手入力せず、更新失敗は Git の切替や実装を中断させない
+3. ソースコードを修正する場合は言語対応の coding コマンド（`commands/coding-*.md`）を Read する。JSX/TSXではReact layerを追加し、`next` dependencyまたはNext.js configがあるprojectではさらにNext.js layerを追加する
+4. 変更を実施する（ユーザー確認不要）
+5. `/git-commit` を実行する（`issue_number=none`, `allowed_types=[fix, refactor, chore, style, test, docs]`、`feat` は不可）
 
 根拠: `commands/patch.md:45-59`
 
@@ -111,6 +112,7 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 - 呼び出すもの: `/git-commit`
 - エスカレーション先: `commands/task.md`（Phase 1 Step 2 から）
 - issue template: `${TEMPLATES_DIR}/issue.md`
+- Claude Code の会話スレッド: 作業ブランチの切替直後に `/rename` 相当で現在のブランチ名へ更新する
 
 ## 注意事項
 

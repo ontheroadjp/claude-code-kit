@@ -67,7 +67,7 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 #### Step 3: 実行
 
-3.1: 作業プランに従って実装する。
+3.1: 作業プランに従って実装する。作業ブランチを新規作成または既存ブランチへ切り替えた直後は、Git が返す現在のブランチ名を用いて、Claude Code の会話スレッド名を `/rename <作業ブランチ名>` と同じ結果になるよう更新する。ブランチ名を推測・手入力しない。スレッド名の更新失敗は Git の切替や実装を中断させない。
 
 3.2: 実装完了後、ユーザーに報告して OK を得た後:
 
@@ -78,7 +78,7 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 3. 作業内容を issue のコメントとして投稿する
 4. ユーザー確認なしに即座に Phase 2 へ進む
 
-根拠: `commands/task.md:107-128`
+根拠: `commands/task.md:123-131`
 
 ### Phase 2: PR 本文の準備
 
@@ -130,6 +130,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 - 呼び出し元: `commands/work.md`（ルーティング判定後）、`commands/patch.md`（エスカレーション時）
 - 呼び出すもの: `commands/new-issue.md`（Step 4-5 のみ）、`/git-commit`、`commands/docs-sync.md`、`commands/git-pr.md`、`hooks/lib/session-paths.sh`（`bash` で直接実行、`source` はしない）
+- Claude Code の会話スレッド: 作業ブランチの切替直後に `/rename` 相当で現在のブランチ名へ更新する
 - Phase 2 クリーン判定の manifest: `scripts/link-worktree-untracked.sh` が書き出す `worktree-untracked-symlinks.txt`（issue #318）
 - PR テンプレート: `${TEMPLATES_DIR}/pr.md`（Phase 2 で temp ファイルに書き出す）
 - issue テンプレート: `${TEMPLATES_DIR}/issue.md`
