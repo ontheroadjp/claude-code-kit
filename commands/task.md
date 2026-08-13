@@ -151,7 +151,7 @@ Phase 3: 最終報告
 - main ブランチ以外にいること
 - `git log main..HEAD --oneline` の出力が 1 件以上あること（実装コミットが存在すること）
 - ワークスペースがクリーンであること
-    - worktree 隔離セッション（`git rev-parse --show-toplevel` が `.claude/worktrees/` を含む場合）の場合、`commands/work.md` G-2 と同様に `hooks/lib/session-paths.sh session-tmp-dir` で解決した session tmp directory 配下の `worktree-untracked-symlinks.txt`（存在する場合）を参照し、`git status` の各エントリのパスが manifest 中のいずれかの行と完全一致またはその親ディレクトリである場合は除外してから判定する（issue #318）
+    - Claude Code では `bash ~/.claude/scripts/worktree-status.sh`、Codex CLI では `bash ~/.codex/scripts/worktree-status.sh` の出力を使用する。ヘルパーは worktree 隔離セッションの current session manifest に記録された自己作成 symlink（完全一致または親ディレクトリ一致）のみを自動除外し、それ以外の差分はそのまま返す
     - 除外後もクリーンでない場合: `git stash push -m "task-phase2: auto stash"` で退避してから進む
 
 #### Step 1. PR 本文・タイトルの準備

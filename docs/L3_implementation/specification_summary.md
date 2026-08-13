@@ -10,7 +10,7 @@
 
 ### `/work` (`commands/work.md`)
 
-全作業の通常入口。G-0 はまず `git rev-parse --show-toplevel` が `.claude/worktrees/` 配下かを判定し、配下であれば（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）main は主 worktree で既にチェックアウト済みのため `git checkout main` をスキップする。配下でなければ従来どおり `git checkout main` を実行する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
+全作業の通常入口。G-0 はまず `git rev-parse --show-toplevel` が `.claude/worktrees/` 配下かを判定し、配下であれば（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）main は主 worktree で既にチェックアウト済みのため `git checkout main` をスキップする。配下でなければ従来どおり `git checkout main` を実行する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。G-2 は agent 別に配布された `worktree-status.sh` を使う。通常実行では `git status --porcelain` と同じ結果を返し、隔離 worktree の current session manifest があるときだけ自己作成 symlink を自動除外する。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に labels を取得する。
 
 exact `report` label があれば `commands/report-review.md` へ委譲して実装せず終了する。`report` に該当せず exact `hazard-candidate` label があれば、`/triage-issues-for-hazard` の実行を促して終了する。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。
 
@@ -20,7 +20,7 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/work-multi` (`commands/work-multi.md`)
 
-`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が Claude Code では `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI では `~/.codex/scripts/link-worktree-untracked.sh` へ symlink 配布する linker で、元の working tree の untracked/ignored ファイル・ディレクトリ（`.git`・`.claude` を除く）を symlink する（issue #324）。consumer repo 自身が linker を tracked file として持つ必要はなく、この変更を取り込む際に `./install.sh` を一度再実行して配布する。この symlink群は `.gitignore` のディレクトリ限定パターンに一致せず `git status` に `??`/`!!` として現れるため、linker が書き出す manifest（`worktree-untracked-symlinks.txt`）を後続の `commands/work.md` G-2・`commands/task.md` Phase 2 が突き合わせる（issue #318）。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
+`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が Claude Code では `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI では `~/.codex/scripts/link-worktree-untracked.sh` へ symlink 配布する linker で、元の working tree の untracked/ignored ファイル・ディレクトリ（`.git`・`.claude` を除く）を symlink する（issue #324）。consumer repo 自身が linker を tracked file として持つ必要はなく、この変更を取り込む際に `./install.sh` を一度再実行して配布する。linker manifest（`worktree-untracked-symlinks.txt`）は `worktree-status.sh` が利用し、後続の `commands/work.md` G-2・`commands/task.md` Phase 2 から自己作成 symlink を自動除外する。manifest がないときは通常 status を返すため、単体 `/work` の挙動は変わらない。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
 
 根拠: `commands/work-multi.md:1-60`, `install.sh:12-13,24-25,77-83`
 
@@ -244,7 +244,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/hooks/test-session-paths.sh:1-87`
 
-`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を静的検証する（issue #296、PR #304）。
+`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、linker と shared status helper の契約を静的検証する。`tests/scripts/test-worktree-status.sh` は manifest 記録済み symlink を除外し、実際の変更と単体 `/work` 相当の通常 status を保持することを functional に検証する。
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
 
@@ -264,7 +264,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `scripts/analyze_access.py:1-6`, `scripts/analyze_auto_approve.py:1-6`, `scripts/analyze_token_usage.py:1-9`, `scripts/lib/analyze_common.py:1`
 
-`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、引数に取った元の working tree に対して `git status --porcelain -z --ignored=matching` の NUL 区切り出力から `??`/`!!` エントリを列挙し、`.git`・`.claude` とその配下を除く全てを現在の working tree（新しい worktree）の同一相対パスへ symlink する（issue #296、PR #304 レビューで `git clean -ndx` の人間向け出力パースから変更）。symlink 化したパスは `.gitignore` のディレクトリ限定パターンに一致せず `git status` に `??`/`!!` として現れるため、`hooks/lib/session-paths.sh` が解決可能な場合は symlink 化した相対パス一覧を session tmp directory 配下の `worktree-untracked-symlinks.txt` に書き出す。`commands/work.md` G-2・`commands/task.md` Phase 2 はこの manifest と突き合わせてから「差分があるか」を判定する（issue #318）。
+`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、引数に取った元の working tree に対して `git status --porcelain -z --ignored=matching` の NUL 区切り出力から `??`/`!!` エントリを列挙し、`.git`・`.claude` とその配下を除く全てを現在の working tree（新しい worktree）の同一相対パスへ symlink する。symlink 化した相対パスは session tmp directory の `worktree-untracked-symlinks.txt` に書き出す。`scripts/worktree-status.sh` はこの manifest を使い、`??`/`!!` の完全一致または親 directory の entry だけを除外して残りの porcelain status を返す。manifest 不在時は通常の status を返す。
 
 根拠: `scripts/link-worktree-untracked.sh:1-59`
 
