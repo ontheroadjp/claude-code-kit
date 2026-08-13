@@ -32,3 +32,8 @@
 ## 注意事項・既知の制限
 
 `/mtg` 自体は implementation workflow を開始せず、issue の起案後もユーザーが close を宣言するまで終了しない。ユーザーが今回の mtg の終了を宣言した場合は、agenda を close せずに議事録だけを投稿する。
+
+## 変更履歴（git log より自動生成）
+
+- 9f02f04 docs(#347): record mtg minutes
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
