@@ -26,9 +26,9 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/mtg` (`commands/mtg.md`)
 
-`agenda` label の issue を人間と AI が非線形に検討する workflow。必要に応じて Facts、Assessment、Opinions、Proposals を使うが、方向性・実装境界・close は人間だけが決定する。`/new-issue` はユーザーの明示指示でのみ実行する。
+`agenda` label の issue を人間と AI が非線形に検討する workflow。開始時には issue 本文と全コメントを読み、必要に応じて Facts、Assessment、Opinions、Proposals を使うが、方向性・実装境界・close は人間だけが決定する。今回の mtg の終了をユーザーが明示した場合は、日付・開始時刻・終了時刻を含む議事録を issue に投稿する。この投稿は issue close と独立しており、`/new-issue` はユーザーの明示指示でのみ実行する。
 
-根拠: `commands/mtg.md:1-77`
+根拠: `commands/mtg.md:1-85`
 
 ### `/analyze-access` (`commands/analyze-access.md`)
 

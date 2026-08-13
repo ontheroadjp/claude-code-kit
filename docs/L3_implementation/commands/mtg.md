@@ -12,15 +12,16 @@
 
 根拠: `commands/mtg.md:23-53`
 
-`/new-issue` はユーザーが明示的に指示した場合だけ実行する。ユーザーが close を明示した場合だけ、決定事項、スコープ外、保留、実装 issue を要約して確認を受け、issue のコメント・close を行う。
+`/mtg` の開始時には issue 本文に加えて全コメントを取得し、過去の議事録も対話の起点にする。今回の mtg の終了をユーザーが明示した場合は、日付・開始時刻・終了時刻を含む議事録を issue に投稿する。この投稿は close と独立しており、ユーザーが agenda issue の close を明示した場合だけ、決定事項、スコープ外、保留、実装 issue を要約して確認を受け、issue のコメント・close を行う。
 
-根拠: `commands/mtg.md:55-78`
+根拠: `commands/mtg.md:23-85`
 
 ## 重要な設計判断
 
 - fixed state machine を置かず、検討の途中で方向性・フェーズ・詳細・保留を自由に往復できるようにする。実装前の意思決定は直線的に進まないため。
 - issue 起案は `/new-issue` の明示指示ゲートを維持する。AI の提案や合意を GitHub 変更の自動実行権限に変換しないため。
 - close は人間専用の決定とする。AI が議論の十分性を判断して対話を打ち切らないため。
+- 議事録の投稿と close を分離する。agenda issue は複数回の mtg をまたいで継続でき、各回の結果を issue コメントとして残せるようにするため。
 
 ## 統合ポイント
 
@@ -30,4 +31,9 @@
 
 ## 注意事項・既知の制限
 
-`/mtg` 自体は implementation workflow を開始せず、issue の起案後もユーザーが close を宣言するまで終了しない。
+`/mtg` 自体は implementation workflow を開始せず、issue の起案後もユーザーが close を宣言するまで終了しない。ユーザーが今回の mtg の終了を宣言した場合は、agenda を close せずに議事録だけを投稿する。
+
+## 変更履歴（git log より自動生成）
+
+- 9f02f04 docs(#347): record mtg minutes
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
