@@ -14,11 +14,13 @@
 pwd
 ```
 
-出力された絶対パスを `ORIGINAL_WORKDIR` として以降のステップでリテラル値として使用する（CLAUDE.md の resolve-then-embed 規約に従う）。
+出力された絶対パスを `ORIGINAL_WORKDIR` として記録する。これは Step 0.3 の lazy linker `prepare` 引数にのみリテラル値として使用する（CLAUDE.md の resolve-then-embed 規約に従う）。
 
 ### 0.2 EnterWorktree を実行する
 
 `EnterWorktree` を `path` を指定せずに呼び出す（常に新規 worktree を作成する。既存 worktree への再入場はスコープ外）。これによりセッションの作業ディレクトリが新しい worktree（`.claude/worktrees/<name>`、`origin/<default-branch>` から分岐したブランチ `worktree-<name>`）へ切り替わる。
+
+切り替え後は、新しい worktree を CWD のまま使用する。共有 checkout に `cd` したり、`git -C "$ORIGINAL_WORKDIR"` を使ったりしてはならない。`commands/work.md` の Read、現状調査、Git 操作はすべてこの worktree から実行する。
 
 ### 0.3 lazy linker を初期化する
 
