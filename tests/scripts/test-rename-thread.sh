@@ -8,7 +8,7 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 WORKSPACE="$TMP_DIR/workspace"
 HOME_DIR="$TMP_DIR/home"
-SESSION_ID='12345678-1234-1234-1234-123456789abc'
+SESSION_ID='rename-thread-fixture'
 mkdir -p "$WORKSPACE"
 
 project_key=$(printf '%s' "$WORKSPACE" | tr -c 'A-Za-z0-9._-' '-')
