@@ -16,3 +16,8 @@
 
 - 対象: `scripts/rename-thread.sh`
 - 実行: `bash tests/scripts/test-rename-thread.sh`
+
+## 変更履歴（git log より自動生成）
+
+- b37b6a6 fix(#344): add thread renaming helper
+- ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch

@@ -27,3 +27,8 @@ Claude Code の作業フローがブランチを切り替えた直後、現在�
 ## 注意事項
 
 transcript の保存先は Claude Code のローカル実装に依存する。保存形式または配置規則が変更された場合、スクリプトは安全に no-op となるが、スレッド名は更新されない。
+
+## 変更履歴（git log より自動生成）
+
+- b37b6a6 fix(#344): add thread renaming helper
+- ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
