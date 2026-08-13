@@ -32,10 +32,10 @@ git log -1 --format="%s"
 
 `wip:` で始まらない場合はこのステップをスキップする。
 
-`wip:` で始まる場合、HEAD から遡り最初に見つかった non-WIP commit の hash を取得する:
+`wip:` で始まる場合、first-parent 上で HEAD から連続する `wip:` commits をたどり、最初に見つかった non-WIP commit の hash を取得する:
 
 ```bash
-git log HEAD --format="%H %s" | awk '!/^[a-f0-9]+ wip:/{print $1; exit}'
+git log --first-parent HEAD --format="%H %s" | awk '!/^[a-f0-9]+ wip:/{print $1; exit}'
 ```
 
 取得した hash に対して reset する:
@@ -44,12 +44,14 @@ git log HEAD --format="%H %s" | awk '!/^[a-f0-9]+ wip:/{print $1; exit}'
 git reset --soft <上記で取得した hash>
 ```
 
+この完全な形（bare `git reset --soft`、literal な 40/64 桁 hash、target が連続 WIP 範囲の直前の non-WIP commit）は approval hook により自動承認される。ほかの reset mode・追加 option・target、または履歴照合に失敗した場合は通常の許可フローに戻る。
+
 これにより:
 - HEAD が直近の non-WIP commit に戻る
 - HEAD 側の連続する `wip:` commits の全変更がステージ済みになる
 - working tree および non-WIP commit は不変
 
-このステップの責務は「HEAD から遡った連続する `wip:` commits のみを squash すること」である。それより先に `wip:` commits が存在しても、このステップのスコープ外であるため一切触れない。
+このステップの責務は「HEAD から first-parent を遡った連続する `wip:` commits のみを squash すること」である。それより先に `wip:` commits が存在しても、このステップのスコープ外であるため一切触れない。
 
 ### 3. ステージ済み diff の取得
 ```bash
