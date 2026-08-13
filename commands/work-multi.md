@@ -2,7 +2,7 @@
 
 `commands/work.md` と全く同じワークフローを、`EnterWorktree` で作成した専用の worktree 内で実行するための、意図的な並行セッション利用向けエントリポイントです。並行セッションが同じ working tree を共有すると、一方の `git checkout` がもう一方の作業中ファイルを書き換えてしまう衝突が起こり得ます（issue #296）。worktree で物理的に working tree を分離することでこれを防ぎます。
 
-`commands/work.md` 自体の判定ロジックは変更しません。ここで行うのは、`commands/work.md` を Read する前の専用 worktree への切り替えと、親 issue が指定された場合の実装対象の子 issue の決定だけです。
+`commands/work.md` 自体の判定ロジックは変更しません。ここで行うのは、`commands/work.md` を Read する前の専用 worktree への切り替えだけです。親 issue の検出、未完了の子 issue の依存関係確認、次に実行すべき子 issue の報告と終了は、`commands/work.md` が一元的に担います。
 
 ---
 
@@ -52,30 +52,7 @@ Codex CLI では `~/.codex/scripts/` を使う。linker は source 側でその 
 
 ---
 
-## Step 1: 親 issue から実装対象を決定する
-
-`/work-multi #<issue番号>` のように issue 番号が指定された場合、まず次を実行してその issue が親 issue か確認する。`subIssues` は GitHub の native sub-issue、`body` は既存の task list（`- [ ] #<issue番号>`）を確認するために使う。
-
-```bash
-gh issue view <issue番号> --json number,title,body,subIssues
-```
-
-- `subIssues.nodes[].number` と、本文の未完了 task list にある同一リポジトリの `#<issue番号>` を親の子 issue として収集する。同じ番号は一度だけ扱い、native sub-issue を先、task list を本文の出現順で続ける。
-- 子 issue が 0 件なら、指定された issue 番号をそのまま `/work` へ渡す（従来どおり）。
-- 子 issue が 1 件以上ある場合、各子 issue に対して次を実行し、`state` と GitHub の native dependency を取得する。
-
-```bash
-gh issue view <子issue番号> --json number,title,state,blockedBy
-```
-
-- `state` が `OPEN` であり、`blockedBy.nodes` の全 issue が `CLOSED` である子 issue だけを「実装可能」とする。親の子 issue 外にある blocker も未完了なら実装可能ではない。
-- 実装可能な子 issue が複数ある場合は、上記の収集順で最初の 1 件を選ぶ。この順序を固定することで、並行セッションでも選択が再現可能になる。
-- 実装可能な子 issue が 0 件の場合は、各子 issue の状態と未完了 blocker を報告して終了する。`/work` を呼び出したり、任意の子 issue を推測で選択したりしてはならない。
-- GitHub の取得に失敗した場合、または `subIssues` / `blockedBy` が利用できない CLI・権限環境の場合は、エラーを報告して終了する。task list や本文中の語句から依存関係を推測してはならない。
-
-子 issue を選んだ場合は、以降の `/work` 呼び出しでは親 issue 番号ではなく、選んだ子 issue 番号を「ユーザーが明示した issue 番号」として扱う。選択結果（親 issue、候補一覧、各 blocker、選択理由）をユーザーへ報告してから Step 2 に進む。
-
-## Step 2: /work への委譲
+## Step 1: /work への委譲
 
 1. `commands/work.md` を Read する。
 2. その内容を一字一句そのまま実行する。再解釈・簡略化・他ワークフローとの統合はしない。
@@ -84,7 +61,7 @@ gh issue view <子issue番号> --json number,title,state,blockedBy
 ## Scope Guard
 
 - `commands/work.md`・`task.md`・`patch.md` をこのファイルから編集しない。
-- 親 issue の子 issue 選択以外のロジック（ゲート確認・ルーティング判定・実装フロー）を重複定義しない。
+- 親 issue の検出・子 issue の依存関係判定を含むロジック（ゲート確認・ルーティング判定・実装フロー）を重複定義しない。
 
 ## 完了時の扱い
 
