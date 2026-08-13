@@ -14,7 +14,9 @@ G-2 のワークスペース確認は、worktree 隔離セッションの場合�
 
 issue 番号が指定された場合は、実装向け調査より先に issue labels を取得する。name が `agenda` と完全一致する label があれば `commands/mtg.md` に委譲して終了し、実装 branch や `/task`・`/patch` flow には進まない。`agenda` に該当せず `hazard-candidate` と完全一致する label がある場合は、`/triage-issues-for-hazard` の実行を促すメッセージを出して `/work` を終了する。どちらの label にも該当しない issue は既存どおり issue 起点の `/task` へ進み、issue がない作業は docs 変更の要否によって `/task` または `/patch` に分岐する。
 
-根拠: `commands/work.md:71-131`
+「現状調査（共通）」の冒頭には、この調査フェーズで許可される手段（Read・Grep・Glob・WebFetch・WebSearch・`gh` の読み取り専用呼び出し）と、Edit・Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで実行してはならない旨を明示するガード文がある（issue #356）。
+
+根拠: `commands/work.md:59-61`, `commands/work.md:73-133`
 
 (A)/(B) のルーティング判定は、現在ブランチが `main` 自身、または `EnterWorktree` が作成する固定 prefix `worktree-` で始まる場合のみ (A) 新規作業とし、それ以外の全ての非 main ブランチは (B) 再開・エスカレーション（既存の B.1/B.2/B.3 判定）として扱う（issue #296、PR #304 レビューで修正）。
 
@@ -22,7 +24,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 非 main branch で再開した場合は workspace と main 以降の commit の有無から task の再開地点を決め、調査結果と開始 phase をユーザーへ提示する。
 
-根拠: `commands/work.md:133-150`
+根拠: `commands/work.md:135-152`
 
 ## 重要な設計判断
 
@@ -31,6 +33,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - agenda / hazard-candidate 判定は label name の完全一致とし、類似名による誤配送を避ける。
 - agenda・hazard-candidate の label routing を実装向け現状調査より前に置き、方針・実装境界が未決の issue や人間のハザード審査を経ていない issue に implementation planning を適用しない。
 - label 取得に失敗した場合は推測で既存 flow に進まず、安全に停止する。
+- `hooks/auto-approve-readonly.sh` は working-repo 内の Edit/Write を `is_in_working_repo` → `do_wip_commit` 経由で無条件承認する（issue #148）ため、調査フェーズでの Edit/Write を止める technical gate は存在しない。唯一の防御は work.md/task.md/patch.md の手順順序という behavioral gate であり、それ自体を明文化した禁止がどこにもなかった。issue 番号明示時の親子issue・label 事前ルーティングが拡大し「現状調査（共通）」に到達するまでの区間が長くなったことが引き金となり、ユーザーから調査フェーズ中の意図しない編集が報告された（issue #356）。対処として「現状調査（共通）」冒頭に、この段階で許可される手段（Read/Grep/Glob/WebFetch/WebSearch/`gh` 読み取り専用呼び出し）と Edit/Write 禁止を明示するガード文を追加した。
 - hazard-candidate チェックは `/analyze-hazard-scan` が起票した issue に対し `/work #N` を直接叩くと、`/triage-issues-for-hazard` のハザード分析開示・yes/no 確認を一切経由せず実装まで進んでしまう問題への対処である。`/triage-issues-for-hazard` で `yes` と回答された issue は `hazard-candidate` → `triage-approved` へ label が swap されるため、このチェックには再度ひっかからず通常の `/task` ルーティングに進める。
 - worktree パスガードと (A)/(B) のブランチ分類変更は `/work-multi`（issue #296）が `commands/work.md` を無改変のまま実行するとの前提で設計されたが、実機検証で `git checkout main` が worktree 内では `fatal: 'main' is already used by worktree` で必ず失敗することが判明し、この前提は成立しなかった。パスガードは、失敗してからエラー文言を解釈するのではなく `.claude/worktrees/` という `EnterWorktree` 自身の固定仕様を事前チェックすることで確実に判定する設計とした。
 - (A)/(B) 分類は当初「`/task`・`/patch` が実際に作成する命名規則（`feat/` 等）に一致するか」で判定していたが、PR #304 の Codex CLI レビューで、この基準だとユーザーが手動で作成した命名規則に沿わないブランチ（例: `docs/foo`）上で未コミット変更がある状態から `git checkout main` が失敗した場合、既存の B.1（未コミット変更があれば継続）に到達せず誤って (A) 新規作業に分類されてしまう問題を指摘された。修正後は分類基準を `worktree-` prefix の有無だけに限定し、それ以外の非 main ブランチは全て従来通り (B) の B.1/B.2/B.3 判定に委ねることで、既存の「未コミット変更があれば継続」という安全な挙動を保持しつつ、fresh worktree のブランチ（`worktree-<name>`）だけを (A) 新規作業として扱う。
@@ -41,7 +44,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
     - 対処として `rm -f` への回帰も検討したが不採用とした。commit 87ce937（fix #250）は `session-approved` を `rm -f` の自動承認対象から明示的に除外している（`is_rm_protected_path`）。これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴（過去に許可された実際のスコープを、確認なしに削除→再構築で置き換える）を塞ぐためのものであり、G-0 を `rm -f` に戻すとこの抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。同じ理由で、hook 側の Write ハンドラを「既存内容が空なら absent と同等に扱う」よう変更する案（`Write` 経由で同種の抜け穴が開く）も不採用とした。
     - 最終的に、G-0 の防御的クリア自体を削除する方針を採った。Stop hook が正常に動作している通常ケースでは `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして無条件承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）のみ、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする（新しい自動承認ロジックは追加しない）。
 
-根拠: `commands/work.md:9-15`, `commands/work.md:21-29`, `commands/work.md:48-56`, `commands/work.md:75-95`, `commands/work.md:133-150`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定）, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, PR #304
+根拠: `commands/work.md:9-15`, `commands/work.md:21-29`, `commands/work.md:59-61`, `commands/work.md:77-97`, `commands/work.md:135-152`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定、Edit/Write working-repo 無条件承認）, issue #148, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, issue #356, PR #304
 
 ## 統合ポイント
 
@@ -62,15 +65,15 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- e5f073e docs(#356): prohibit edits during /work investigation phase
+- f484a2d Route parent issues to their next ready child (#351)
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
+- ea565ac #326 Automate worktree symlink status filtering (#327)
+- a46be53 feat(#321): unify operational hazard workflows
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
 - 4450e96 feat(#298): gate /work on the legacy candidate label, swap to triage-approved on approval
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
-- b3a5b06 chore(#269): prefer L3 doc line citations over full-file reads in /work investigation
-- af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
-- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
-- 1e3b7fa fix(#227): avoid rm -f confirmation prompt in /work G-0 by clearing session-approved via Write tool
-- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 
-根拠: `commands/work.md:9-160`
+根拠: `commands/work.md:9-162`

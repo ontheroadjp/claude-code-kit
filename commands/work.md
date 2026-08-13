@@ -58,6 +58,8 @@ Claude Code では `bash ~/.claude/scripts/worktree-status.sh`、Codex CLI で�
 
 ### 現状調査（共通）
 
+この調査フェーズでは Read・Grep・Glob・WebFetch・WebSearch および `gh` の読み取り専用呼び出しのみ行う。Edit・Write（session-tmp・session-approved ファイルへの書き込みを除く）は、task.md/patch.md の Step 2 プラン承認を得るまで実行してはならない。
+
 (A)・(B) いずれの分岐でも、ルーティング判定または開始フェーズ報告の前に必ず以下を調査・整理する:
 
 - `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む。候補ファイルに対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合は、まずその doc を Read し、関連セクションの `根拠: <file>:<line-range>` citation を確認したうえで、候補ファイル本体の Read は該当行範囲を `offset`/`limit` で指定した対象読みに絞る。L3 doc が存在しない、または対象箇所を特定できない場合は候補ファイルを直接 Read して現在の状態を確認する。同一セッション内で既に読んだ範囲を対象理由なく再度 Read しない。ドキュメントだけでは対象ファイルを特定できない場合のみ Glob/Grep を実行する
