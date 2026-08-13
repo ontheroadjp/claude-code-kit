@@ -24,3 +24,11 @@
 ## 注意事項・既知の制限
 
 lazy link した `node_modules` 等へ複数セッションが同時書き込みすると、共有可変状態の競合は防げない。
+
+## 変更履歴（git log より自動生成）
+
+- 5f7ba97 feat(#328): add lazy worktree linker
+- ea565ac #326 Automate worktree symlink status filtering (#327)
+- 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
+- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

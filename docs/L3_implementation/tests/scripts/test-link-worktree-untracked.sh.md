@@ -36,6 +36,7 @@ fixture の `.gitignore` に `.claude/` を明示し、global gitignore の影�
 
 ## 変更履歴（git log より自動生成）
 
+- 5f7ba97 feat(#328): add lazy worktree linker
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
