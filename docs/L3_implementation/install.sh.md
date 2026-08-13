@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`install.sh` はこのリポジトリの commands, hooks, skills, templates を Claude Code / Codex の実行環境へ symlink し、`jq` が利用可能な場合は Claude Code と Codex の hook 設定も登録する installer である。
+`install.sh` はこのリポジトリの commands, hooks, scripts, skills, templates を Claude Code / Codex の実行環境へ symlink し、`jq` が利用可能な場合は Claude Code と Codex の hook 設定も登録する installer である。
 
 このリポジトリを single source of truth とし、`~/.claude/` や `~/.codex/` 配下へ実体ファイルを複製しない。
 
@@ -11,8 +11,8 @@
 ## 動作概要
 
 1. repository root を解決する。
-2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.claude/hooks/lib`, `~/.codex/hooks/lib`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
-3. repository 内の commands / hooks / hooks/lib / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。`hooks/lib/*.sh` は `commands/*.md` が `bash ~/.claude/hooks/lib/session-paths.sh <mode>` のように直接実行するために symlink する（issue #316）。存在しないファイルに対する glob 展開を避けるため `[ -e "$src" ] || continue` で空展開をスキップする。
+2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.claude/hooks/lib`, `~/.codex/hooks/lib`, `~/.claude/scripts`, `~/.codex/scripts`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
+3. repository 内の commands / hooks / hooks/lib / scripts / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。`hooks/lib/*.sh` は `commands/*.md` が `bash ~/.claude/hooks/lib/session-paths.sh <mode>` のように直接実行するために symlink する（issue #316）。`scripts/*.sh` も agent 別の installed path から直接実行できるよう両 target に symlink する（issue #324）。存在しないファイルに対する glob 展開を避けるため hooks/lib の loop は `[ -e "$src" ] || continue` で空展開をスキップする。
 4. `jq` がない場合は settings 更新をスキップして終了する。
 5. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
 6. migration helper でバージョン間の hook 変更を適用する。
@@ -24,9 +24,9 @@
 
 ### symlink-only installer
 
-installer は `ln -sf` で repository 内ファイルへの symlink を作成する。hook、command、template の実体は repository 側に残るため、変更は symlink 経由で反映される。template は同じ source file を `~/.claude/templates` と `~/.codex/templates` の両方へ link する。
+installer は `ln -sf` で repository 内ファイルへの symlink を作成する。hook、command、script、template の実体は repository 側に残るため、変更は symlink 経由で反映される。template は同じ source file を `~/.claude/templates` と `~/.codex/templates` の両方へ link する。script も同じ source file を `~/.claude/scripts` と `~/.codex/scripts` の両方へ link するため、consumer repo 側に toolkit script を追跡させずに command specification から利用できる。
 
-根拠: `install.sh:5-63`
+根拠: `install.sh:5-83`
 
 ### template の agent 別 installed path
 

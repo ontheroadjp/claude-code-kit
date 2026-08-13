@@ -13,14 +13,17 @@ mkdir -p \
   "$FIXTURE_REPO/commands" \
   "$FIXTURE_REPO/hooks" \
   "$FIXTURE_REPO/hooks/lib" \
+  "$FIXTURE_REPO/scripts" \
   "$FIXTURE_REPO/skills/example" \
   "$FIXTURE_REPO/templates" \
   "$TEST_HOME"
 
 cp "$REPO_DIR/install.sh" "$FIXTURE_REPO/install.sh"
+touch "$FIXTURE_REPO/.gitignore"
 printf '# command\n' > "$FIXTURE_REPO/commands/example.md"
 printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/hooks/example.sh"
 printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/hooks/lib/example-lib.sh"
+printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/scripts/example.sh"
 printf '# skill\n' > "$FIXTURE_REPO/skills/example/SKILL.md"
 
 for template in README.md issue.md pr.md readme.md; do
@@ -64,11 +67,21 @@ assert_hooks_lib_links() {
     "$FIXTURE_REPO/hooks/lib/example-lib.sh"
 }
 
+assert_script_links() {
+  local target_dir=$1
+
+  assert_symlink \
+    "$target_dir/example.sh" \
+    "$FIXTURE_REPO/scripts/example.sh"
+}
+
 run_installer
 assert_template_links "$TEST_HOME/.claude/templates"
 assert_template_links "$TEST_HOME/.codex/templates"
 assert_hooks_lib_links "$TEST_HOME/.claude/hooks/lib"
 assert_hooks_lib_links "$TEST_HOME/.codex/hooks/lib"
+assert_script_links "$TEST_HOME/.claude/scripts"
+assert_script_links "$TEST_HOME/.codex/scripts"
 
 LEGACY_CONFIG_DIR="$TEST_HOME/.config/claude-code-kit"
 if [ -e "$LEGACY_CONFIG_DIR/templates" ]; then
@@ -81,5 +94,7 @@ assert_template_links "$TEST_HOME/.claude/templates"
 assert_template_links "$TEST_HOME/.codex/templates"
 assert_hooks_lib_links "$TEST_HOME/.claude/hooks/lib"
 assert_hooks_lib_links "$TEST_HOME/.codex/hooks/lib"
+assert_script_links "$TEST_HOME/.claude/scripts"
+assert_script_links "$TEST_HOME/.codex/scripts"
 
 printf 'All install contract tests passed.\n'

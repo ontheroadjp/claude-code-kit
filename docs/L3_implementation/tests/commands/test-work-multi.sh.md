@@ -10,7 +10,7 @@
 
 固定文字列の存在・不在を検査する helper（`assert_contains`/`assert_absent`）と実行権限を検査する helper（`assert_executable`）を使い、以下を確認する。
 
-- `commands/work-multi.md` が `EnterWorktree`・`scripts/link-worktree-untracked.sh`・`commands/work.md` への言及を含み、`### G-0`/`### G-1`/`### G-2` を重複定義していない
+- `commands/work-multi.md` が `EnterWorktree`・agent 別 installed path（`~/.claude/scripts/` と `~/.codex/scripts/`）・`commands/work.md` への言及を含み、consumer repo 相対の `bash scripts/link-worktree-untracked.sh` を含まず、`### G-0`/`### G-1`/`### G-2` を重複定義していない
 - `skills/work-multi/SKILL.md` が `skills/work/SKILL.md` と同じ scope guard パターンを持つ
 - `commands/work.md` が `.claude/worktrees/` パスガードと `worktree-` prefix ベースのブランチ分類、B.1（未コミット変更があれば継続）の保持を含む
 - `scripts/link-worktree-untracked.sh` が実行権限を持ち、`status --porcelain -z --ignored=matching` による NUL 区切り列挙と `.git`/`.claude` 除外を含む
