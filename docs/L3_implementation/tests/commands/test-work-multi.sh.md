@@ -34,6 +34,7 @@ Markdown workflow は直接実行可能なプログラムではないため、`t
 
 ## 変更履歴（git log より自動生成）
 
+- 8e9b9bb feat(#332): select ready child issue in work-multi
 - 1453def fix(#330): preserve worktree isolation
 - e624ef2 #328 Add lazy worktree linker (#329)
 - ea565ac #326 Automate worktree symlink status filtering (#327)
