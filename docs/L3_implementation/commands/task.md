@@ -67,7 +67,7 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 #### Step 3: 実行
 
-3.1: 作業プランに従って実装する。作業ブランチを新規作成または既存ブランチへ切り替えた直後は、Git が返す現在のブランチ名を用いて、Claude Code の会話スレッド名を `/rename <作業ブランチ名>` と同じ結果になるよう更新する。ブランチ名を推測・手入力しない。スレッド名の更新失敗は Git の切替や実装を中断させない。
+3.1: 作業プランに従って実装する。作業ブランチを新規作成または既存ブランチへ切り替えた直後は、Claude Code でのみ Git が返す現在のブランチ名を `~/.claude/scripts/rename-thread.sh` に渡し、会話スレッド名を `/rename <作業ブランチ名>` と同じ結果になるよう更新する。Codex CLI ではこの操作をスキップする。ブランチ名を推測・手入力せず、更新失敗は Git の切替や実装を中断させない。
 
 3.2: 実装完了後、ユーザーに報告して OK を得た後:
 
@@ -130,7 +130,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 - 呼び出し元: `commands/work.md`（ルーティング判定後）、`commands/patch.md`（エスカレーション時）
 - 呼び出すもの: `commands/new-issue.md`（Step 4-5 のみ）、`/git-commit`、`commands/docs-sync.md`、`commands/git-pr.md`、`hooks/lib/session-paths.sh`（`bash` で直接実行、`source` はしない）
-- Claude Code の会話スレッド: 作業ブランチの切替直後に `/rename` 相当で現在のブランチ名へ更新する
+- Claude Code の会話スレッド: 作業ブランチの切替直後に、agent 別の分岐で `~/.claude/scripts/rename-thread.sh` を使い現在のブランチ名へ更新する
 - Phase 2 クリーン判定の manifest: `scripts/link-worktree-untracked.sh` が書き出す `worktree-untracked-symlinks.txt`（issue #318）
 - PR テンプレート: `${TEMPLATES_DIR}/pr.md`（Phase 2 で temp ファイルに書き出す）
 - issue テンプレート: `${TEMPLATES_DIR}/issue.md`
@@ -141,6 +141,7 @@ session-approved への追記を hook が block するため、全スコープ�
 - ソースコードを修正する場合は修正前に言語対応の coding コマンド（`commands/coding-*.md`）を Read する。JSX/TSXではReact layerを追加し、`next` dependencyまたはNext.js configがあるprojectではさらにNext.js layerを追加する。
 - `session-approved` に L3 per-file doc パスを含めないと hook がブロックするため、Step 2 で必ず含める
 - task.md は docs-sync.md を自動実行し（Phase 2 Step 1）、完了後に git-pr.md を自動実行する。docs-sync の HARD STOP 時はユーザーへ報告して終了し、git-pr は実行しない
+- `rename-thread.sh` は Claude Code の session transcript を更新する補助スクリプトであり、Codex CLI の会話には適用しない
 
 ## 変更履歴（git log より自動生成）
 

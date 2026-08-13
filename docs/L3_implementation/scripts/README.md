@@ -9,18 +9,21 @@
 - `statusline.sh`: stdin JSON からコンテキスト使用率とレートリミット情報を抽出して表示
 - `show-token-usage.sh`: `~/.claude/token-usage.log` を集計し、複数の表示モードで可視化
 - `link-worktree-untracked.sh`: `EnterWorktree` が作成した worktree に、元の working tree の untracked/ignored ファイル・ディレクトリを symlink する（`/work-multi` から呼ばれる、issue #296）
+- `rename-thread.sh`: Claude Code のセッション transcript に `custom-title` を記録し、会話スレッド名を更新する（`/task`・`/patch` から呼ばれる）
 
 ## 重要な設計判断
 
 - `statusline.sh` は `setup_statusline.sh` 経由でセットアップする（直接編集不要）
 - `show-token-usage.sh` のデータソースは `hooks/log-token-usage.sh` が生成するログファイルに依存
 - `link-worktree-untracked.sh` の設計判断の詳細は `docs/L3_implementation/scripts/link-worktree-untracked.sh.md` を参照
+- `rename-thread.sh` は Claude Code のセッション ID と現在の working directory から transcript を特定する。Claude Code 外または transcript 不在時は何も変更せず終了するため、呼び出し元の作業フローを妨げない
 
 ## 統合ポイント
 
 - `statusline.sh` セットアップ: `setup_statusline.sh`（symlink + settings 登録）
 - `show-token-usage.sh` データソース: `hooks/log-token-usage.sh`（Stop hook）→ `~/.claude/token-usage.log`
 - `link-worktree-untracked.sh` 呼び出し元: `commands/work-multi.md` Step 0.3
+- `rename-thread.sh` 呼び出し元: `commands/task.md`、`commands/patch.md`
 
 根拠: `scripts/README.md:1-45`, `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`
 

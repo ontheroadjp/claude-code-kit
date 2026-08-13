@@ -13,6 +13,7 @@ Claude Code のステータス表示とトークン使用量確認のための�
 | `analyze_token_usage.py` | `logs/token-usage/*.log` を集計し JSON を出力する（`/analyze-token-usage` から呼ばれる） |
 | `lib/analyze_common.py` | 上記3スクリプトが共有する対象月解決・ログファイル列挙・JSON出力の共通処理 |
 | `link-worktree-untracked.sh` | `EnterWorktree` が作成した worktree に、元の working tree の untracked/ignored ファイル・ディレクトリを symlink する（`/work-multi` から呼ばれる） |
+| `rename-thread.sh` | Claude Code の現在の会話スレッド名を指定されたブランチ名へ更新する（`/task`・`/patch` から呼ばれる） |
 
 ## statusline.sh
 
@@ -86,4 +87,12 @@ python3 scripts/analyze_token_usage.py --all
 
 ```bash
 bash scripts/link-worktree-untracked.sh <元の working tree の絶対パス>
+```
+
+## rename-thread.sh
+
+Claude Code が管理する現在セッションの transcript に `custom-title` レコードを追記する。`/task` と `/patch` はブランチ切替直後に Git が返すブランチ名を渡して実行する。Claude Code のセッション ID または transcript が見つからない場合は何も変更せず終了するため、Codex CLI を含む非 Claude Code 環境でも安全に呼び出せる。
+
+```bash
+bash scripts/rename-thread.sh fix/example
 ```

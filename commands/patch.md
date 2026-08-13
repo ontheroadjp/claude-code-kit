@@ -56,7 +56,12 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
     ```bash
     git checkout -b patch/<変更内容を表す slug>
     ```
-- 作業ブランチへ切り替えた直後、現在のブランチ名を取得し、Claude Code の会話スレッド名を `/rename <作業ブランチ名>` と同じ結果になるよう更新する。ブランチ名を推測・手入力してはならず、Git が返した現在のブランチ名を用いる。スレッド名の更新に失敗しても、Git のブランチ切替や以降の実装を中断してはならない。
+- 作業ブランチへ切り替えた直後、現在のブランチ名を Git から取得し、Claude Code では以下を実行して会話スレッド名を `/rename <作業ブランチ名>` と同じ結果になるよう更新する。Codex CLI ではこの操作をスキップする。ブランチ名を推測・手入力してはならない。スレッド名の更新に失敗しても、Git のブランチ切替や以降の実装を中断してはならない。
+
+    ```bash
+    branch_name="$(git branch --show-current)"
+    bash ~/.claude/scripts/rename-thread.sh "$branch_name" || true
+    ```
 - ソースコードを修正する場合は、修正前に対象ファイルの言語に応じたコマンドを Read し、記載された原則を適用すること:
     - Python (.py): `commands/coding-py.md`
     - JavaScript (.js): `commands/coding-js.md`
