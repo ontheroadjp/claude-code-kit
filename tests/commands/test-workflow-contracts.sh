@@ -28,6 +28,8 @@ assert_contains "$DOCS_SYNC" '/init-docs` を **documentation-only mode** で自
 assert_contains "$DOCS_SYNC" 'Phase 3 Step 3 へ進み' 'docs-sync rejoins its commit and result-writing phase'
 assert_contains "$DOCS_SYNC" '呼び出し元には通常の `/docs-sync` 完了として制御を返す' 'docs-sync hides internal escalation from its caller'
 assert_contains "$DOCS_SYNC" 'push・PR 作成を行わない' 'docs-sync preserves the PR responsibility boundary'
+assert_contains "$DOCS_SYNC" '確認不要（既決の内容の文章化）' 'docs-sync does not reconfirm documentation uniquely determined by implementation and an approved plan'
+assert_contains "$DOCS_SYNC" '実装済みの挙動や承認済みプランを言い換えるだけの確認は行わない' 'docs-sync limits confirmation to unresolved documentation choices'
 
 assert_contains "$INIT_DOCS" '**standalone mode（デフォルト）**' 'init-docs keeps standalone mode as the default'
 assert_contains "$INIT_DOCS" '**documentation-only mode**' 'init-docs exposes documentation-only regeneration'

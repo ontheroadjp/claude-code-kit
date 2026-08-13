@@ -62,7 +62,7 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/docs-sync` (`commands/docs-sync.md`)
 
-PR branch 上で `git diff main...HEAD` を事実として docs と README を最小更新する。G-4（PR 存在確認）は廃止。補助情報は GitHub PR body の代わりに SESSION_TMP_DIR の `pr-body.md` から取得する（存在しない場合は git diff のみで判断）。HARD STOP 時は `/init-docs` の documentation-only mode を自動実行し、包括的な再構築が完了したら commit・`pr-docs-sync-result.md` 書き出しへ復帰して呼び出し元へ通常完了として返す。push・PR 作成は行わない（`/git-pr` が担う）。L0（`docs/L0_concept/`）には一切書き込まず、L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` へ候補を積んで `/concept-maker` の実行を案内するに留める（issue #273）。4 フェーズ構成（Phase 4 は最終報告）。
+PR branch 上で `git diff main...HEAD` を事実として docs と README を最小更新する。G-4（PR 存在確認）は廃止。補助情報は GitHub PR body の代わりに SESSION_TMP_DIR の `pr-body.md` から取得する（存在しない場合は git diff のみで判断）。HARD STOP 時は `/init-docs` の documentation-only mode を自動実行し、包括的な再構築が完了したら commit・`pr-docs-sync-result.md` 書き出しへ復帰して呼び出し元へ通常完了として返す。push・PR 作成は行わない（`/git-pr` が担う）。L0（`docs/L0_concept/`）には一切書き込まず、L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` へ候補を積んで `/concept-maker` の実行を案内するに留める（issue #273）。4 フェーズ構成（Phase 4 は最終報告）。確認は、git diff と実装前にユーザーが承認した作業プランを読んでも文書化の意味・範囲に複数の妥当な選択肢が残る場合だけに求める。実装済みの振る舞いと承認済みプランから一意に定まる仕様サマリの要約は、既決事項の文章化として確認なしで反映する（issue #354）。
 
 Phase 3 では docs・README.md 更新に加え、L3 per-file doc の変更履歴セクションを自動更新する。`git diff --name-only` で取得したソースファイル（`docs/` 配下を除く）に対応する `docs/L3_implementation/<path>.md` が存在する場合、`git log --oneline -10 -- <file>` を実行し `## 変更履歴（git log より自動生成）` セクションを更新または末尾追加する。L3 doc が存在しないファイルはスキップ（L3 doc 新規作成は `/task` が担う）。
 
@@ -235,6 +235,10 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 `tests/commands/test-coding-guidelines.sh` はReact/Next.js layerの依存順、代表anti-pattern、task/patch routing、およびcoding commandにlocal absolute pathやrepository名が混入しないことを静的検証する。
 
 根拠: `tests/commands/test-coding-guidelines.sh:1-53`
+
+`tests/commands/test-workflow-contracts.sh` は `/docs-sync`・`/init-docs`・`/task`・`/patch`・`/git-pr` の責務境界を静的検証する。`/docs-sync` が実装と承認済みプランから一意に定まる文書化を再確認せず、未解決の文書化判断だけを確認対象にする契約も固定する（issue #354）。
+
+根拠: `tests/commands/test-workflow-contracts.sh:26-31`
 
 `tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、Claude Code と Codex CLI の両 template directory に repository source への個別 symlink が作られること、旧 target が作成されないこと、再実行が冪等であることを検証する。`hooks/lib/*.sh` が Claude/Codex 両 `hooks/lib/` target へ symlink されることも合わせて検証する（issue #316）。
 
