@@ -37,6 +37,9 @@ Step 0 で (1) `pwd` を `ORIGINAL_WORKDIR` として記録し、(2) `EnterWorkt
 
 ## 変更履歴（git log より自動生成）
 
-- dc5b568 fix(#324): install worktree linker for consumers
+- 1453def fix(#330): preserve worktree isolation
+- e624ef2 #328 Add lazy worktree linker (#329)
+- ea565ac #326 Automate worktree symlink status filtering (#327)
+- 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

@@ -20,7 +20,7 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/work-multi` (`commands/work-multi.md`)
 
-`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が agent 別に配布する lazy linker の `prepare` で元 working tree を current session に記録する。この段階では untracked/ignored path を link しない。必要になった path だけを `link <relative-path>` で作成し、manifest に記録する。`worktree-status.sh` はその manifest を使い、後続の `commands/work.md` G-2・`commands/task.md` Phase 2 から自己作成 symlink を自動除外する。manifest が空または不在なら通常 status を返すため、単体 `/work` の挙動は変わらない。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
+`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを `ORIGINAL_WORKDIR` として記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が agent 別に配布する lazy linker の `prepare` で元 working tree を current session に記録する。`ORIGINAL_WORKDIR` はこの初期化専用であり、切り替え後の Read・現状調査・Git 操作は共有 checkout へ移動せず隔離 worktree から行う。この段階では untracked/ignored path を link しない。必要になった path だけを `link <relative-path>` で作成し、manifest に記録する。`worktree-status.sh` はその manifest を使い、後続の `commands/work.md` G-2・`commands/task.md` Phase 2 から自己作成 symlink を自動除外する。manifest が空または不在なら通常 status を返すため、単体 `/work` の挙動は変わらない。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
 
 根拠: `commands/work-multi.md:1-60`, `install.sh:12-13,24-25,77-83`
 
@@ -244,7 +244,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/hooks/test-session-paths.sh:1-87`
 
-`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、lazy linker と shared status helper の契約を静的検証する。`tests/scripts/test-worktree-status.sh` は manifest 記録済み symlink を除外し、実際の変更と単体 `/work` 相当の通常 status を保持することを functional に検証する。
+`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`ORIGINAL_WORKDIR` を lazy linker 初期化に限定して以後の操作を隔離 worktree に留めること、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、lazy linker と shared status helper の契約を静的検証する。`tests/scripts/test-worktree-status.sh` は manifest 記録済み symlink を除外し、実際の変更と単体 `/work` 相当の通常 status を保持することを functional に検証する。
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
 

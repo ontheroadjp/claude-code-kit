@@ -33,7 +33,8 @@ Markdown workflow は直接実行可能なプログラムではないため、`t
 
 ## 変更履歴（git log より自動生成）
 
-- 5f7ba97 feat(#328): add lazy worktree linker
+- 1453def fix(#330): preserve worktree isolation
+- e624ef2 #328 Add lazy worktree linker (#329)
 - ea565ac #326 Automate worktree symlink status filtering (#327)
 - dc5b568 fix(#324): install worktree linker for consumers
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
