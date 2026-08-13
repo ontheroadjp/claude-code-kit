@@ -2,17 +2,17 @@
 
 ## 目的・役割
 
-`scripts/link-worktree-untracked.sh` の symlink 挙動を functional に検証する shell test（issue #296、PR #304、issue #318）。トップレベル untracked ファイル、tracked ディレクトリ配下にネストした untracked ディレクトリ、`.git`/`.claude` の除外（ネストしたパスの漏れ含む）、冪等性、および manifest 書き出し（issue #318）を実際に一時 git リポジトリを作って確認する。
+`scripts/link-worktree-untracked.sh` の lazy linking を functional に検証する shell test。`prepare` が symlink を作らないこと、指定した untracked/ignored path だけを link すること、manifest の冪等性と安全な拒否を確認する。
 
 根拠: `tests/scripts/test-link-worktree-untracked.sh:1-35`
 
 ## 動作概要
 
-`mktemp -d` で作った一時ディレクトリ配下に source（`SRC_DIR`）と destination（`DST_DIR`）の2つの git リポジトリを作る。source には実リポジトリと同じ `.gitignore`（`.claude/` を除外）、tracked ファイル、tracked ディレクトリ配下にネストした untracked ディレクトリ（`site/node_modules`）、トップレベル untracked ファイル/ディレクトリ、`.claude/settings.local.json`、`.claude/worktrees/dummy` を用意する。destination で `HOME` を `hooks/lib/session-paths.sh` が存在しない一時ディレクトリ（`NO_HOOKS_HOME`）に向けた状態で `scripts/link-worktree-untracked.sh <SRC_DIR>` を実行し、symlink の生成先とリンク先が期待通りか（`readlink` と比較）、`.claude` および `.claude/settings.local.json`（ネストしたパスの個別リーク）が存在しないこと、manifest 未インストール環境でもエラーなく完了することを確認する。同じ `HOME` のまま再実行し、エラーなく完了する（冪等性）ことも確認する。
+`mktemp -d` 配下に source と destination repository を作る。source には tracked file、top-level untracked file/directory、tracked directory 配下の ignored `site/node_modules`、`.claude` fixture を用意する。Codex session-paths stub を用意して `prepare <SRC_DIR>` を実行し、source file と空 manifest が作られる一方で symlink が1つも作られないことを確認する。続けて `link untracked.txt` と `link site/node_modules` を実行し、指定 path だけが正しい source target を持つ symlink になることを確認する。
 
 根拠: `tests/scripts/test-link-worktree-untracked.sh:36-89`
 
-続けて、`HOME` を `.claude/hooks/lib/session-paths.sh` のスタブ（`session-tmp-dir` として固定の一時ディレクトリを返す）を配置した別の一時ディレクトリ（`WITH_HOOKS_HOME`）に向け、新しい destination（`DST_DIR2`）に対してスクリプトを実行する。スタブが返した session tmp directory 配下の `worktree-untracked-symlinks.txt` が実際に作成され、symlink 化した全ての相対パス（`untracked.txt`・`untracked_dir`・`site/node_modules`）を含むことを確認する（issue #318）。
+同じ path の再 link は manifest を重複させない。tracked path、parent traversal、`.claude` path、source に存在しない path の `link` は失敗することを確認する。
 
 根拠: `tests/scripts/test-link-worktree-untracked.sh:91-119`
 
@@ -20,9 +20,9 @@
 
 `tests/hooks/test-approval-hooks.sh` と同じ「`mktemp -d` + `trap` によるクリーンアップ」パターンを踏襲し、実リポジトリの状態に影響しない隔離された一時ディレクトリで検証する。static assertion ではなく実際にスクリプトを実行して symlink の生成結果を検証する functional test とした（`tests/commands/test-work-multi.sh` 側は文言の静的検証のみを担当し、役割を分離している）。
 
-フィクスチャに実リポジトリと同じ `.gitignore`（`.claude/` エントリ）を明示的に用意している。当初これを省いていたところ、開発機のグローバル `.gitignore`（`.claude/settings.local.json` のようなファイル単位のルール）が意図せず適用され、`.claude/` がディレクトリ単位ではなく個別ファイル単位で ignored 報告される環境依存の不具合が判明した（PR #304 レビュー対応）。ローカル `.gitignore` を明示することでこの環境依存性を排除し、`.claude/*` ネストパスの除外も明示的にテストする。
+fixture の `.gitignore` に `.claude/` を明示し、global gitignore の影響を受けず `.claude` の拒否を検証する。
 
-全てのスクリプト呼び出しで `HOME` をテスト専用の一時ディレクトリ（`NO_HOOKS_HOME` または `WITH_HOOKS_HOME`）へ明示的に上書きしている（issue #318）。開発機の実際の `$HOME` に `~/.claude/hooks/lib/session-paths.sh` がインストール済みの場合、上書きしないとテストの挙動が開発機の状態に依存してしまう（manifest が書かれるかどうか、書かれる場合の書き込み先が実セッションの tmp directory になるかどうかが変わる）ため、決定論的な検証には常に `HOME` の明示的な制御が必要。
+全ての呼び出しで `HOME` をテスト専用 directory へ上書きし、開発機の installed hook に依存しない決定論的な検証にする。
 
 ## 統合ポイント
 
@@ -36,6 +36,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 5f7ba97 feat(#328): add lazy worktree linker
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

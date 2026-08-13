@@ -7,7 +7,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | Command | Purpose |
 |---|---|
 | `/work` | Main entry point. Routes report-labeled issues to read-only review, tells the user to run `/triage-issues-for-hazard` first for hazard-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
-| `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Symlinks untracked/ignored files (except `.git`/`.claude`) from the original working tree; its self-created links are automatically excluded from status checks. |
+| `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Records the original working tree and links only explicitly needed untracked/ignored paths; its self-created links are automatically excluded from status checks. |
 | `/report-review` | Evaluates a report-labeled issue read-only and prints evidence-based opinions and proposals without changing files or GitHub state. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
@@ -91,7 +91,7 @@ This links `scripts/statusline.sh` to `~/.claude/statusline.sh` and adds a `stat
   PR review comments -> address/reply/skip interactively -> commit/push/reply as needed
 
 /work-multi (opt-in, for deliberate concurrent sessions)
-  EnterWorktree -> new isolated worktree -> symlink untracked files -> runs /work unchanged
+  EnterWorktree -> new isolated worktree -> lazily link needed untracked files -> runs /work unchanged
 ```
 
 Site commands are under `site/`:

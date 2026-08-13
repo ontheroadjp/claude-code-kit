@@ -1,59 +1,125 @@
 #!/usr/bin/env bash
-# Symlink every untracked/ignored path from a source git working tree into
-# the current working tree (a freshly created EnterWorktree worktree).
+# Lazily symlink explicitly requested untracked or ignored paths into a worktree.
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <source-working-tree>" >&2
+CLAUDE_SESSION_PATHS="${HOME}/.claude/hooks/lib/session-paths.sh"
+CODEX_SESSION_PATHS="${HOME}/.codex/hooks/lib/session-paths.sh"
+MANIFEST_NAME='worktree-untracked-symlinks.txt'
+SOURCE_NAME='worktree-untracked-source.txt'
+
+usage() {
+    echo "Usage: $0 prepare <source-working-tree> | link <relative-path>" >&2
     exit 1
-fi
+}
 
-src="$(cd "$1" && pwd)"
+session_tmp_dir() {
+    local session_paths=""
 
-# Record every path this run symlinks, so callers (e.g. commands/work.md G-2,
-# commands/task.md Phase 2) can tell "symlink I created" apart from a real
-# uncommitted change without re-deriving it (issue #318). Best-effort: if
-# hooks/lib/session-paths.sh isn't installed for either agent, the manifest
-# is simply not written and behavior is unchanged from before this file
-# existed.
-manifest=""
-if [ -f "${HOME}/.claude/hooks/lib/session-paths.sh" ]; then
-    manifest="$(bash "${HOME}/.claude/hooks/lib/session-paths.sh" session-tmp-dir 2>/dev/null || true)"
-elif [ -f "${HOME}/.codex/hooks/lib/session-paths.sh" ]; then
-    manifest="$(bash "${HOME}/.codex/hooks/lib/session-paths.sh" session-tmp-dir 2>/dev/null || true)"
-fi
-if [ -n "$manifest" ]; then
-    mkdir -p "$manifest"
-    manifest="${manifest}/worktree-untracked-symlinks.txt"
-    : > "$manifest"
-fi
+    if [[ -f "$CLAUDE_SESSION_PATHS" ]]; then
+        session_paths="$CLAUDE_SESSION_PATHS"
+    elif [[ -f "$CODEX_SESSION_PATHS" ]]; then
+        session_paths="$CODEX_SESSION_PATHS"
+    else
+        echo 'session-paths.sh is required for lazy worktree links' >&2
+        exit 1
+    fi
 
-git -C "$src" status --porcelain -z --ignored=matching | while IFS= read -r -d '' entry; do
-    status="${entry:0:2}"
-    rel="${entry:3}"
+    bash "$session_paths" session-tmp-dir
+}
 
-    case "$status" in
-        "??"|"!!") ;;
-        *) continue ;;
-    esac
+reject_unsafe_path() {
+    local relative_path=$1
 
-    rel="${rel%/}"
-
-    case "$rel" in
-        .git|.git/*|.claude|.claude/*)
-            continue
+    case "$relative_path" in
+        ''|/*|.|..|../*|*/../*|*/..|.git|.git/*|.claude|.claude/*)
+            echo "refusing unsafe worktree link path: $relative_path" >&2
+            exit 1
             ;;
     esac
+}
 
-    if [ -L "$rel" ]; then
-        continue
-    fi
-    if [ -e "$rel" ]; then
-        echo "skip (already exists, not a symlink): $rel" >&2
-        continue
-    fi
+is_linkable_source_path() {
+    local source=$1 relative_path=$2 entry status reported_path
 
-    mkdir -p "$(dirname "$rel")"
-    ln -s "${src}/${rel}" "$rel"
-    [ -n "$manifest" ] && printf '%s\n' "$rel" >> "$manifest"
-done
+    while IFS= read -r -d '' entry; do
+        status=${entry:0:2}
+        reported_path=${entry:3}
+        reported_path=${reported_path%/}
+
+        case "$status" in
+            '??'|'!!') ;;
+            *) continue ;;
+        esac
+
+        if [[ "$relative_path" == "$reported_path" || "$relative_path" == "$reported_path/"* ]]; then
+            return 0
+        fi
+    done < <(git -C "$source" status --porcelain -z --ignored=matching -- "$relative_path")
+
+    return 1
+}
+
+append_manifest_path() {
+    local manifest=$1 relative_path=$2
+
+    if ! grep -qxF -- "$relative_path" "$manifest"; then
+        printf '%s\n' "$relative_path" >> "$manifest"
+    fi
+}
+
+if [[ "$#" -lt 1 ]]; then
+    usage
+fi
+
+tmp_dir="$(session_tmp_dir)"
+manifest="${tmp_dir}/${MANIFEST_NAME}"
+source_file="${tmp_dir}/${SOURCE_NAME}"
+
+case "$1" in
+    prepare)
+        [[ "$#" -eq 2 ]] || usage
+        source_dir="$(cd "$2" && pwd)"
+        git -C "$source_dir" rev-parse --show-toplevel >/dev/null
+        mkdir -p "$tmp_dir"
+
+        if [[ -f "$source_file" ]] && [[ "$(<"$source_file")" != "$source_dir" ]]; then
+            echo 'lazy worktree linker is already prepared for another source' >&2
+            exit 1
+        fi
+
+        printf '%s\n' "$source_dir" > "$source_file"
+        touch "$manifest"
+        ;;
+    link)
+        [[ "$#" -eq 2 ]] || usage
+        relative_path=${2%/}
+        reject_unsafe_path "$relative_path"
+
+        if [[ ! -f "$source_file" ]]; then
+            echo 'lazy worktree linker is not prepared for this session' >&2
+            exit 1
+        fi
+
+        source_dir="$(<"$source_file")"
+        if ! is_linkable_source_path "$source_dir" "$relative_path"; then
+            echo "refusing path that is not untracked or ignored in source: $relative_path" >&2
+            exit 1
+        fi
+
+        mkdir -p "$(dirname "$relative_path")"
+        if [[ -L "$relative_path" ]]; then
+            if [[ "$(readlink "$relative_path")" != "${source_dir}/${relative_path}" ]]; then
+                echo "refusing existing symlink with another target: $relative_path" >&2
+                exit 1
+            fi
+        elif [[ -e "$relative_path" ]]; then
+            echo "refusing existing non-symlink path: $relative_path" >&2
+            exit 1
+        else
+            ln -s "${source_dir}/${relative_path}" "$relative_path"
+        fi
+
+        append_manifest_path "$manifest" "$relative_path"
+        ;;
+    *) usage ;;
+esac

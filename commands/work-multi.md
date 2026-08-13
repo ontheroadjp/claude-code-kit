@@ -20,27 +20,33 @@ pwd
 
 `EnterWorktree` を `path` を指定せずに呼び出す（常に新規 worktree を作成する。既存 worktree への再入場はスコープ外）。これによりセッションの作業ディレクトリが新しい worktree（`.claude/worktrees/<name>`、`origin/<default-branch>` から分岐したブランチ `worktree-<name>`）へ切り替わる。
 
-### 0.3 untracked ファイル/ディレクトリを symlink する
+### 0.3 lazy linker を初期化する
 
-`git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトし、untracked/gitignored ファイル・ディレクトリはコピーしない。このリポジトリ群は特定のプロジェクト専用ではなく Claude Code / Codex CLI が任意のリポジトリで使う実行環境基盤であるため、対象リポジトリ固有の untracked パスを個別に把握することはできない。そのため `.git`・`.claude`（`EnterWorktree` 自身が worktree を格納する予約ディレクトリ）を除く全ての untracked/ignored パスを一律で symlink する:
+`git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトする。開始時点では untracked/ignored ファイル・ディレクトリを symlink せず、元 worktree の絶対パスだけを current session に記録して lazy linker を初期化する。多くの作業は tracked file だけで完結し、`node_modules` のような大きな ignored directory を不要に処理しないためである:
 
 Claude Code では次を実行する:
 
 ```bash
-bash ~/.claude/scripts/link-worktree-untracked.sh "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"
+bash ~/.claude/scripts/link-worktree-untracked.sh prepare "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"
 ```
 
 Codex CLI では次を実行する:
 
 ```bash
-bash ~/.codex/scripts/link-worktree-untracked.sh "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"
+bash ~/.codex/scripts/link-worktree-untracked.sh prepare "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"
 ```
 
 `install.sh` が toolkit の `scripts/link-worktree-untracked.sh` をこれらの agent 別パスへ symlink として配布するため、対象 consumer repo にこのスクリプトが tracked file として存在する必要はない。詳細: `docs/L3_implementation/scripts/link-worktree-untracked.sh.md`
 
-`.gitignore` のディレクトリ限定パターン（末尾 `/`）は symlink には一致しないため、この symlink群は `git status` に `??`/`!!` として現れる（issue #318）。`scripts/link-worktree-untracked.sh` は `hooks/lib/session-paths.sh` が解決可能な場合、symlink化した相対パス一覧を `${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt` に書き出す。`commands/work.md` G-2・`commands/task.md` Phase 2 は agent 別に配布された `worktree-status.sh` を使用し、この manifest と完全一致するパスまたはその親ディレクトリを自己作成 symlink として自動除外する。manifest が存在しない場合は通常の `git status --porcelain` と同じ結果を返すため、単体 `/work` の挙動は変わらない。
+作業中に untracked/ignored path が必要になった場合に限り、agent は次を実行する（例: `site/node_modules`）:
 
-**既知の限界**: この symlink はセッション中に書き換わる untracked ディレクトリ（例: `node_modules` 等のパッケージマネージャ依存ディレクトリ）にも適用される。複数の `/work-multi` セッションが同じ symlink 先へ同時に書き込み操作（`npm install` 等）を行うと、worktree 隔離で防ごうとしている共有可変状態の衝突がそのディレクトリに限り再発し得る。並行セッションで同じ依存ディレクトリへの書き込みを伴う操作を同時実行しないこと。
+```bash
+bash ~/.claude/scripts/link-worktree-untracked.sh link "site/node_modules"
+```
+
+Codex CLI では `~/.codex/scripts/` を使う。linker は source 側でその path が untracked/ignored であること、相対 path が `.git`・`.claude`・親 directory traversal を含まないこと、worktree 側に衝突する実体がないことを検証する。作成した path だけを `${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt` に一度だけ記録する。`commands/work.md` G-2・`commands/task.md` Phase 2 の `worktree-status.sh` は、この manifest と完全一致する path またはその親 directory だけを自動除外する。manifest が空なら status は通常どおりであり、単体 `/work` の挙動も変わらない。
+
+**既知の限界**: lazy link した `node_modules` 等の directory へ複数の `/work-multi` セッションが同時に書き込み操作（`npm install` 等）を行うと、その directory に限り共有可変状態の衝突が再発し得る。並行セッションで同じ依存 directory を link して書き込む操作を同時実行しないこと。
 
 ---
 

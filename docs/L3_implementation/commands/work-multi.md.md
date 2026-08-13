@@ -8,13 +8,13 @@
 
 ## 動作の概要
 
-元の working tree を記録して `EnterWorktree` へ切り替え、installed linker で untracked/ignored path を symlink する。その後は `commands/work.md` を一字一句そのまま実行する。linker が session manifest を作成できる場合、後続の status helper が自己作成 symlink を自動除外する。
+元の working tree を記録して `EnterWorktree` へ切り替え、installed linker の `prepare` で source path と空 manifest を current session に記録する。この段階では symlink を作らない。作業中に必要になった untracked/ignored path だけを linker の `link <relative-path>` で作成する。その後は `commands/work.md` を一字一句そのまま実行する。後続の status helper は manifest に記録された自己作成 symlink だけを自動除外する。
 
 根拠: `commands/work-multi.md:16-52`
 
 ## 重要な設計判断
 
-worktree 切り替え以外のロジックを重複定義せず、status 判定も `/work` と同じ共通ヘルパーへ委譲する。通常 `/work` と隔離実行で workflow の意味が変わらないようにするため。
+開始時に全 untracked/ignored path を link せず、必要性が確定した path だけを link する。`node_modules` のような大きな ignored directory を使わない issue のセットアップコストを抑えるため。
 
 ## 統合ポイント
 
@@ -23,4 +23,12 @@ worktree 切り替え以外のロジックを重複定義せず、status 判定�
 
 ## 注意事項・既知の制限
 
-symlink 先の `node_modules` 等へ複数セッションが同時書き込みすると、共有可変状態の競合は防げない。
+lazy link した `node_modules` 等へ複数セッションが同時書き込みすると、共有可変状態の競合は防げない。
+
+## 変更履歴（git log より自動生成）
+
+- 5f7ba97 feat(#328): add lazy worktree linker
+- ea565ac #326 Automate worktree symlink status filtering (#327)
+- 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
+- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
+- bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
