@@ -41,7 +41,9 @@ assert_contains "$INIT_DOCS" 'fixed_message="<上記で組み立てたメッセ�
 
 assert_contains "$TASK" '`/docs-sync` 完了後、ユーザー確認なしに即座に `/git-pr` を実行する' 'task remains unaware of docs-sync internal escalation'
 assert_contains "$TASK" '`/rename <作業ブランチ名>` と同じ結果になるよう更新する' 'task renames the thread after switching to a work branch'
+assert_contains "$TASK" 'bash ~/.claude/scripts/rename-thread.sh "$branch_name" || true' 'task invokes the installed thread-renaming helper'
 assert_contains "$PATCH" '`/rename <作業ブランチ名>` と同じ結果になるよう更新する' 'patch renames the thread after switching to a work branch'
+assert_contains "$PATCH" 'bash ~/.claude/scripts/rename-thread.sh "$branch_name" || true' 'patch invokes the installed thread-renaming helper'
 assert_contains "$GIT_PR" 'gh pr create --title "<title>"' 'git-pr remains responsible for PR creation'
 
 if ((failures > 0)); then
