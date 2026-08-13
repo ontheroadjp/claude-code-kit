@@ -52,7 +52,11 @@ assert_executable() {
 
 # --- commands/work-multi.md: worktree switch + delegation only, no duplicated gate logic ---
 assert_contains "$WORK_MULTI" 'EnterWorktree' 'work-multi calls EnterWorktree'
-assert_contains "$WORK_MULTI" 'scripts/link-worktree-untracked.sh' 'work-multi links untracked files into the new worktree'
+# shellcheck disable=SC2088  # Literal documentation excerpts must retain the installed ~ path.
+assert_contains "$WORK_MULTI" '~/.claude/scripts/link-worktree-untracked.sh' "work-multi invokes Claude Code's installed linker script"
+# shellcheck disable=SC2088  # Literal documentation excerpts must retain the installed ~ path.
+assert_contains "$WORK_MULTI" '~/.codex/scripts/link-worktree-untracked.sh' "work-multi invokes Codex CLI's installed linker script"
+assert_absent "$WORK_MULTI" 'bash scripts/link-worktree-untracked.sh' 'work-multi does not require a linker script in the consumer repository'
 assert_contains "$WORK_MULTI" 'commands/work.md' 'work-multi delegates to commands/work.md'
 assert_contains "$WORK_MULTI" '一字一句そのまま実行する' 'work-multi executes work.md verbatim, no reinterpretation'
 assert_absent "$WORK_MULTI" '### G-0' 'work-multi does not duplicate work.md gate definitions'

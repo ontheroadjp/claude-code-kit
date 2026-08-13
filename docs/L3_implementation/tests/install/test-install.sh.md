@@ -8,7 +8,7 @@
 
 ## 動作の概要
 
-fixture repository と一時 HOME を作成し、fixture にコピーした installer を2回実行する。各実行後、Claude/Codex 両 template target の symlink・link target、および `hooks/lib/*.sh` の Claude/Codex 両 target への symlink を検証する。
+fixture repository と一時 HOME を作成し、fixture にコピーした installer を2回実行する。各実行後、Claude/Codex 両 template target の symlink・link target、および `hooks/lib/*.sh` と `scripts/*.sh` の Claude/Codex 両 target への symlink を検証する。
 
 根拠: `tests/install/test-install.sh:9-32`, `tests/install/test-install.sh:60-80`
 
@@ -17,6 +17,7 @@ fixture repository と一時 HOME を作成し、fixture にコピーした inst
 - `assert_symlink` は link の存在と `readlink` の完全一致を確認する
 - `assert_template_links` は repository 内4 template を target ごとに検証する
 - `assert_hooks_lib_links` は fixture の `hooks/lib/example-lib.sh` が `~/.claude/hooks/lib/` と `~/.codex/hooks/lib/` の両方へ symlink されることを検証する（issue #316: `install.sh` に追加した `hooks/lib/*.sh` symlink ループの回帰防止）
+- `assert_script_links` は fixture の `scripts/example.sh` が `~/.claude/scripts/` と `~/.codex/scripts/` の両方へ symlink されることを検証する（issue #324: command specification が consumer repo 内の script を仮定しない配布契約の回帰防止）
 - fresh HOME に legacy template target が作られないことを確認する
 - installer 再実行後も同じ contract が成立することを確認する
 
@@ -39,5 +40,6 @@ installer 全体を fixture で実行することで、静的文字列検査だ�
 
 ## 変更履歴（git log より自動生成）
 
+- dc5b568 fix(#324): install worktree linker for consumers
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 27f1861 feat(#76): install templates for claude and codex

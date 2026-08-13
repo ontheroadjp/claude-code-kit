@@ -24,11 +24,19 @@ pwd
 
 `git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトし、untracked/gitignored ファイル・ディレクトリはコピーしない。このリポジトリ群は特定のプロジェクト専用ではなく Claude Code / Codex CLI が任意のリポジトリで使う実行環境基盤であるため、対象リポジトリ固有の untracked パスを個別に把握することはできない。そのため `.git`・`.claude`（`EnterWorktree` 自身が worktree を格納する予約ディレクトリ）を除く全ての untracked/ignored パスを一律で symlink する:
 
+Claude Code では次を実行する:
+
 ```bash
-bash scripts/link-worktree-untracked.sh "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"
+bash ~/.claude/scripts/link-worktree-untracked.sh "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"
 ```
 
-（`scripts/link-worktree-untracked.sh` は新しい worktree にも tracked ファイルとして存在するため、worktree 切り替え後のカレントディレクトリからそのまま実行できる。詳細: `docs/L3_implementation/scripts/link-worktree-untracked.sh.md`）
+Codex CLI では次を実行する:
+
+```bash
+bash ~/.codex/scripts/link-worktree-untracked.sh "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"
+```
+
+`install.sh` が toolkit の `scripts/link-worktree-untracked.sh` をこれらの agent 別パスへ symlink として配布するため、対象 consumer repo にこのスクリプトが tracked file として存在する必要はない。詳細: `docs/L3_implementation/scripts/link-worktree-untracked.sh.md`
 
 `.gitignore` のディレクトリ限定パターン（末尾 `/`）は symlink には一致しないため、この symlink群は `git status` に `??`/`!!` として現れる（issue #318）。`scripts/link-worktree-untracked.sh` は `hooks/lib/session-paths.sh` が解決可能な場合、symlink化した相対パス一覧を `${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt` に書き出す。worktree 隔離セッションで `git status` を解釈する際（`commands/work.md` G-2・`commands/task.md` Phase 2、および予期しない untracked ファイルを見つけた場合の一般的な調査）は、まずこの manifest と突き合わせる: `git status` のパスが manifest の行と完全一致するか、その親ディレクトリである場合（`git status` が `.pytest_cache/` のように集約表示し、manifest 側が個別ファイルを列挙しているケース）は「自分が作った symlink」として扱ってよい。manifest が存在しない場合（`hooks/lib/session-paths.sh` 未インストール）は差分として扱う。
 

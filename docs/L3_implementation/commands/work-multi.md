@@ -8,9 +8,9 @@
 
 ## 動作概要
 
-Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）で新規 worktree に切り替え、(3) `scripts/link-worktree-untracked.sh` を実行して untracked ファイル/ディレクトリを symlink する。Step 1 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
+Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）で新規 worktree に切り替え、(3) installer が agent 別に配布した `link-worktree-untracked.sh` を実行して untracked ファイル/ディレクトリを symlink する。Claude Code は `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI は `~/.codex/scripts/link-worktree-untracked.sh` を使う。Step 1 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
 
-根拠: `commands/work-multi.md:9-41`
+根拠: `commands/work-multi.md:9-50`
 
 ## 重要な設計判断
 
@@ -27,7 +27,7 @@ Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）
 
 - 委譲先: `commands/work.md`（無改変のまま Read して実行）
 - 利用ツール: `EnterWorktree`（`.claude/worktrees/<name>` に `origin/<default-branch>` から分岐した `worktree-<name>` ブランチを作成）
-- 補助スクリプト: `scripts/link-worktree-untracked.sh`
+- 補助スクリプト: `install.sh` により `~/.claude/scripts/link-worktree-untracked.sh` または `~/.codex/scripts/link-worktree-untracked.sh` へ配布される `scripts/link-worktree-untracked.sh`
 
 ## 注意事項・既知の制限
 
@@ -36,5 +36,6 @@ Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）
 
 ## 変更履歴（git log より自動生成）
 
+- dc5b568 fix(#324): install worktree linker for consumers
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
