@@ -43,7 +43,7 @@ Phase 4: 最終報告（L0 候補ありの案内を含む）
 
 変更領域に対応する更新対象 docs を根拠付きで列挙する。`.github/workflows/*` の追加・削除・変更を検出した場合は、プローズ判断に頼らず `docs/L2_development/cicd.md` と `docs/L2_development/consistency_checks.md` を無条件で更新対象タスクへ追加する決定論的ルールを持つ（issue #271。以前はプローズ判断のみに委ねていたため、`.github/workflows/shellcheck.yml` 追加時にこの2ファイルの更新漏れが発生していた）。仕様サマリ更新は該当箇所のみに絞る。Phase 1 で `specification_summary.md` の citation を取得済みの場合はその行範囲を `offset`/`limit` で対象読みして再利用し、独自の再特定（Glob/Grep・全文 Read）は行わない。citation がない場合のみ従来どおり独自探索する（issue #307）。HARD STOP 判定はファイル名パターンで行う（10件以上かつ3領域以上、主要レイヤ新出、エントリポイント変更）。この HARD STOP には「citation がなく、かつ独自探索でも該当箇所が特定できない」場合も含む。該当時は `/init-docs` を documentation-only mode で自動実行し、現在ブランチ上で Phase 1〜6 の再観測・再構築を完了させる。完了後は局所更新フェーズを重複実行せず Phase 3 Step 3 の commit・結果書き出しへ合流する。L0_concept は更新しない。
 
-タスクリストの各項目を「確認不要（git diff の値をそのまま転記するだけ）」と「確認必要（文脈・意図を解釈して文章化する）」に分類する（issue #229）。全項目が確認不要なら許可を求めずそのまま Phase 3 へ進む。1項目でも確認必要な場合は、その項目について反映する文章そのものではなく根拠となった解釈を提示し、「解釈が合っているか」だけを確認する。文章化自体は確認後の Phase 3 で行い、再確認は求めない。分類に迷う場合は確認必要側に倒す。
+タスクリストの各項目を「確認不要（git diff の値をそのまま転記するだけ）」・「確認不要（既決の内容の文章化）」・「確認必要（未解決の判断）」に分類する。実装済みの振る舞いや、git diff と実装前にユーザーが承認した作業プランから一意に定まる設計意図を仕様サマリのプローズとして要約するだけなら、再確認せず Phase 3 へ進む。文書化の意味・範囲に複数の妥当な選択肢が残る場合だけ、反映する文章ではなく未解決の選択肢とその根拠を提示して「解釈が合っているか」を確認する。分類に迷う場合は確認必要側に倒す。
 
 根拠: `commands/docs-sync.md:81-137`
 
@@ -88,6 +88,10 @@ Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合�
 `/work` の投資調査時点で `/task` が既に specification_summary.md の該当セクションを特定しているにもかかわらず、`/docs-sync` が独自に再探索していたため、月間アクセスレポートで specification_summary.md が重複読み込みの上位ファイルになっていた（23回/月）。`templates/pr.md` の `Specific docs sections to update` フィールドを citation の運び手として使い、`/task` Phase 2 Step 1 で `docs/L3_implementation/specification_summary.md:<line-range>` 形式の citation を書き込み、`/docs-sync` Phase 1 Step 2 で解析、Phase 2 で `offset`/`limit` の対象読みとして再利用する。citation がない standalone `/docs-sync` 呼び出しでは既存の独自探索にフォールバックし、挙動を変えない。
 
 citation は対象読み後、読み取った内容に対象ファイルへ対応する `###` 見出しが含まれているかを検証する。行番号のズレや誤った citation（stale citation）で検証に失敗した場合は独自探索へフォールバックし、それでも該当箇所を特定できない場合は HARD STOP (B) として扱う（PR #312 の Codex CLI レビュー指摘を受けて追加。当初は「citation があれば無条件に独自の再特定を行わない」としていたが、これだと stale citation を渡された場合に誤った箇所を更新するか、更新不能でも探索・HARD STOP に進めない不整合があった）。
+
+### 既決の内容を再確認しない理由
+
+実装の振る舞いと実装前の作業プランは、実装を担当した agent とユーザーの間で既に共有・承認された根拠である。これらと git diff から一意に導ける仕様サマリの要約は、新たな意思決定ではなく既決事項の記録にすぎない。そのため、プローズへの言い換え自体を確認理由にせず、文書化の意味または範囲に複数の妥当な選択肢が残る場合にのみ確認を求める（issue #354）。
 
 ### HARD STOP（/init-docs が必要なケース）
 
