@@ -104,7 +104,7 @@ open issue が溜まったタイミングで実行するスタンドアロンの
 
 ### `/new-issue` (`commands/new-issue.md`)
 
-実装を伴わず、rough idea から issue draft を作成して `gh issue create` する任意 pre-`/work` flow。scope 分割方針（分割しない／Phase分割／親子issue分割／単体分割）はユーザー選択必須で、親子issue分割を選んだ場合は子issueを先に作成し、GitHub の task list 機能（`- [ ] #<子issue番号>`）で親issueに進捗を自動連動させる。issue 本文は実行 agent に応じて `~/.claude/templates/issue.md` または `~/.codex/templates/issue.md` を使う。
+実装を伴わず、rough idea から issue draft を作成して `gh issue create` する任意 pre-`/work` flow。scope 分割方針（分割しない／Phase分割／親子issue分割／単体分割）はユーザー選択必須で、親子issue分割を選んだ場合は親issueを先に作成してから子issueを作成し、各子issueを GitHub の native sub-issue として紐付ける。親子関係は native sub-issue を唯一の source of truth とし、親本文の Markdown task list や子issueへの親参照コメントは使用しない。issue 本文は実行 agent に応じて `~/.claude/templates/issue.md` または `~/.codex/templates/issue.md` を使う。
 
 Step 2 は個別の内容確認を求めず、Step 4 でドラフトとラベル（既存採用 or 新規提案）をまとめて一度に提示し、単一承認で「ドラフト内容」「ラベル（採用/新規作成）」「`gh issue create` の実行」を一括認可する（issue #301）。standalone 起動時は承認後に session-approved へ `tool:gh_issue_write`（新規ラベルが必要な場合は `tool:gh_label_write` も）を書き込み、以降のハーネス許可プロンプトを不要にする。`commands/task.md` が Step 4〜5 のみを呼び出す issue 自動生成経路では、task.md 自身のプラン承認・session-approved 書き込みと二重にならないよう、この単一承認・session-approved 書き込みをスキップする。
 
