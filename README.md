@@ -7,7 +7,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | Command | Purpose |
 |---|---|
 | `/work` | Main entry point. Routes report-labeled issues to read-only review, tells the user to run `/triage-issues-for-hazard` first for hazard-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
-| `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Symlinks untracked/ignored files (except `.git`/`.claude`) from the original working tree into the new worktree. |
+| `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Symlinks untracked/ignored files (except `.git`/`.claude`) from the original working tree; its self-created links are automatically excluded from status checks. |
 | `/report-review` | Evaluates a report-labeled issue read-only and prints evidence-based opinions and proposals without changing files or GitHub state. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
@@ -116,6 +116,7 @@ bash tests/commands/test-coding-guidelines.sh
 bash tests/commands/test-work-multi.sh
 bash tests/install/test-install.sh
 bash tests/scripts/test-link-worktree-untracked.sh
+bash tests/scripts/test-worktree-status.sh
 python3 -m pytest tests/scripts/
 shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_modules/*" -not -path "./.git/*" -iname "*.sh")
 ```
