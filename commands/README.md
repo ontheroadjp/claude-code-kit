@@ -9,12 +9,12 @@ Claude Code では `/コマンド名` で、Codex CLI では `/コマンド名` 
 
 ## エントリポイントとルーティング
 
-全作業の入り口は `/work`（`work.md`）。report issue を先に分岐し、それ以外は2段階でルーティングする:
+実装作業の入口は `/work`（`work.md`）。agenda issue を先に分岐し、それ以外は2段階でルーティングする:
 
 ```
 /work
-├─ report label の issue
-│   └─ /report-review (report-review.md)  →  read-only 評価を標準出力
+├─ agenda label の issue
+│   └─ /mtg (mtg.md)  →  人間主導の対話と意思決定
 └─ その他
     ├─ issue 起点、または docs/* の変更が必要
     │   └─ /task (task.md)  →  /docs-sync  →  /git-pr
@@ -28,8 +28,8 @@ PR レビューコメント対応は `/review-resolve`（`review-resolve.md`）�
 
 | ファイル | コマンド | 役割 |
 |---|---|---|
-| `work.md` | `/work` | 全作業の通常入口。report issue、task、patch のルーティング判定を行う |
-| `report-review.md` | `/report-review` | report issue を read-only で評価し、意見と提案を標準出力へ提示 |
+| `work.md` | `/work` | 実装作業の通常入口。agenda issue、task、patch のルーティング判定を行う |
+| `mtg.md` | `/mtg` | agenda issue を人間主導で検討し、必要時に `/new-issue` の起案を案内 |
 | `task.md` | `/task` | docs 変更を伴う実装フロー。issue 自動生成〜実装〜ドラフト PR 作成まで |
 | `patch.md` | `/patch` | docs 変更不要の軽微修正フロー。branch + commit → ユーザーが main へ ff-merge |
 | `docs-sync.md` | `/docs-sync` | git diff を事実として docs を最小更新し commit する |

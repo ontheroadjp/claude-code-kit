@@ -9,7 +9,7 @@ tests/
 ├── hooks/
 │   └── test-approval-hooks.sh   ← PreToolUse hook の自動テストスクリプト
 ├── commands/
-│   ├── test-report-review.sh      ← report workflow contract
+│   ├── test-mtg.sh                ← agenda / mtg workflow contract
 │   ├── test-coding-guidelines.sh  ← coding guideline contract
 │   ├── test-workflow-contracts.sh ← docs-sync/init-docs/task/git-pr 間の契約
 │   └── test-work-multi.sh         ← work-multi contract（issue #296）
@@ -51,10 +51,10 @@ bash tests/hooks/test-approval-hooks.sh
 
 ## command contract tests
 
-`test-report-review.sh` はreport routingとread-only境界、`test-coding-guidelines.sh` はReact/Next.js layerの依存順・routing・repository非依存性、`test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`test-work-multi.sh` は work-multi.md・skills/work-multi/SKILL.md・work.md の worktree ガードとブランチ分類・link-worktree-untracked.sh を固定文字列で検証する（issue #296）。
+`test-mtg.sh` はagenda routing、ユーザー主導の close、`/new-issue` の明示指示ゲート、Facts / Assessment / Opinions / Proposals による詳細検討を検証する。`test-coding-guidelines.sh` はReact/Next.js layerの依存順・routing・repository非依存性、`test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`test-work-multi.sh` は work-multi.md・skills/work-multi/SKILL.md・work.md の worktree ガードとブランチ分類・link-worktree-untracked.sh を固定文字列で検証する（issue #296）。
 
 ```bash
-bash tests/commands/test-report-review.sh
+bash tests/commands/test-mtg.sh
 bash tests/commands/test-coding-guidelines.sh
 bash tests/commands/test-workflow-contracts.sh
 bash tests/commands/test-work-multi.sh

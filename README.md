@@ -6,9 +6,9 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 
 | Command | Purpose |
 |---|---|
-| `/work` | Main entry point. Routes report-labeled issues to read-only review, tells the user to run `/triage-issues-for-hazard` first for hazard-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
+| `/work` | Main implementation entry point. Routes agenda-labeled issues to `/mtg`, tells the user to run `/triage-issues-for-hazard` first for hazard-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
 | `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Records the original working tree and links only explicitly needed untracked/ignored paths; its self-created links are automatically excluded from status checks. |
-| `/report-review` | Evaluates a report-labeled issue read-only and prints evidence-based opinions and proposals without changing files or GitHub state. |
+| `/mtg` | Facilitates a human-led, non-linear discussion for an agenda-labeled issue; implementation issues are created only when the user explicitly runs `/new-issue`. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
 | `/analyze-token-usage` | Aggregates `logs/token-usage/*.log` via a Python script (deduping per-session cumulative rows), then prints a KPI dashboard (cache efficiency) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/token-usage/`. |
@@ -80,7 +80,7 @@ This links `scripts/statusline.sh` to `~/.claude/statusline.sh` and adds a `stat
   rough idea -> issue draft(s) -> user runs /work #N
 
 /work (main entry)
-  report-labeled issue -> /report-review -> read-only evaluation on standard output
+  agenda-labeled issue -> /mtg -> human-led discussion and decision making
   hazard-candidate issue -> stops, tells user to run /triage-issues-for-hazard first
   docs not required -> patch flow: branch -> commit -> user ff-merges
   docs required     -> task flow: issue -> implement -> /docs-sync -> ready PR
@@ -111,7 +111,7 @@ Local verification commands:
 ```bash
 bash tests/hooks/test-approval-hooks.sh
 bash tests/hooks/test-session-paths.sh
-bash tests/commands/test-report-review.sh
+bash tests/commands/test-mtg.sh
 bash tests/commands/test-coding-guidelines.sh
 bash tests/commands/test-work-multi.sh
 bash tests/install/test-install.sh
