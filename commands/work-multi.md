@@ -38,7 +38,7 @@ bash ~/.codex/scripts/link-worktree-untracked.sh "<0.1 で得た ORIGINAL_WORKDI
 
 `install.sh` が toolkit の `scripts/link-worktree-untracked.sh` をこれらの agent 別パスへ symlink として配布するため、対象 consumer repo にこのスクリプトが tracked file として存在する必要はない。詳細: `docs/L3_implementation/scripts/link-worktree-untracked.sh.md`
 
-`.gitignore` のディレクトリ限定パターン（末尾 `/`）は symlink には一致しないため、この symlink群は `git status` に `??`/`!!` として現れる（issue #318）。`scripts/link-worktree-untracked.sh` は `hooks/lib/session-paths.sh` が解決可能な場合、symlink化した相対パス一覧を `${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt` に書き出す。worktree 隔離セッションで `git status` を解釈する際（`commands/work.md` G-2・`commands/task.md` Phase 2、および予期しない untracked ファイルを見つけた場合の一般的な調査）は、まずこの manifest と突き合わせる: `git status` のパスが manifest の行と完全一致するか、その親ディレクトリである場合（`git status` が `.pytest_cache/` のように集約表示し、manifest 側が個別ファイルを列挙しているケース）は「自分が作った symlink」として扱ってよい。manifest が存在しない場合（`hooks/lib/session-paths.sh` 未インストール）は差分として扱う。
+`.gitignore` のディレクトリ限定パターン（末尾 `/`）は symlink には一致しないため、この symlink群は `git status` に `??`/`!!` として現れる（issue #318）。`scripts/link-worktree-untracked.sh` は `hooks/lib/session-paths.sh` が解決可能な場合、symlink化した相対パス一覧を `${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt` に書き出す。`commands/work.md` G-2・`commands/task.md` Phase 2 は agent 別に配布された `worktree-status.sh` を使用し、この manifest と完全一致するパスまたはその親ディレクトリを自己作成 symlink として自動除外する。manifest が存在しない場合は通常の `git status --porcelain` と同じ結果を返すため、単体 `/work` の挙動は変わらない。
 
 **既知の限界**: この symlink はセッション中に書き換わる untracked ディレクトリ（例: `node_modules` 等のパッケージマネージャ依存ディレクトリ）にも適用される。複数の `/work-multi` セッションが同じ symlink 先へ同時に書き込み操作（`npm install` 等）を行うと、worktree 隔離で防ごうとしている共有可変状態の衝突がそのディレクトリに限り再発し得る。並行セッションで同じ依存ディレクトリへの書き込みを伴う操作を同時実行しないこと。
 

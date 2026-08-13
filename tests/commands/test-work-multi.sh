@@ -9,6 +9,7 @@ WORK_MULTI="$REPO_DIR/commands/work-multi.md"
 WORK_SKILL="$REPO_DIR/skills/work/SKILL.md"
 WORK_MULTI_SKILL="$REPO_DIR/skills/work-multi/SKILL.md"
 LINK_SCRIPT="$REPO_DIR/scripts/link-worktree-untracked.sh"
+STATUS_SCRIPT="$REPO_DIR/scripts/worktree-status.sh"
 
 failures=0
 
@@ -76,8 +77,11 @@ assert_contains "$WORK" '未コミット変更がある' 'work.md preserves the 
 
 # --- scripts/link-worktree-untracked.sh exists and is executable ---
 assert_executable "$LINK_SCRIPT" 'link-worktree-untracked.sh is executable'
+assert_executable "$STATUS_SCRIPT" 'worktree-status.sh is executable'
 assert_contains "$LINK_SCRIPT" 'status --porcelain -z --ignored=matching' 'link-worktree-untracked.sh enumerates untracked/ignored paths via NUL-delimited porcelain output'
 assert_contains "$LINK_SCRIPT" '.git|.git/*|.claude|.claude/*' 'link-worktree-untracked.sh excludes .git/.claude and their nested paths'
+assert_contains "$WORK" 'worktree-status.sh' 'work.md delegates self-created symlink filtering to the shared status helper'
+assert_contains "$STATUS_SCRIPT" 'worktree-untracked-symlinks.txt' 'worktree-status.sh reads the linker manifest'
 
 if ((failures > 0)); then
   printf '\n%d work-multi contract test(s) failed.\n' "$failures"
