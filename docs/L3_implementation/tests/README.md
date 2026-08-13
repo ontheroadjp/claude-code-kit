@@ -19,11 +19,11 @@
 
 ## 統合ポイント
 
-- テスト対象: `hooks/auto-approve-readonly.sh`、`hooks/guard-destructive-cmd.sh`、`hooks/cleanup-session.sh`
+- テスト対象: `hooks/auto-approve-readonly.sh`、`hooks/guard-destructive-cmd.sh`、`hooks/cleanup-session.sh`、`commands/mtg.md`
 - installer test 対象: `install.sh` の template symlink contract
 - CI での実行は現時点では定義されていない（手動実行のみ）
 
-根拠: `tests/README.md:1-56`, `tests/hooks/test-approval-hooks.sh:1-407`, `tests/install/test-install.sh:1-71`
+根拠: `tests/README.md:1-57`, `tests/commands/test-mtg.sh:1-57`, `tests/hooks/test-approval-hooks.sh:1-407`, `tests/install/test-install.sh:1-71`
 
 ## 変更履歴（git log より自動生成）
 

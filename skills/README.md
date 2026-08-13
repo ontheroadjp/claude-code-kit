@@ -29,7 +29,7 @@ skills/
 | skill ディレクトリ | 対応コマンド | 役割 |
 |---|---|---|
 | `work/` | `commands/work.md` | 全作業の通常入口 |
-| `report-review/` | `commands/report-review.md` | report issue の read-only 評価 |
+| `mtg/` | `commands/mtg.md` | agenda issue の人間主導の対話と意思決定 |
 | `task/` | `commands/task.md` | docs 変更を伴う実装フロー |
 | `patch/` | `commands/patch.md` | docs 変更不要の軽微修正 |
 | `docs-sync/` | `commands/docs-sync.md` | docs 最小更新 |

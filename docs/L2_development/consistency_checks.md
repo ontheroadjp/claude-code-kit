@@ -34,7 +34,7 @@ Repo Profile の commands はすべて実体に対応する。
 | analyze | `python3 scripts/analyze_auto_approve.py --all` | auto-approve log aggregator |
 | analyze | `python3 scripts/analyze_token_usage.py --all` | token-usage log aggregator |
 | shell test | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
-| shell test | `bash tests/commands/test-report-review.sh` | report-review contract |
+| shell test | `bash tests/commands/test-mtg.sh` | agenda / mtg contract |
 | shell test | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition, routing, portability contract |
 | shell test | `bash tests/install/test-install.sh` | installer contract |
 | Python test | `python3 -m pytest tests/scripts/` | analysis-script contract |
@@ -52,7 +52,7 @@ Repo Profile の commands はすべて実体に対応する。
 
 ## CI 定義との整合性
 
-CI 定義は `.github/workflows/` に3件存在する: `deploy.yml`（Node.js 24、npm cache、`site/package-lock.json`、`site/` での `npm ci` と `npm run docs:build`、`site/.vitepress/dist` upload、GitHub Pages deploy）、`shellcheck.yml`（全 `*.sh` への `shellcheck -x`）、`test.yml`（`tests/hooks/test-approval-hooks.sh` を実行する `approval-hooks` job）。この3件を docs と README に反映した。`tests/commands/test-report-review.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest（`tests/scripts/`）は依然として CI job に含まれない。
+CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest（`tests/scripts/`）は依然として CI job に含まれない。
 
 根拠: `.github/workflows/deploy.yml:1-53`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/test.yml:1-18`, `README.md:80-98`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
 
@@ -69,7 +69,7 @@ CI 定義は `.github/workflows/` に3件存在する: `deploy.yml`（Node.js 24
 ## 未確認事項
 
 - coverage collection / threshold は定義されていない。確認先: `tests/`、`.github/workflows/`。
-- `tests/hooks/test-approval-hooks.sh` は CI（`test.yml`）で実行されるが、`tests/commands/test-report-review.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest は引き続き CI で実行されない。確認先: `.github/workflows/test.yml`。
+- `tests/hooks/test-approval-hooks.sh` は CI（`test.yml`）で実行されるが、`tests/commands/test-mtg.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest は引き続き CI で実行されない。確認先: `.github/workflows/test.yml`。
 - Python / pytest の version pin と dependency manifest は存在しない。確認先: repository root の package・runtime 定義（現時点では未検出）。ローカル観測値は Python 3.12.3、pytest 9.1.1。
 
 ## Done Criteria

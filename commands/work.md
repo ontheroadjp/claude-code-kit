@@ -1,6 +1,6 @@
 # /work
 
-全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、report issue は `commands/report-review.md`、hazard-candidate issue は `/triage-issues-for-hazard` の実行を案内して終了し、それ以外は `commands/task.md` または `commands/patch.md` を Read して委譲します。
+全ての作業のエントリポイントです。ゲート確認・ワークスペース管理・ルーティング判定を行い、agenda issue は `commands/mtg.md`、hazard-candidate issue は `/triage-issues-for-hazard` の実行を案内して終了し、それ以外は `commands/task.md` または `commands/patch.md` を Read して委譲します。
 
 ---
 
@@ -82,11 +82,11 @@ G-1 で Read した `docs/.ai/repo.profile.json` および現状調査で Read �
 gh issue view <issue番号> --json labels --jq '.labels[].name'
 ```
 
-- label に `report` が完全一致で含まれる場合:
-    - `commands/report-review.md` を Read し、その内容に従う
+- label に `agenda` が完全一致で含まれる場合:
+    - `commands/mtg.md` を Read し、その内容に従う
     - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
-    - `/report-review` の完了後に `/work` も終了する
-- label に `report` は含まれないが `hazard-candidate` が完全一致で含まれる場合:
+    - `/mtg` の完了後に `/work` も終了する
+- label に `agenda` は含まれないが `hazard-candidate` が完全一致で含まれる場合:
     - `/task`・`/patch` へのルーティング、ブランチ作成、実装は行わない
     - 「この issue には hazard-candidate label が付いています。実装前に `/triage-issues-for-hazard` を実行してハザード審査を受けてください」と報告し、`/work` を終了する
     - このチェックは `/triage-issues-for-hazard` で承認され `triage-approved` label に付け替えられた issue には適用されない（label が既に外れているため自然に該当しなくなる）

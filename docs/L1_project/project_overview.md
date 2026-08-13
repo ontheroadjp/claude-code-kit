@@ -10,8 +10,8 @@
 
 | 領域 | 実装 | 役割 | 根拠 |
 |---|---|---|---|
-| 作業入口 | `commands/work.md` | main への checkout、workspace gate、report-review/task/patch ルーティング（hazard-candidate issue は `/triage-issues-for-hazard` へ誘導して終了） | `commands/work.md:7-149` |
-| report 評価 | `commands/report-review.md` | `report` label の issue を read-only で評価し、意見と提案を標準出力へ提示 | `commands/report-review.md:1-91` |
+| 実装入口 | `commands/work.md` | main への checkout、workspace gate、agenda/mtg/task/patch ルーティング | `commands/work.md:1-160` |
+| agenda 対話 | `commands/mtg.md` | `agenda` label の issue を人間主導で検討し、明示指示時のみ起案へ進む | `commands/mtg.md:1-77` |
 | ログ分析 | `commands/analyze-access.md`, `analyze-auto-approve.md`, `analyze-token-usage.md` | `logs/access`・`logs/auto-approve`・`logs/token-usage` を `scripts/analyze_*.py` で集計し、KPIダッシュボード→Key Findings & Proposals→Evidence の順で構成したレポートと HTML を `logs/reports/` へ出力する read-only workflow | `commands/analyze-access.md:1-85`, `scripts/analyze_access.py:1-6` |
 | docs あり実装 | `commands/task.md` | issue 確認/生成、プラン承認、実装、L3 per-file doc、`/docs-sync`・`/git-pr` 引き継ぎ | `commands/task.md:30-184` |
 | 軽微修正 | `commands/patch.md` | docs 変更不要な修正を branch + commit で完了し、必要時 task へエスカレーション | `commands/patch.md:1-111` |
@@ -40,7 +40,7 @@
 ## エントリポイント
 
 - AI 作業の通常入口は `/work`。根拠: `commands/work.md:1-4`, `README.md:63-85`
-- report issue は `/work #N` から `/report-review` へ委譲される。hazard-candidate issue は `/work #N` が実装ルーティングをせず `/triage-issues-for-hazard` の実行を案内して終了する。根拠: `commands/work.md:83-96`, `commands/report-review.md:1-3`
+- agenda issue は `/work #N` から `/mtg` へ委譲される。hazard-candidate issue は `/work #N` が実装ルーティングをせず `/triage-issues-for-hazard` の実行を案内して終了する。根拠: `commands/work.md:83-96`, `commands/mtg.md:1-77`
 - `/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、作成後の自律 review は行わない。根拠: `commands/git-pr.md:62-65`, `CLAUDE.md:15`
 - PR review コメント対応は `/review-resolve #N`。根拠: `commands/review-resolve.md:1-6`
 - idea から issue を作る任意入口は `/new-issue`。根拠: `commands/new-issue.md:1-9`

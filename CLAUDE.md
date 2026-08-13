@@ -13,15 +13,15 @@
 
 ## Custom / Command の使い分け（AI向けルール）
 
-**重要: PR レビューコメントへの対話対応は `/review-resolve`、それ以外の全作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`report` label の issue は `/work #N` が `/report-review` へ委譲し、read-only 評価だけを行う。`hazard-candidate` label の issue は `/work #N` の前に `/triage-issues-for-hazard` で人間審査する。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。`/docs-sync` が L0 昇格候補ありを案内した場合のみ任意で `/concept-maker` を使う。**
+**重要: PR レビューコメントへの対話対応は `/review-resolve`、方針や実装境界の対話的な検討は `/mtg`、それ以外の実装作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`agenda` label の issue は `/work #N` が `/mtg` へ委譲する。`/mtg` は `/new-issue` を自動実行せず、ユーザーの明示指示でのみ起案へ進む。`hazard-candidate` label の issue は `/work #N` の前に `/triage-issues-for-hazard` で人間審査する。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。`/docs-sync` が L0 昇格候補ありを案内した場合のみ任意で `/concept-maker` を使う。**
 
 - **review-resolve.md**: PR レビューコメント対応専用のエントリポイント。`/work` を経由せず自己完結（checkout → 実装 → commit → push → 返信）。ユーザーが `/review-resolve #N` で直接呼び出す。
-- **work.md**: review-resolve 以外の全作業のエントリポイント。ゲート確認・ワークスペース管理を行い、report issue は report-review.md、hazard-candidate issue は triage-issues-for-hazard.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
-  - `report` label の issue → report-review.md を Read し、実装・branch 作成を行わず評価して終了
+- **work.md**: 実装作業のエントリポイント。ゲート確認・ワークスペース管理を行い、agenda issue は mtg.md、hazard-candidate issue は triage-issues-for-hazard.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
+  - `agenda` label の issue → mtg.md を Read し、人間主導の対話を進める（実装・branch 作成は行わない）
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）
   - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → ドラフト PR 作成 → /docs-sync へ引き継ぎ）
 - **work-multi.md**: `/work` と全く同じワークフローを、`EnterWorktree` で作成した専用 worktree 内で実行する明示的 opt-in 入口（issue #296）。複数セッションが同じ working tree を共有すると `git checkout` が他セッションの作業中ファイルを書き換える衝突が起こり得るため、意図的に並行セッションを走らせるとわかっている場合に使う。**「2セッション目以降だけ隔離すればよい」という判断はしない** — どのセッションが「隔離不要な primary」かを常に追跡するのは同種の人為ミスの温床になるため、並行実行するバッチが分かった時点で、最初のセッションを含む全セッションで `/work-multi` を使う。通常の単一セッション作業では引き続き `/work` を使う（overhead なし）。untracked ファイル・ディレクトリ（`.git`・`.claude` を除く）は worktree 作成後に自動で symlink されるが、これには `node_modules` 等セッション中に書き換わる依存ディレクトリも含まれるため、同じ依存ディレクトリを持つ複数 `/work-multi` セッションでパッケージマネージャの書き込み操作（`npm install` 等）を同時実行しないこと。
-- **report-review.md**: `report` label の issue を read-only で評価し、Facts / Assessment / Opinions / Proposals / Risks and Unknowns を標準出力へ提示する。ファイル・Git・GitHub を変更しない。
+- **mtg.md**: `agenda` label の issue を、人間と AI が対話して進める。必要時に Facts / Assessment / Opinions / Proposals を用いて論点を具体化するが、方向性・実装範囲・close は人間だけが決定する。`/new-issue` はユーザーの明示指示でのみ実行する。
 - **new-issue.md**: 漠然としたアイデアから 1 件または複数件の整形された issue を生成する任意の pre-`/work` エントリポイント。issue 作成のみで実装は行わない。
 - **triage-issues.md**: open issue を現状 docs と照合し、stale / inconsistent / duplicated / unclear / ready に分類するスタンドアロン入口。issue 操作はユーザー承認後のみ行う。
 - **codex-review.md**: Codex CLI で PR をレビューし、`CODEX_REVIEW_TOKEN` がある場合に approve/request-changes を投稿する。変更要求時は `/review-resolve` へ引き継ぐ。
@@ -36,7 +36,7 @@
 - **symlink-only 原則**: `~/.claude/`・`~/.codex/` 配下には実体ファイルを置かず、全て本リポジトリへの symlink とする。このリポジトリが single source of truth。
 - **L0（`docs/L0_concept/`）は 100% ユーザー管理**: AI が L0 に直接書き込むことはない。唯一の書き込み経路は `/concept-maker` によるユーザー承認付き追記であり、`/init-docs` は L0 が存在しない場合の初回作成のみを行う（既存 L0 は再実行時も変更しない）。
 - ルーティング判定は単一質問: 「この変更で `docs/*` への追加・変更・削除が必要か？」
-- 実装 issue は task フローで扱い、report issue は report-review フローで read-only 評価する（patch フローには issue 不要）
+- 実装 issue は task フローで扱い、agenda issue は mtg フローで人間が実装範囲を決定する（patch フローには issue 不要）
 - task フローのコミット形式: `<type>(#<issue number>): <short description>` (Conventional Commits)
 - ワークスペースのクリーン化は stash で行う（破壊的操作禁止）
 - git diff が事実。AI の要約・解釈は補助情報にとどめる

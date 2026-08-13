@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-通常作業の入口として、main branch への切り替え、workspace gate、リポジトリ調査、後続 workflow へのルーティングを担う。
+実装作業の入口として、main branch への切り替え、workspace gate、リポジトリ調査、後続 workflow へのルーティングを担う。
 
 根拠: `commands/work.md:1-40`
 
@@ -12,7 +12,7 @@ G-0 は `git rev-parse --show-toplevel` が `.claude/worktrees/` を含むかを
 
 G-2 のワークスペース確認は、worktree 隔離セッションの場合、`hooks/lib/session-paths.sh session-tmp-dir` で解決した session tmp directory 配下の `worktree-untracked-symlinks.txt`（存在する場合）と `git status --porcelain` の出力を突き合わせ、manifest に列挙されたパスと完全一致またはその親ディレクトリであるエントリを除外してから「差分があるか」を判定する。`scripts/link-worktree-untracked.sh` が作成した symlink は `.gitignore` のディレクトリ限定パターンに一致せず `??`/`!!` として現れるための対処（issue #318）。manifest が存在しない場合は従来通り `git status` の出力をそのまま扱う。
 
-issue 番号が指定された場合は、実装向け調査より先に issue labels を取得する（`gh issue view <N> --json labels` を1回だけ呼び出し、以下2つの判定を同じ結果に対して行う）。name が `report` と完全一致する label があれば `commands/report-review.md` に委譲して終了し、実装 branch や `/task`・`/patch` flow には進まない。`report` に該当せず `hazard-candidate` と完全一致する label がある場合は、`/triage-issues-for-hazard` の実行を促すメッセージを出して `/work` を終了し、`/task`・`/patch` へのルーティングやブランチ作成は行わない。どちらの label にも該当しない issue は既存どおり issue 起点の `/task` へ進み、issue がない作業は docs 変更の要否によって `/task` または `/patch` に分岐する。
+issue 番号が指定された場合は、実装向け調査より先に issue labels を取得する。name が `agenda` と完全一致する label があれば `commands/mtg.md` に委譲して終了し、実装 branch や `/task`・`/patch` flow には進まない。`agenda` に該当せず `hazard-candidate` と完全一致する label がある場合は、`/triage-issues-for-hazard` の実行を促すメッセージを出して `/work` を終了する。どちらの label にも該当しない issue は既存どおり issue 起点の `/task` へ進み、issue がない作業は docs 変更の要否によって `/task` または `/patch` に分岐する。
 
 根拠: `commands/work.md:71-131`
 
@@ -28,8 +28,8 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 - 現状調査における候補ファイルの Read は、対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合、その doc の `根拠: <file>:<line-range>` citation を先に確認し、候補ファイル本体は該当行範囲の対象読み（`offset`/`limit`）に絞る。L3 doc がない、または対象箇所を特定できない場合のみ従来通り直接 Read する。`/analyze-access` の集計で、L3 doc を持つ大きいファイル（例: `hooks/auto-approve-readonly.sh`）がセッション内で繰り返しフル Read され、重複読み込みロスの大半を占めていたことが判明したための対処（issue #269）。
 - 「現状調査」の手順本文は (A)・(B) 両分岐で一字一句同一だったため、`## 開始判定とルーティング` 直下の「現状調査（共通）」に1箇所だけ定義し、(A)・(B) 側は「上記「現状調査（共通）」を実行する」という参照のみを持つ（issue #271）。分岐固有の実行タイミング（ルーティング判定の前 / 開始フェーズ報告の前）だけを各参照側の一文に残す。
-- report / hazard-candidate 判定は label name の完全一致とし、類似名による誤配送を避ける。
-- report・hazard-candidate の label routing を実装向け現状調査より前に置き、評価だけを求める issue や人間のハザード審査を経ていない issue に implementation planning を適用しない。
+- agenda / hazard-candidate 判定は label name の完全一致とし、類似名による誤配送を避ける。
+- agenda・hazard-candidate の label routing を実装向け現状調査より前に置き、方針・実装境界が未決の issue や人間のハザード審査を経ていない issue に implementation planning を適用しない。
 - label 取得に失敗した場合は推測で既存 flow に進まず、安全に停止する。
 - hazard-candidate チェックは `/analyze-hazard-scan` が起票した issue に対し `/work #N` を直接叩くと、`/triage-issues-for-hazard` のハザード分析開示・yes/no 確認を一切経由せず実装まで進んでしまう問題への対処である。`/triage-issues-for-hazard` で `yes` と回答された issue は `hazard-candidate` → `triage-approved` へ label が swap されるため、このチェックには再度ひっかからず通常の `/task` ルーティングに進める。
 - worktree パスガードと (A)/(B) のブランチ分類変更は `/work-multi`（issue #296）が `commands/work.md` を無改変のまま実行するとの前提で設計されたが、実機検証で `git checkout main` が worktree 内では `fatal: 'main' is already used by worktree` で必ず失敗することが判明し、この前提は成立しなかった。パスガードは、失敗してからエラー文言を解釈するのではなく `.claude/worktrees/` という `EnterWorktree` 自身の固定仕様を事前チェックすることで確実に判定する設計とした。
@@ -45,7 +45,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 統合ポイント
 
-- report issue: `commands/report-review.md`
+- agenda issue: `commands/mtg.md`
 - hazard-candidate issue: `/triage-issues-for-hazard` の実行を案内して終了（`/work` は呼ばない）
 - issue 起点または docs 変更あり: `commands/task.md`
 - issue なし、docs 変更なし: `commands/patch.md`
@@ -55,9 +55,9 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 注意事項・既知の制限
 
-- report / hazard-candidate の label routing はユーザーが issue 番号を明示した新規作業で適用される。
+- agenda / hazard-candidate の label routing はユーザーが issue 番号を明示した新規作業で適用される。
 - `/work` 自体の workspace gate は label 判定より先に実行される。
-- hazard-candidate チェックは label の完全一致にのみ依存するため、人間が `gh label` を直接操作して label を付け替えればこのゲートは迂回できる。既存の report label ゲートも同じ前提で運用されており、一貫性のある許容範囲として扱う。
+- hazard-candidate チェックは label の完全一致にのみ依存するため、人間が `gh label` を直接操作して label を付け替えればこのゲートは迂回できる。agenda label ゲートも同じ前提で運用される。
 - worktree パスガードは `.claude/worktrees/` という固定パスにのみ依存する。`EnterWorktree` 以外の手段（例: 手動の `git worktree add`）でこのパス規約に従わない worktree を作った場合はガードが機能せず、通常の `git checkout main` が試行される。
 
 ## 変更履歴（git log より自動生成）
