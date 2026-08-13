@@ -12,6 +12,7 @@
 
 - `commands/work-multi.md` が `EnterWorktree`・agent 別 installed path（`~/.claude/scripts/` と `~/.codex/scripts/`）・`commands/work.md` への言及を含み、consumer repo 相対の `bash scripts/link-worktree-untracked.sh` を含まず、`### G-0`/`### G-1`/`### G-2` を重複定義していない
 - `ORIGINAL_WORKDIR` を Step 0.3 の linker `prepare` 引数だけに使い、共有 checkout への `cd` / `git -C` を行わず、Read・調査・Git 操作を隔離 worktree から実行することを明記している
+- lazy link した path を読み取り専用として扱い、symlink 経由の書き込みを禁止し、書き込みが必要な path を worktree 内へ独立作成するよう明記している
 - 親 issue に対して native `subIssues` と未完了 task list を収集し、native `blockedBy` が全て `CLOSED` の子 issue だけを候補にすること、複数候補は収集順で最初の 1 件を選び候補なしでは推測しないこと
 - `skills/work-multi/SKILL.md` が `skills/work/SKILL.md` と同じ scope guard パターンを持つ
 - `commands/work.md` が `.claude/worktrees/` パスガードと `worktree-` prefix ベースのブランチ分類、B.1（未コミット変更があれば継続）の保持を含む
@@ -34,6 +35,7 @@ Markdown workflow は直接実行可能なプログラムではないため、`t
 
 ## 変更履歴（git log より自動生成）
 
+- 314fbc1 docs(#334): clarify worktree symlink write isolation
 - 8e9b9bb feat(#332): select ready child issue in work-multi
 - 1453def fix(#330): preserve worktree isolation
 - e624ef2 #328 Add lazy worktree linker (#329)

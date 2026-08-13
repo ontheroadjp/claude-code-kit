@@ -12,9 +12,11 @@ Step 0 で (1) `pwd` を `ORIGINAL_WORKDIR` として記録し、(2) `EnterWorkt
 
 issue 番号が親 issue を指す場合は Step 1 で実装対象を決定する。native `subIssues` と、既存の未完了 task list に列挙された子 issue を収集し、子 issue ごとの native `blockedBy` dependency を読む。`OPEN` で全 blocker が `CLOSED` の子だけを実装可能とし、複数なら収集順で最初の 1 件を選ぶ。候補がない、または GitHub の取得・dependency 情報が利用できないときは、推測せず理由を報告して終了する。親に子 issue がなければ従来どおり指定 issue を使う。選ばれた子 issue 番号を、Step 2 で `commands/work.md` へ渡す。
 
+lazy link した path は読み取り専用として扱う。単独・並行を問わず symlink 経由の書き込みは禁止し、`npm install` など package manager による依存 directory への書き込みも含める。書き込みが必要な path は link 前に worktree 内へ独立して作成する。worktree を削除しても、リンク先の元 working tree に書き込まれた変更は戻らない。
+
 Step 2 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
 
-根拠: `commands/work-multi.md:9-50`
+根拠: `commands/work-multi.md:9-51`
 
 ## 重要な設計判断
 
@@ -24,11 +26,11 @@ Step 2 で `commands/work.md` を Read し、一字一句そのまま実行す�
 - `ORIGINAL_WORKDIR` は lazy linker が元 worktree を特定するためだけに保持し、worktree 切り替え後の CWD としては使わない。共有 checkout へ移動して Git を実行すると worktree-isolation guard に拒否され、並行実行の分離保証も損なうため。
 - `git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトするため、lazy linker は必要になった untracked/ignored path だけを symlink する。初期化時に大きな `node_modules` 等を処理せず、対象リポジトリ固有の path をあらかじめ仮定しない。
 - `.claude` を丸ごと除外したのは、`EnterWorktree` 自身が worktree を `.claude/worktrees/<name>` 配下に作成する固定仕様のため。`.claude` を symlink すると、新しい worktree の中に worktrees ディレクトリ自身への自己参照ループが生じる。副作用として worktree は `.claude/settings.local.json`（ローカル権限設定）を引き継がない（安全側＝確認プロンプト増加の方向のみ）。
-- node_modules 等セッション中に書き換わる依存ディレクトリも一律 symlink の対象に含まれる。これは worktree 隔離の目的（共有可変状態の衝突防止）と部分的に矛盾するトレードオフだが、対象リポジトリ非依存の汎用実装を優先し、既知の限界として `CLAUDE.md` に文書化するに留めた（リポジトリごとの依存ディレクトリ名を個別に除外するとリポジトリ固有の特別扱いが必要になり、この toolkit の汎用性の前提と矛盾するため）。
+- node_modules 等セッション中に書き換わり得る依存ディレクトリも一律 symlink の対象に含められるため、symlink は読み取り用途に限定する。書き込みが必要な path を worktree 内に独立作成させることで、リポジトリ固有の directory 名を linker の除外対象として持たずに、元 working tree への書き戻しと並行セッション間の共有可変状態を防ぐ。
 - `ExitWorktree` は明示的なユーザー指示がない限り呼ばない。セッション終了時の keep/remove 確認は harness の既存機能に委ねる。
 - symlink 化した untracked/ignored パスは `.gitignore` のディレクトリ限定パターン（末尾 `/`）に一致せず `git status` に `??`/`!!` として現れる（実機で `ExitWorktree` が無害な symlink を「未コミットの変更」として検出し `discard_changes` を要求する事例で発覚。issue #318）。git 側の ignore 判定を変える案（`extensions.worktreeConfig` + 各 worktree 専用 `core.excludesFile`）を実機検証し機能することを確認したが、目的は「git status を完全にクリーンにする」ことではなく「予期しない untracked ファイルを見た際に無駄な調査（`ls -la`・`readlink` 等）をせず即座に判別できる」ことであるため、git 設定を変更しないスコープの小さい manifest 方式（`scripts/link-worktree-untracked.sh` が symlink 化したパス一覧を session tmp directory に書き出し、`commands/work.md` G-2・`commands/task.md` Phase 2 が突き合わせる）を採用した。`ExitWorktree` 自体の判定（harness 機能のため変更不可）は変わらないが、manifest と突き合わせれば既知のものと即座に判別できる。
 
-根拠: `commands/work-multi.md:23-35`, `commands/work-multi.md:48-50`, issue #296, issue #318
+根拠: `commands/work-multi.md:23-51`, issue #296, issue #318
 
 ## 統合ポイント
 
@@ -40,11 +42,12 @@ Step 2 で `commands/work.md` を Read し、一字一句そのまま実行す�
 ## 注意事項・既知の制限
 
 - 既存 worktree への再入場（`EnterWorktree` の `path` 引数）はスコープ外。常に新規 worktree を作成する。
-- `site/node_modules` 等の依存ディレクトリが symlink 経由で複数 `/work-multi` セッション間に共有されるため、同じ依存ディレクトリを持つセッションでパッケージマネージャの書き込み操作を同時実行しないこと（`CLAUDE.md` に既知の限界として記載）。
+- lazy link した path への書き込みは、単独・並行を問わず禁止する。書き込みが必要な path は link 前に worktree 内へ独立して作成する。
 - 子 issue の本文に書かれた依存関係は対象にせず、GitHub native dependency のみを実装順の根拠にする。native dependency を取得できない環境では安全側で停止する。
 
 ## 変更履歴（git log より自動生成）
 
+- 314fbc1 docs(#334): clarify worktree symlink write isolation
 - 8e9b9bb feat(#332): select ready child issue in work-multi
 - 1453def fix(#330): preserve worktree isolation
 - e624ef2 #328 Add lazy worktree linker (#329)
