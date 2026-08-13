@@ -16,7 +16,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 「現状調査（共通）」の冒頭には、この調査フェーズで許可される手段（Read・Grep・Glob・WebFetch・WebSearch・`gh` の読み取り専用呼び出し）と、Edit・Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで実行してはならない旨を明示するガード文がある（issue #356）。
 
-根拠: `commands/work.md:59-61`, `commands/work.md:71-131`
+根拠: `commands/work.md:59-61`, `commands/work.md:73-133`
 
 (A)/(B) のルーティング判定は、現在ブランチが `main` 自身、または `EnterWorktree` が作成する固定 prefix `worktree-` で始まる場合のみ (A) 新規作業とし、それ以外の全ての非 main ブランチは (B) 再開・エスカレーション（既存の B.1/B.2/B.3 判定）として扱う（issue #296、PR #304 レビューで修正）。
 
@@ -24,7 +24,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 非 main branch で再開した場合は workspace と main 以降の commit の有無から task の再開地点を決め、調査結果と開始 phase をユーザーへ提示する。
 
-根拠: `commands/work.md:133-150`
+根拠: `commands/work.md:135-152`
 
 ## 重要な設計判断
 
@@ -44,7 +44,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
     - 対処として `rm -f` への回帰も検討したが不採用とした。commit 87ce937（fix #250）は `session-approved` を `rm -f` の自動承認対象から明示的に除外している（`is_rm_protected_path`）。これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴（過去に許可された実際のスコープを、確認なしに削除→再構築で置き換える）を塞ぐためのものであり、G-0 を `rm -f` に戻すとこの抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。同じ理由で、hook 側の Write ハンドラを「既存内容が空なら absent と同等に扱う」よう変更する案（`Write` 経由で同種の抜け穴が開く）も不採用とした。
     - 最終的に、G-0 の防御的クリア自体を削除する方針を採った。Stop hook が正常に動作している通常ケースでは `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして無条件承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）のみ、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする（新しい自動承認ロジックは追加しない）。
 
-根拠: `commands/work.md:9-15`, `commands/work.md:21-29`, `commands/work.md:59-61`, `commands/work.md:75-95`, `commands/work.md:133-150`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定、Edit/Write working-repo 無条件承認）, issue #148, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, issue #356, PR #304
+根拠: `commands/work.md:9-15`, `commands/work.md:21-29`, `commands/work.md:59-61`, `commands/work.md:77-97`, `commands/work.md:135-152`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定、Edit/Write working-repo 無条件承認）, issue #148, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, issue #356, PR #304
 
 ## 統合ポイント
 
@@ -76,4 +76,4 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - 1e3b7fa fix(#227): avoid rm -f confirmation prompt in /work G-0 by clearing session-approved via Write tool
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 
-根拠: `commands/work.md:9-160`
+根拠: `commands/work.md:9-162`
