@@ -51,7 +51,7 @@ assert_executable() {
   fi
 }
 
-# --- commands/work-multi.md: worktree switch + delegation only, no duplicated gate logic ---
+# --- commands/work-multi.md: worktree switch + child selection + delegation, no duplicated gate logic ---
 assert_contains "$WORK_MULTI" 'EnterWorktree' 'work-multi calls EnterWorktree'
 # shellcheck disable=SC2088  # Literal documentation excerpts must retain the installed ~ path.
 assert_contains "$WORK_MULTI" '~/.claude/scripts/link-worktree-untracked.sh' "work-multi invokes Claude Code's installed linker script"
@@ -65,6 +65,13 @@ assert_contains "$WORK_MULTI" 'link "site/node_modules"' 'work-multi documents l
 assert_absent "$WORK_MULTI" 'bash scripts/link-worktree-untracked.sh' 'work-multi does not require a linker script in the consumer repository'
 assert_contains "$WORK_MULTI" 'commands/work.md' 'work-multi delegates to commands/work.md'
 assert_contains "$WORK_MULTI" '一字一句そのまま実行する' 'work-multi executes work.md verbatim, no reinterpretation'
+assert_contains "$WORK_MULTI" '## Step 1: 親 issue から実装対象を決定する' 'work-multi resolves a parent issue before delegation'
+assert_contains "$WORK_MULTI" 'subIssues' 'work-multi reads native GitHub sub-issues'
+assert_contains "$WORK_MULTI" '本文の未完了 task list' 'work-multi supports existing parent task lists'
+assert_contains "$WORK_MULTI" 'blockedBy' 'work-multi reads native GitHub issue dependencies'
+assert_contains "$WORK_MULTI" '全 issue が `CLOSED`' 'work-multi only selects children whose blockers are closed'
+assert_contains "$WORK_MULTI" '収集順で最初の 1 件を選ぶ' 'work-multi deterministically selects the first ready child'
+assert_contains "$WORK_MULTI" '推測で選択したりしてはならない' 'work-multi stops instead of guessing when no child is ready'
 assert_absent "$WORK_MULTI" '### G-0' 'work-multi does not duplicate work.md gate definitions'
 assert_absent "$WORK_MULTI" '### G-1' 'work-multi does not duplicate work.md gate definitions'
 assert_absent "$WORK_MULTI" '### G-2' 'work-multi does not duplicate work.md gate definitions'

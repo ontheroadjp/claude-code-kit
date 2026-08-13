@@ -20,9 +20,9 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/work-multi` (`commands/work-multi.md`)
 
-`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを `ORIGINAL_WORKDIR` として記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が agent 別に配布する lazy linker の `prepare` で元 working tree を current session に記録する。`ORIGINAL_WORKDIR` はこの初期化専用であり、切り替え後の Read・現状調査・Git 操作は共有 checkout へ移動せず隔離 worktree から行う。この段階では untracked/ignored path を link しない。必要になった path だけを `link <relative-path>` で作成し、manifest に記録する。`worktree-status.sh` はその manifest を使い、後続の `commands/work.md` G-2・`commands/task.md` Phase 2 から自己作成 symlink を自動除外する。manifest が空または不在なら通常 status を返すため、単体 `/work` の挙動は変わらない。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
+`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを `ORIGINAL_WORKDIR` として記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が agent 別に配布する lazy linker の `prepare` で元 working tree を current session に記録する。`ORIGINAL_WORKDIR` はこの初期化専用であり、切り替え後の Read・現状調査・Git 操作は共有 checkout へ移動せず隔離 worktree から行う。この段階では untracked/ignored path を link しない。必要になった path だけを `link <relative-path>` で作成し、manifest に記録する。`worktree-status.sh` はその manifest を使い、後続の `commands/work.md` G-2・`commands/task.md` Phase 2 から自己作成 symlink を自動除外する。manifest が空または不在なら通常 status を返すため、単体 `/work` の挙動は変わらない。指定 issue が親 issue の場合は Step 1 で native `subIssues` と未完了 task list から子 issue を収集し、GitHub native `blockedBy` が全て `CLOSED` の最初の子 issue を選ぶ。候補なし・dependency 取得不能時は停止する。Step 2 で選択した issue を起点として `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
 
-根拠: `commands/work-multi.md:1-60`, `install.sh:12-13,24-25,77-83`
+根拠: `commands/work-multi.md:1-87`, `install.sh:12-13,24-25,77-83`
 
 ### `/report-review` (`commands/report-review.md`)
 
