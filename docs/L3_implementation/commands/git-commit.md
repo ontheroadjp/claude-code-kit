@@ -19,3 +19,9 @@ HEAD の subject が `wip:` で始まる場合、first-parent 上の連続 WIP r
 staged diff が空なら中止する。個人情報、IP address、domain name、absolute path を確認したあと、fixed message がなければ許可 type から1つ選び、issue number があれば `<type>(#N): <description>`、なければ `<type>: <description>` の形式で commit する。pre-commit hook が失敗した場合は `--no-verify` または修正をユーザーに選ばせる。
 
 根拠: `commands/git-commit.md:56-104`
+
+## 変更履歴（git log より自動生成）
+
+- 8aeaa64 feat(#352): auto-approve WIP squash resets
+- f979a97 fix(#159): squash only contiguous WIP commits at HEAD instead of resetting to merge-base
+- 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
