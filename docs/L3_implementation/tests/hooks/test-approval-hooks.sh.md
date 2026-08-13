@@ -2,13 +2,13 @@
 
 ## 目的・役割
 
-`hooks/auto-approve-readonly.sh`（PreToolUse hook）の shell verification。常時許可、session-approved、複合 command、write mode、destructive block、session temp、cleanup、working repo dynamic defense を positive / negative の両面から検証する。
+`hooks/auto-approve-readonly.sh` の shell verification。Claude PreToolUse と Codex PermissionRequest の常時許可、session-approved、複合 command、write mode、destructive block、session temp、cleanup、working repo dynamic defense を positive / negative の両面から検証する。
 
 根拠: `tests/hooks/test-approval-hooks.sh:1-40`, `docs/L3_implementation/hooks/auto_approve_readonly.md`
 
 ## 動作概要
 
-`run_auto`（Claude Code 形式の hook payload）と `run_auto_codex_symlink`（Codex CLI symlink 経由）で `hooks/auto-approve-readonly.sh` を isolated `TMP_DIR`（`SESSION_FILE` を含む）上で直接実行し、stdout の decision JSON と `logs/auto-approve/` のログ行を `assert_json_decision` / `assert_no_output` / `assert_log_matches` で検証する。
+`run_auto`（Claude Code の PreToolUse payload）と `run_auto_codex_symlink`（Codex CLI の PermissionRequest payload）で `hooks/auto-approve-readonly.sh` を isolated `TMP_DIR`（`SESSION_FILE` を含む）上で直接実行する。Claude の legacy decision JSON、Codex の `hookSpecificOutput.decision.behavior: allow`、ログ行をそれぞれの assertion で検証する。
 
 主なカバレッジ:
 - Bash allowlist の境界（Git / GitHub CLI / Unix read tools / curl / npm / mise / journalctl / gsettings / gnome-extensions / gdbus / gresource / dpkg / tmux 等）の positive / negative ペア(`gh --version`・`mise current`/`ls`/`list` の positive case、`mise use`/`install`/`settings set` の negative case を含む。issue #276)
@@ -20,6 +20,7 @@
 - `rm [-f] <literal-path>` の自動承認（issue #248）: working repo 内パスへの literal（変数・グロブ・複数トークンなし）な `rm`/`rm -f` の positive case（WIP commit 作成も検証）と、variable 参照・repo root 自体・`.git` 配下・複数トークン・グロブ・`-rf`（recursive、対象外）・保護対象パスを negative case として固定。現在セッションの session-approved ファイル自身への literal `rm`/`rm -f` は `is_rm_protected_path` により保護対象であり、常に negative case（issue #250。issue #248 時点では positive case だった）
 - `xargs`/`find -exec`（issue #254）: read-only な wrapped command を持つ `xargs`（分離/添字形の `-I`、`-0`、`-n`/`-P`、`--` marker、パイプライン経由）と `find -exec`/`-execdir`（`\;`/`+` 終端、複数 `-exec` 節）の positive case、unsafe な wrapped command・終端記号欠落・一部の節だけ unsafe・認識対象外の xargs オプション（long option・クラスタ化）・`sh -c` のような未対応 wrapped command・変数展開による smuggling の negative case。`-fprintf` は `-exec` 系と異なりコマンドをラップしないため既存の `-delete` と同様に無条件拒否のままであることも固定
 - `--explain "<command>"` 診断モード（issue #283）: `run_auto_explain` ヘルパーで argv 経由で起動し、named 関数一致（`is_safe_unix_read_tool_command`）、どの named 関数にも session-approved にも一致しない場合（session-approved ファイル不在の状態も含む）、destructive guard による block、コマンド未指定時の usage メッセージ、session-approved fast path が成立するケース、fast path は不成立だが named 関数一致と `check_session_approved` 一致の両方を1コマンド内で踏むケース（`git status && git checkout foo`）を検証。出力が PreToolUse JSON プロトコル（`{"decision": ...}`）を一切含まないことも固定
+- Codex PermissionRequest: allowlisted Bash と session-temp file tool が PermissionRequest 専用 allow response を返し、legacy PreToolUse payload は neutral fallback になることを固定
 
 根拠: `tests/hooks/test-approval-hooks.sh:22-100`, `tests/hooks/test-approval-hooks.sh:240-374`, `tests/hooks/test-approval-hooks.sh:674-680`, `tests/hooks/test-approval-hooks.sh`（`--explain` 診断モードセクション）
 

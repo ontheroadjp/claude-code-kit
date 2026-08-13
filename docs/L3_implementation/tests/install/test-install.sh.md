@@ -2,13 +2,13 @@
 
 ## 目的・役割
 
-`tests/install/test-install.sh` は `install.sh` の template symlink contract と `hooks/lib/*.sh` symlink contract（issue #316）を実ユーザー環境へ副作用を与えずに検証する shell test である。
+`tests/install/test-install.sh` は `install.sh` の template symlink contract、`hooks/lib/*.sh` symlink contract（issue #316）、Codex auto-approve hook migration を実ユーザー環境へ副作用を与えずに検証する shell test である。
 
 根拠: `tests/install/test-install.sh:1-19`
 
 ## 動作の概要
 
-fixture repository と一時 HOME を作成し、fixture にコピーした installer を2回実行する。各実行後、Claude/Codex 両 template target の symlink・link target、および `hooks/lib/*.sh` と `scripts/*.sh` の Claude/Codex 両 target への symlink を検証する。
+fixture repository と一時 HOME を作成し、fixture にコピーした installer を2回実行する。各実行後、Claude/Codex 両 template target の symlink・link target、および `hooks/lib/*.sh` と `scripts/*.sh` の Claude/Codex 両 target への symlink を検証する。fixture は legacy Codex PreToolUse auto-approve entry を含み、installer 後はその entry がなく PermissionRequest entry が存在することを検証する。
 
 根拠: `tests/install/test-install.sh:9-32`, `tests/install/test-install.sh:60-80`
 
@@ -20,6 +20,7 @@ fixture repository と一時 HOME を作成し、fixture にコピーした inst
 - `assert_script_links` は fixture の `scripts/example.sh` が `~/.claude/scripts/` と `~/.codex/scripts/` の両方へ symlink されることを検証する（issue #324: command specification が consumer repo 内の script を仮定しない配布契約の回帰防止）
 - fresh HOME に legacy template target が作られないことを確認する
 - installer 再実行後も同じ contract が成立することを確認する
+- Codex auto-approve hook が legacy `PreToolUse` から `PermissionRequest` へ移行され、再実行でも重複・復活しないことを確認する
 
 根拠: `tests/install/test-install.sh:34-73`
 

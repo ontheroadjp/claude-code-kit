@@ -1,5 +1,5 @@
 #!/bin/bash
-# PreToolUse hook: auto-approve Read tool and read-only Bash commands
+# Claude PreToolUse / Codex PermissionRequest hook: auto-approve safe operations.
 set -euo pipefail
 
 # EPOCHREALTIME is a bash>=5.0 builtin variable (no subprocess spawn); used by
@@ -28,6 +28,7 @@ else
     payload=$(cat)
 fi
 tool_name=$(echo "$payload" | jq -r '.tool_name // ""')
+hook_event_name=$(echo "$payload" | jq -r '.hook_event_name // ""')
 
 # Resolve repo root (handles symlink from ~/.claude/hooks/)
 HOOK_INVOKED_PATH="${BASH_SOURCE[0]}"
@@ -1068,20 +1069,25 @@ log_decision() {
 
 emit_approval() {
     if is_codex_invocation; then
-        echo '{"decision": "allow"}'
+        if [ "$hook_event_name" = "PermissionRequest" ]; then
+            cat <<'EOF'
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}
+EOF
+        else
+            # Codex only honors auto-approval at PermissionRequest. A stale
+            # PreToolUse registration must fall back to Codex's normal policy.
+            echo '{}'
+        fi
     else
         echo '{"decision": "approve"}'
     fi
 }
 
 # Claude Code treats empty stdout as "hook has no opinion, use the normal
-# permission flow". Codex CLI's hook engine does not: it requires valid JSON
-# on every PreToolUse invocation and errors with "hook returned invalid
-# pre-tool-use JSON output" on empty stdout, which surfaces to the user as a
-# hook failure and forces a manual confirmation. `{}` carries no `decision`/
-# `hookSpecificOutput` key, so Codex falls through to its normal permission
-# flow exactly like Claude does on empty stdout. Claude's behavior is
-# unchanged (still no output).
+# permission flow". Codex uses a valid neutral JSON object for both
+# PreToolUse compatibility and PermissionRequest prompt fallback. `{}` carries
+# no decision, so Codex continues with its normal permission flow. Claude's
+# behavior is unchanged (still no output).
 emit_fallback() {
     is_codex_invocation && echo '{}'
     return 0

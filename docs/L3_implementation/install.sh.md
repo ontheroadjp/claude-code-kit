@@ -52,12 +52,13 @@ hook 設定 JSON の安全な更新には `jq` を使う。`jq` が見つから�
 
 現在の migration:
 - Stop イベントの `tmux-agent-status.sh 🔴` → 除去（`✅` として再登録）
+- Codex の `auto-approve-readonly.sh` を `PreToolUse` から除去し、`PermissionRequest` に再登録
 
 根拠: `install.sh:132-156`
 
 ## Hook 登録
 
-Claude Code には `~/.claude/settings.json`、Codex には `~/.codex/hooks.json` へ同等の hook event 構造を登録する。
+Claude Code には `~/.claude/settings.json`、Codex には `~/.codex/hooks.json` へ hook event 構造を登録する。共有 auto-approve hook は Claude では `PreToolUse`、Codex では `PermissionRequest` に登録する。Codex の destructive-command guard は引き続き `PreToolUse` の `Bash` matcher に登録する。
 
 `tmux-agent-status.sh` は以下の event に登録される。
 
@@ -76,7 +77,7 @@ claude() { command claude "$@"; bash ~/.claude/hooks/tmux-agent-status.sh 2>/dev
 codex()  { command codex  "$@"; bash ~/.claude/hooks/tmux-agent-status.sh 2>/dev/null; }
 ```
 
-根拠: `install.sh:155-187`
+根拠: `install.sh:195-245`
 
 ## 統合ポイント
 

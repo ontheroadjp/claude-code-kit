@@ -35,7 +35,7 @@ run_auto() {
 run_auto_file_tool() {
     local tool_name="$1" file_path="$2"
     jq -cn --arg tool_name "$tool_name" --arg file_path "$file_path" \
-        '{tool_name:$tool_name,tool_input:{file_path:$file_path}}' \
+        '{tool_name:$tool_name,hook_event_name:"PermissionRequest",tool_input:{file_path:$file_path}}' \
         | CODEX_CI=1 \
             CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
             CLAUDE_CODE_KIT_SESSION_ID="$SESSION_ID" \
@@ -50,7 +50,23 @@ run_auto_codex_symlink() {
     local codex_hook="${codex_hook_dir}/auto-approve-readonly.sh"
     mkdir -p "$codex_hook_dir"
     ln -sf "$AUTO_HOOK" "$codex_hook"
-    jq -cn --arg command "$command" '{tool_name:"Bash",tool_input:{command:$command}}' \
+    jq -cn --arg command "$command" --arg hook_event_name "PermissionRequest" \
+        '{tool_name:"Bash",hook_event_name:$hook_event_name,tool_input:{command:$command}}' \
+        | CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
+            CLAUDE_CODE_KIT_SESSION_ID="$SESSION_ID" \
+            CLAUDE_CODE_KIT_SESSION_APPROVED_FILE="$SESSION_FILE" \
+            CLAUDE_CODE_KIT_TMP_ROOT="$TMP_ROOT" \
+            bash "$codex_hook"
+}
+
+run_auto_codex_legacy_pre_tool_use() {
+    local command="$1"
+    local codex_hook_dir="${TMP_DIR}/.codex/hooks"
+    local codex_hook="${codex_hook_dir}/auto-approve-readonly.sh"
+    mkdir -p "$codex_hook_dir"
+    ln -sf "$AUTO_HOOK" "$codex_hook"
+    jq -cn --arg command "$command" --arg hook_event_name "PreToolUse" \
+        '{tool_name:"Bash",hook_event_name:$hook_event_name,tool_input:{command:$command}}' \
         | CLAUDE_CODE_KIT_STATE_HOME="$TMP_DIR/state" \
             CLAUDE_CODE_KIT_SESSION_ID="$SESSION_ID" \
             CLAUDE_CODE_KIT_SESSION_APPROVED_FILE="$SESSION_FILE" \
@@ -108,6 +124,16 @@ assert_codex_fallback() {
     local output="$1"
     if [ "$output" != '{}' ]; then
         printf 'Expected codex fallback {}, got: %s\n' "$output" >&2
+        exit 1
+    fi
+}
+
+assert_codex_permission_allow() {
+    local output="$1"
+    local behavior
+    behavior=$(printf '%s' "$output" | jq -r '.hookSpecificOutput | select(.hookEventName == "PermissionRequest") | .decision.behavior')
+    if [ "$behavior" != "allow" ]; then
+        printf 'Expected Codex PermissionRequest allow, got: %s\n' "$output" >&2
         exit 1
     fi
 }
@@ -639,8 +665,11 @@ assert_json_decision "$output" "approve"
 assert_log_matches '] agent=claude session=test-session-fixed result=approved[[:space:]]+tool=Bash[[:space:]]+duration_ms=(NA|[0-9]+)[[:space:]]+git status --porcelain$'
 
 output=$(run_auto_codex_symlink 'git status --porcelain')
-assert_json_decision "$output" "allow"
+assert_codex_permission_allow "$output"
 assert_log_matches '] agent=codex session=test-session-fixed result=approved[[:space:]]+tool=Bash[[:space:]]+duration_ms=(NA|[0-9]+)[[:space:]]+git status --porcelain$'
+
+output=$(run_auto_codex_legacy_pre_tool_use 'git status --porcelain')
+assert_codex_fallback "$output"
 
 output=$(run_auto_without_session 'git status --porcelain')
 assert_json_decision "$output" "approve"
@@ -773,10 +802,10 @@ assert_no_output "$output"
 printf '%s\n' 'tool:git_write' 'tool:gh_pr_write:143' > "$SESSION_FILE"
 
 output=$(run_auto_file_tool "Write" "${SESSION_TMP_DIR}/scratch.txt")
-assert_json_decision "$output" "allow"
+assert_codex_permission_allow "$output"
 
 output=$(run_auto_file_tool "Edit" "${SESSION_TMP_DIR}/scratch.txt")
-assert_json_decision "$output" "allow"
+assert_codex_permission_allow "$output"
 
 output=$(run_auto_file_tool "Write" "${TMP_ROOT}/other-session/scratch.txt")
 assert_codex_fallback "$output"
