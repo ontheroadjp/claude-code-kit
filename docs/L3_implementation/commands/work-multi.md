@@ -8,14 +8,15 @@
 
 ## 動作概要
 
-Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）で新規 worktree に切り替え、(3) installer が agent 別に配布した `link-worktree-untracked.sh` を実行して untracked ファイル/ディレクトリを symlink する。Claude Code は `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI は `~/.codex/scripts/link-worktree-untracked.sh` を使う。Step 1 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
+Step 0 で (1) `pwd` を `ORIGINAL_WORKDIR` として記録し、(2) `EnterWorktree`（`path` 指定なし）で新規 worktree に切り替え、(3) installer が agent 別に配布した `link-worktree-untracked.sh` の `prepare` に元 worktree を渡して lazy linker を初期化する。`ORIGINAL_WORKDIR` はこの `prepare` 引数専用であり、切り替え後の Read・現状調査・Git 操作では新しい worktree を CWD のまま使用する。共有 checkout への `cd` や `git -C "$ORIGINAL_WORKDIR"` は行わない。Claude Code は `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI は `~/.codex/scripts/link-worktree-untracked.sh` を使う。Step 1 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
 
 根拠: `commands/work-multi.md:9-50`
 
 ## 重要な設計判断
 
 - `commands/work.md` を丸ごとコピーせず Read して委譲する薄いラッパー構成とした。`skills/work/SKILL.md` が `commands/work.md` に対して既に採用している「単一 source of truth への薄いポインタ」パターンを踏襲し、`work.md` 変更のたびに二重メンテナンスが発生するリスクを避けるため。
-- untracked ファイル/ディレクトリの symlink は当初のスコープになかったが、実装時の検証で必要と判明した（issue #296 参照）。`git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトし、untracked/gitignored ファイルはコピーしない。この toolkit は特定プロジェクト専用ではなく任意のリポジトリで使う実行環境基盤であるため、対象リポジトリ固有の untracked パスを個別に把握することはできず、`.git`・`.claude` を除く全ての untracked/ignored パスを一律で symlink する汎用方針とした。
+- `ORIGINAL_WORKDIR` は lazy linker が元 worktree を特定するためだけに保持し、worktree 切り替え後の CWD としては使わない。共有 checkout へ移動して Git を実行すると worktree-isolation guard に拒否され、並行実行の分離保証も損なうため。
+- `git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトするため、lazy linker は必要になった untracked/ignored path だけを symlink する。初期化時に大きな `node_modules` 等を処理せず、対象リポジトリ固有の path をあらかじめ仮定しない。
 - `.claude` を丸ごと除外したのは、`EnterWorktree` 自身が worktree を `.claude/worktrees/<name>` 配下に作成する固定仕様のため。`.claude` を symlink すると、新しい worktree の中に worktrees ディレクトリ自身への自己参照ループが生じる。副作用として worktree は `.claude/settings.local.json`（ローカル権限設定）を引き継がない（安全側＝確認プロンプト増加の方向のみ）。
 - node_modules 等セッション中に書き換わる依存ディレクトリも一律 symlink の対象に含まれる。これは worktree 隔離の目的（共有可変状態の衝突防止）と部分的に矛盾するトレードオフだが、対象リポジトリ非依存の汎用実装を優先し、既知の限界として `CLAUDE.md` に文書化するに留めた（リポジトリごとの依存ディレクトリ名を個別に除外するとリポジトリ固有の特別扱いが必要になり、この toolkit の汎用性の前提と矛盾するため）。
 - `ExitWorktree` は明示的なユーザー指示がない限り呼ばない。セッション終了時の keep/remove 確認は harness の既存機能に委ねる。
@@ -36,6 +37,9 @@ Step 0 で (1) `pwd` を記録し、(2) `EnterWorktree`（`path` 指定なし）
 
 ## 変更履歴（git log より自動生成）
 
-- dc5b568 fix(#324): install worktree linker for consumers
+- 1453def fix(#330): preserve worktree isolation
+- e624ef2 #328 Add lazy worktree linker (#329)
+- ea565ac #326 Automate worktree symlink status filtering (#327)
+- 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point

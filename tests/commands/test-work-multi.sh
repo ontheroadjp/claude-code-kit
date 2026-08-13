@@ -58,6 +58,9 @@ assert_contains "$WORK_MULTI" '~/.claude/scripts/link-worktree-untracked.sh' "wo
 # shellcheck disable=SC2088  # Literal documentation excerpts must retain the installed ~ path.
 assert_contains "$WORK_MULTI" '~/.codex/scripts/link-worktree-untracked.sh' "work-multi invokes Codex CLI's installed linker script"
 assert_contains "$WORK_MULTI" 'prepare "<0.1 で得た ORIGINAL_WORKDIR の絶対パス>"' 'work-multi prepares the lazy linker without eager links'
+assert_contains "$WORK_MULTI" 'Step 0.3 の lazy linker `prepare` 引数にのみ' 'work-multi restricts ORIGINAL_WORKDIR to linker preparation'
+assert_contains "$WORK_MULTI" '共有 checkout に `cd` したり、`git -C "$ORIGINAL_WORKDIR"` を使ったりしてはならない' 'work-multi keeps commands in the isolated worktree'
+assert_contains "$WORK_MULTI" '`commands/work.md` の Read、現状調査、Git 操作はすべてこの worktree から実行する' 'work-multi runs all workflow operations from the isolated worktree'
 assert_contains "$WORK_MULTI" 'link "site/node_modules"' 'work-multi documents linking an explicitly needed path'
 assert_absent "$WORK_MULTI" 'bash scripts/link-worktree-untracked.sh' 'work-multi does not require a linker script in the consumer repository'
 assert_contains "$WORK_MULTI" 'commands/work.md' 'work-multi delegates to commands/work.md'

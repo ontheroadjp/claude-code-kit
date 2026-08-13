@@ -11,6 +11,7 @@
 固定文字列の存在・不在を検査する helper（`assert_contains`/`assert_absent`）と実行権限を検査する helper（`assert_executable`）を使い、以下を確認する。
 
 - `commands/work-multi.md` が `EnterWorktree`・agent 別 installed path（`~/.claude/scripts/` と `~/.codex/scripts/`）・`commands/work.md` への言及を含み、consumer repo 相対の `bash scripts/link-worktree-untracked.sh` を含まず、`### G-0`/`### G-1`/`### G-2` を重複定義していない
+- `ORIGINAL_WORKDIR` を Step 0.3 の linker `prepare` 引数だけに使い、共有 checkout への `cd` / `git -C` を行わず、Read・調査・Git 操作を隔離 worktree から実行することを明記している
 - `skills/work-multi/SKILL.md` が `skills/work/SKILL.md` と同じ scope guard パターンを持つ
 - `commands/work.md` が `.claude/worktrees/` パスガードと `worktree-` prefix ベースのブランチ分類、B.1（未コミット変更があれば継続）の保持を含む
 - `scripts/link-worktree-untracked.sh` と `scripts/worktree-status.sh` が実行権限を持ち、前者が NUL 区切り列挙と `.git`/`.claude` 除外を行い、後者が linker manifest を読む
@@ -32,7 +33,8 @@ Markdown workflow は直接実行可能なプログラムではないため、`t
 
 ## 変更履歴（git log より自動生成）
 
-- 5f7ba97 feat(#328): add lazy worktree linker
+- 1453def fix(#330): preserve worktree isolation
+- e624ef2 #328 Add lazy worktree linker (#329)
 - ea565ac #326 Automate worktree symlink status filtering (#327)
 - dc5b568 fix(#324): install worktree linker for consumers
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
