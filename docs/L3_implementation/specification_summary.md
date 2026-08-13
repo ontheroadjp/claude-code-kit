@@ -20,7 +20,7 @@ exact `report` label があれば `commands/report-review.md` へ委譲して実
 
 ### `/work-multi` (`commands/work-multi.md`)
 
-`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が Claude Code では `~/.claude/scripts/link-worktree-untracked.sh`、Codex CLI では `~/.codex/scripts/link-worktree-untracked.sh` へ symlink 配布する linker で、元の working tree の untracked/ignored ファイル・ディレクトリ（`.git`・`.claude` を除く）を symlink する（issue #324）。consumer repo 自身が linker を tracked file として持つ必要はなく、この変更を取り込む際に `./install.sh` を一度再実行して配布する。linker manifest（`worktree-untracked-symlinks.txt`）は `worktree-status.sh` が利用し、後続の `commands/work.md` G-2・`commands/task.md` Phase 2 から自己作成 symlink を自動除外する。manifest がないときは通常 status を返すため、単体 `/work` の挙動は変わらない。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
+`/work` と全く同じワークフローを `EnterWorktree` 隔離下の専用 worktree 内で実行する、意図的な並行セッション利用向けの明示的 opt-in 入口（issue #296）。Step 0 で現在の作業ディレクトリを記録し、`EnterWorktree`（`path` 指定なし、常に新規 worktree）で切り替えた後、installer が agent 別に配布する lazy linker の `prepare` で元 working tree を current session に記録する。この段階では untracked/ignored path を link しない。必要になった path だけを `link <relative-path>` で作成し、manifest に記録する。`worktree-status.sh` はその manifest を使い、後続の `commands/work.md` G-2・`commands/task.md` Phase 2 から自己作成 symlink を自動除外する。manifest が空または不在なら通常 status を返すため、単体 `/work` の挙動は変わらない。Step 1 で `commands/work.md` を Read し一字一句そのまま実行する（ゲート・ルーティングロジックは重複定義しない）。
 
 根拠: `commands/work-multi.md:1-60`, `install.sh:12-13,24-25,77-83`
 
@@ -244,11 +244,11 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/hooks/test-session-paths.sh:1-87`
 
-`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、linker と shared status helper の契約を静的検証する。`tests/scripts/test-worktree-status.sh` は manifest 記録済み symlink を除外し、実際の変更と単体 `/work` 相当の通常 status を保持することを functional に検証する。
+`tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、lazy linker と shared status helper の契約を静的検証する。`tests/scripts/test-worktree-status.sh` は manifest 記録済み symlink を除外し、実際の変更と単体 `/work` 相当の通常 status を保持することを functional に検証する。
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
 
-`tests/scripts/test-link-worktree-untracked.sh` は `scripts/link-worktree-untracked.sh` の symlink 挙動を functional に検証する。一時 git リポジトリを用意し、トップレベル untracked ファイル/ディレクトリ、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性、および `hooks/lib/session-paths.sh` が解決可能な場合の manifest（`worktree-untracked-symlinks.txt`）書き出しを確認する（issue #296、issue #318）。
+`tests/scripts/test-link-worktree-untracked.sh` は lazy linker の functional test である。`prepare` が source と空 manifest だけを記録し、`link` が指定された untracked/ignored path だけを作成・manifest へ一度だけ記録することを確認する。tracked path、unsafe path、unavailable path は拒否する。
 
 根拠: `tests/scripts/test-link-worktree-untracked.sh:1-126`
 
@@ -264,7 +264,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `scripts/analyze_access.py:1-6`, `scripts/analyze_auto_approve.py:1-6`, `scripts/analyze_token_usage.py:1-9`, `scripts/lib/analyze_common.py:1`
 
-`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、引数に取った元の working tree に対して `git status --porcelain -z --ignored=matching` の NUL 区切り出力から `??`/`!!` エントリを列挙し、`.git`・`.claude` とその配下を除く全てを現在の working tree（新しい worktree）の同一相対パスへ symlink する。symlink 化した相対パスは session tmp directory の `worktree-untracked-symlinks.txt` に書き出す。`scripts/worktree-status.sh` はこの manifest を使い、`??`/`!!` の完全一致または親 directory の entry だけを除外して残りの porcelain status を返す。manifest 不在時は通常の status を返す。
+`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれる lazy linker である。`prepare <source>` は source worktree と空 manifest を session tmp directory に記録する。`link <relative-path>` は `.git`・`.claude`・absolute path・parent traversal を拒否し、source 側が `??`/`!!` として報告する path だけを current worktree に link する。同じ source target は冪等に扱い、成功した path は manifest に一度だけ記録する。`scripts/worktree-status.sh` はこの manifest を使い、`??`/`!!` の完全一致または親 directory の entry だけを除外して残りの porcelain status を返す。manifest が空または不在なら通常の status を返す。
 
 根拠: `scripts/link-worktree-untracked.sh:1-59`
 
