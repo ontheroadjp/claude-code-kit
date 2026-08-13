@@ -7,7 +7,7 @@
 - 作成する issue は `${TEMPLATES_DIR}/issue.md` の構成に従います
 - **issue のタイトル・本文は英語で記述する**
 - スコープが 1 件の coherent unit を超えると判断した場合、明示的な分割理由付きで複数 issue に分けて作成します
-- 複数 issue に分割する際、GitHub の task list 機能を使って進捗を自動追跡する親（tracking）issue も選択的に作成できます（Step 3 参照）
+- 複数 issue に親子関係を持たせる際は、GitHub の native sub-issue で進捗を追跡する親（tracking）issue を作成します（Step 3 参照）
 
 template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 - Claude Code: `~/.claude/templates`
@@ -48,7 +48,7 @@ Step 1 で得た情報をもとに、以下のうち未確定の項目を 1 件�
 
 1. **issue を分割しない** — 1 件のシンプルな issue として作成する
 2. **1 つの issue で Phase 分割** — 1 件に保ち、本文 Scope に Phase 1 / Phase 2 / ... を明示する
-3. **親子issue として分割（N 件）** — 1 件の親（tracking）issue と、それに紐づく N 件の子issue を作成する。親issue本文に GitHub の task list 記法（`- [ ] #<子issue番号>`）で子issue一覧を列挙し、子issue が close された時に親issue側のチェックが GitHub のネイティブ機能で自動的にオンになる（分割案を提示する）
+3. **親子issue として分割（N 件）** — 1 件の親（tracking）issue と、それに紐づく N 件の子issue を GitHub の native sub-issue として作成する。親issue本文に子issue一覧や Markdown task list は記載しない（分割案を提示する）
 4. **単体で分割（N 件）** — 親子関係を持たない、独立した関心ごとの issue を N 件作成する（分割案を提示する）
 
 **Claude の推奨: [1 / 2 / 3 / 4] — [Step 1/2 の事実に基づく理由]**
@@ -76,9 +76,7 @@ Step 1 で得た情報をもとに、以下のうち未確定の項目を 1 件�
 #### 親子issue化（Step 3 で [3] を選択した場合）
 
 - 子issue（N 件）は通常のドラフトのまま作成する（内容の変更なし）
-- 親issue 1 件は `${TEMPLATES_DIR}/issue.md` の Scope (initial estimate) セクションを子issue一覧の説明に置き換え、GitHub の task list 記法（`- [ ] #<子issue番号>`）で子issue一覧を列挙する
-    - GitHub は task list 内で参照した issue が close されると、該当行のチェックボックスを自動でオンにするネイティブ機能を持つため、これを利用する。子issue側の本文には手動でチェックを入れる手順を書かない
-    - 子issue番号は Step 5 で子issueを先に作成した後に確定するため、親issueのドラフトはこの時点では番号欄をプレースホルダのまま提示してよい
+- 親issue 1 件は `${TEMPLATES_DIR}/issue.md` の構成に従い、親としての目的・全体の完了条件・子issueに共通する制約を記載する。子issue一覧、Markdown task list、子issue番号のプレースホルダは記載しない
 
 #### ラベル選定（提示より先に行う）
 
@@ -144,12 +142,9 @@ EOF
 各作成で得られた issue 番号と URL を保持する。
 
 **親子issue化した場合（Step 3 で [3] を選択した場合）の作成順序（必須）:**
-1. 子issue（N 件）を先に全件作成し、番号を確定する
-2. 確定した子issue番号を親issueドラフトの task list に埋め込んでから親issueを作成する
-3. 親issue作成後、各子issueに以下でコメントを投稿し、双方向に参照できるようにする（子issue本文自体は編集しない）:
-    ```bash
-    gh issue comment <子issue番号> --body "Parent tracking issue: #<親issue番号>"
-    ```
+1. 親issueを作成する
+2. 子issue（N 件）を全件作成する
+3. 各子issueを親issueの native sub-issue として紐付ける。親子関係はこの native sub-issue のみを source of truth とし、親issue本文の Markdown task list や子issueへの親参照コメントは作成しない
 
 ### Step 6: 引き継ぎ案内
 
@@ -157,7 +152,7 @@ EOF
 
 - 件数（1 件 or 複数件）
 - 各 issue の番号・タイトル・URL
-- 親子issue化した場合は、親issueの番号・URLと、close時に子issueのチェックが自動連動する旨を明記する
+- 親子issue化した場合は、親issueの番号・URLと、子issueが native sub-issue として紐付いている旨を明記する
 - 次のステップとして「実装に進む場合は `/work` を呼んでください。issue 番号を渡すと該当 issue を起点に作業を開始できます」と案内する
 - **`/work` を自動呼び出ししない**。ユーザー任意で次の操作を選択させる
 
