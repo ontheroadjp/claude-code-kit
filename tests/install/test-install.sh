@@ -25,6 +25,24 @@ printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/hooks/example.sh"
 printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/hooks/lib/example-lib.sh"
 printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/scripts/example.sh"
 printf '# skill\n' > "$FIXTURE_REPO/skills/example/SKILL.md"
+mkdir -p "$TEST_HOME/.codex"
+cat > "$TEST_HOME/.codex/hooks.json" <<'EOF'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.codex/hooks/auto-approve-readonly.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
 
 for template in README.md issue.md pr.md readme.md; do
   printf '# template\n' > "$FIXTURE_REPO/templates/$template"
@@ -75,6 +93,25 @@ assert_script_links() {
     "$FIXTURE_REPO/scripts/example.sh"
 }
 
+assert_codex_auto_approve_registration() {
+  local hooks_file="$TEST_HOME/.codex/hooks.json"
+  local hook_command='bash ~/.codex/hooks/auto-approve-readonly.sh'
+
+  if jq -e --arg command "$hook_command" \
+    '[(.hooks.PreToolUse // [])[] | .hooks[]?.command] | any(. == $command)' \
+    "$hooks_file" >/dev/null; then
+    printf 'FAIL: legacy Codex PreToolUse auto-approve hook remains registered\n'
+    exit 1
+  fi
+
+  if ! jq -e --arg command "$hook_command" \
+    '[(.hooks.PermissionRequest // [])[] | .hooks[]?.command] | any(. == $command)' \
+    "$hooks_file" >/dev/null; then
+    printf 'FAIL: Codex PermissionRequest auto-approve hook is not registered\n'
+    exit 1
+  fi
+}
+
 run_installer
 assert_template_links "$TEST_HOME/.claude/templates"
 assert_template_links "$TEST_HOME/.codex/templates"
@@ -82,6 +119,7 @@ assert_hooks_lib_links "$TEST_HOME/.claude/hooks/lib"
 assert_hooks_lib_links "$TEST_HOME/.codex/hooks/lib"
 assert_script_links "$TEST_HOME/.claude/scripts"
 assert_script_links "$TEST_HOME/.codex/scripts"
+assert_codex_auto_approve_registration
 
 LEGACY_CONFIG_DIR="$TEST_HOME/.config/claude-code-kit"
 if [ -e "$LEGACY_CONFIG_DIR/templates" ]; then
@@ -96,5 +134,6 @@ assert_hooks_lib_links "$TEST_HOME/.claude/hooks/lib"
 assert_hooks_lib_links "$TEST_HOME/.codex/hooks/lib"
 assert_script_links "$TEST_HOME/.claude/scripts"
 assert_script_links "$TEST_HOME/.codex/scripts"
+assert_codex_auto_approve_registration
 
 printf 'All install contract tests passed.\n'

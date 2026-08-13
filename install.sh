@@ -207,6 +207,11 @@ remove_codex_hook() {
 remove_claude_hook "Stop" "bash ~/.claude/hooks/tmux-agent-status.sh 🔴"
 remove_codex_hook  "Stop" "bash ~/.codex/hooks/tmux-agent-status.sh 🔴"
 
+# Codex auto-approval is decided at PermissionRequest. Remove the legacy
+# PreToolUse registration so an upgraded installation does not run the shared
+# hook at an event where Codex cannot resolve the pending approval.
+remove_codex_hook "PreToolUse" "bash ~/.codex/hooks/auto-approve-readonly.sh"
+
 add_claude_hook "PreToolUse"       ""     "bash ~/.claude/hooks/auto-approve-readonly.sh"
 add_claude_hook "PreToolUse"       "Bash" "bash ~/.claude/hooks/guard-destructive-cmd.sh"
 add_claude_hook "PreToolUse"       ""     "bash ~/.claude/hooks/tmux-agent-status.sh 🔵"
@@ -223,7 +228,7 @@ add_claude_hook "Stop"             ""     "bash ~/.claude/hooks/notify-slack.sh"
 add_claude_hook "Stop"             ""     "bash ~/.claude/hooks/tmux-agent-status.sh ✅"
 
 echo "Configuring ${CODEX_HOOKS_FILE}..."
-add_codex_hook "PreToolUse"       ""     "bash ~/.codex/hooks/auto-approve-readonly.sh"
+add_codex_hook "PermissionRequest" ""   "bash ~/.codex/hooks/auto-approve-readonly.sh"
 add_codex_hook "PreToolUse"       "Bash" "bash ~/.codex/hooks/guard-destructive-cmd.sh"
 add_codex_hook "PreToolUse"       ""     "bash ~/.codex/hooks/tmux-agent-status.sh 🔵"
 add_codex_hook "UserPromptSubmit" ""     "bash ~/.codex/hooks/log-access-prompt.sh"

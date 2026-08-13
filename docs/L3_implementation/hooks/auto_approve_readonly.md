@@ -2,7 +2,7 @@
 
 ## 目的と安全境界
 
-`hooks/auto-approve-readonly.sh` は Claude Code / Codex CLI の PreToolUse hook である。通常操作の不要な許可プロンプトを減らしつつ、自動承認を次の3種類に限定する。
+`hooks/auto-approve-readonly.sh` は、Claude Code では PreToolUse、Codex CLI では PermissionRequest で動く共有 hook である。通常操作の不要な許可プロンプトを減らしつつ、自動承認を次の3種類に限定する。
 
 1. 永続状態を変更しない読み取り専用操作
 2. ローカルリポジトリの外に一切影響しない narrow な git write 操作（`git add`/`git commit -m`/`git fetch`/`git checkout main`・`git switch main`。共有・remote 状態は変更しない）
@@ -10,7 +10,9 @@
 
 この分類に確信を持てない操作は出力なしで終了し、クライアントの通常許可フローへ戻す。破壊的操作は allowlist より先に評価し、session-approved が存在しても block する。
 
-根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:806-1190`, `hooks/lib/approval-safety.sh`
+Codex が安全な操作に対して返すのは `hookSpecificOutput.hookEventName: PermissionRequest` と `decision.behavior: allow` を含む PermissionRequest 専用レスポンスである。Codex の古い PreToolUse 呼び出しには `{}` を返し、通常の承認ポリシーへ委ねる。Claude の `{"decision":"approve"}` と空 stdout による fallback は変更しない。
+
+根拠: `docs/L0_concept/policy.md`, `hooks/auto-approve-readonly.sh:30-31,1070-1093,1869-2074`, `hooks/lib/approval-safety.sh`
 
 ## セッションと実行元の解決
 
@@ -368,13 +370,13 @@ ANSI-C クォート（`$'...'`）はこの再設計で新たに追加した認�
 
 ## decision とログ
 
-| 結果 | Claude | Codex |
+| 結果 | Claude PreToolUse | Codex PermissionRequest |
 |---|---|---|
-| approve | `{"decision":"approve"}` | `{"decision":"allow"}` |
+| approve | `{"decision":"approve"}` | `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}` |
 | prompt fallback | stdoutなし | `{}` |
 | destructive block | reason付きblock JSON | reason付きblock JSON |
 
-**prompt fallback が Claude と Codex で異なる理由（issue #265）:** Claude Code は stdout が空の場合「hook は判定しない」と解釈し、通常の許可フローへ委ねる。Codex CLI の hook engine はこれと異なり、PreToolUse hook 呼び出しごとに有効な JSON を要求し、空 stdout は `hook returned invalid pre-tool-use JSON output` エラーとして扱われる（この repo にインストール済みの Codex CLI バイナリの文字列解析で、PreToolUse の `decision` フィールドが受理する値が `approve`/`block`/`allow` の3種類のみであることを確認済み。`decision`/`hookSpecificOutput` キーを持たない `{}` は「hook は判定しない」と等価に解釈され、通常の許可フローへ委ねられる）。`emit_fallback()`（`is_codex_invocation` の場合のみ `{}` を出力する）が全ての prompt fallback 経路（7箇所）で呼ばれる。Claude 側の挙動（stdoutなし）は変更していない。
+**prompt fallback が Claude と Codex で異なる理由:** Claude Code は stdout が空の場合「hook は判定しない」と解釈し、通常の許可フローへ委ねる。Codex では `{}` を返し、PermissionRequest の通常承認フローへ委ねる。`emit_fallback()` は Codex invocation の場合のみ `{}` を出力するため、Claude 側の挙動は変更しない。
 
 根拠: `hooks/auto-approve-readonly.sh`（`emit_fallback`）, issue #265
 
@@ -549,6 +551,7 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- c146ead fix(#340): approve Codex permission requests
 - 880ee07 feat(#301): consolidate /new-issue draft/label/creation approval into Step 4
 - a38d7ad feat(#290): accept a single branch token in git fetch <remote> allow-shape
 - 16babcc feat(#289): allow bare 'git checkout main' / 'git switch main' unconditionally
