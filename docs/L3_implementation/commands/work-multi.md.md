@@ -29,6 +29,7 @@ lazy link した path への書き込みは禁止する。worktree を削除し�
 
 ## 変更履歴（git log より自動生成）
 
+- 4d60291 feat(#350): route parent issues to ready children
 - 314fbc1 docs(#334): clarify worktree symlink write isolation
 - 5f7ba97 feat(#328): add lazy worktree linker
 - ea565ac #326 Automate worktree symlink status filtering (#327)

@@ -28,3 +28,7 @@ G-0 で通常 worktree と `EnterWorktree` 作成 worktree を区別して main 
 manifest に記録されない untracked path は、worktree 内でも実際の差分として扱う。
 
 親 issue の子 issue 選択は native dependency を唯一の根拠とする。dependency の取得に失敗した場合や実装可能な子 issue がない場合は、推測せず状況を報告して終了する。
+
+## 変更履歴（git log より自動生成）
+
+- 4d60291 feat(#350): route parent issues to ready children
