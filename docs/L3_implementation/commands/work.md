@@ -65,15 +65,15 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
+- e5f073e docs(#356): prohibit edits during /work investigation phase
+- f484a2d Route parent issues to their next ready child (#351)
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
+- ea565ac #326 Automate worktree symlink status filtering (#327)
+- a46be53 feat(#321): unify operational hazard workflows
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
 - 4450e96 feat(#298): gate /work on the legacy candidate label, swap to triage-approved on approval
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
-- b3a5b06 chore(#269): prefer L3 doc line citations over full-file reads in /work investigation
-- af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
-- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
-- 1e3b7fa fix(#227): avoid rm -f confirmation prompt in /work G-0 by clearing session-approved via Write tool
-- db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 
 根拠: `commands/work.md:9-162`
