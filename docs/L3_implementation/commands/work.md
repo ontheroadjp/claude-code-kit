@@ -66,7 +66,8 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
-- 2e7603b docs(#358): prohibit web write/download during /work investigation
+- ae1c7f9 fix(#360): align /work heading wording and (A)/(B) investigation references
+- e501904 #358 Prohibit web write/download during /work investigation phase (#359)
 - 4ddff6e #356 Prohibit edits during /work investigation phase (#357)
 - f484a2d Route parent issues to their next ready child (#351)
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
@@ -75,6 +76,5 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
-- 4450e96 feat(#298): gate /work on the legacy candidate label, swap to triage-approved on approval
 
 根拠: `commands/work.md:9-176`
