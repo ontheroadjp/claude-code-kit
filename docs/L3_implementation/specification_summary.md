@@ -16,7 +16,7 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
-根拠: `commands/work.md:9-58`, `commands/work.md:59-61`, `commands/work.md:80-154`
+根拠: `commands/work.md:9-56`, `commands/work.md:60-63`, `commands/work.md:90-158`
 
 ### `/work-multi` (`commands/work-multi.md`)
 

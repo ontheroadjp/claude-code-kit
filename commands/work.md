@@ -8,11 +8,9 @@
 
 ### G-0: main ブランチへの切り替え
 
-まず `git rev-parse --show-toplevel` を実行し、その結果が `.claude/worktrees/` を含むかを判定する。含む場合（`EnterWorktree` が作成した worktree 内で実行されている場合。例: `/work-multi`）は `main` が主 worktree で既にチェックアウトされているため `git checkout main` を実行せずスキップし、G-1 へ進む。含まない場合は `git checkout main` を実行し、main ブランチに切り替える（通常の非 worktree checkout ではこの分岐は常に false になるため、以下は従来と同一の動作である）。
-
-（issue #261 で追記: 以前はここで前回の `/work` 呼び出しの `session-approved` を空文字列で防御的にクリアしていたが、廃止した。`hooks/auto-approve-readonly.sh` の Write ハンドラは「ファイルが absent の場合のみ」無条件承認する初回書き込みブランチに入るため、この空書き込みは `hooks/cleanup-session.sh`（Stop hook）が正常に削除済みの absent 状態を「exists-empty」状態に変換してしまい、直後の `task.md`/`patch.md` Step 2 の実承認内容の書き込みが既存内容（空）との差分比較で毎回確実にスコープ拡大としてブロックされる原因になっていた。Stop hook が正常に動作していれば `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）は、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする。`rm -f` への回帰は検討したが不採用とした: commit 87ce937（fix #250）が `session-approved` を `rm -f` の自動承認対象から明示的に除外しており（`is_rm_protected_path`）、これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴を塞ぐためのもの。G-0 を `rm -f` に戻すと、この抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。）
-
-（issue #296 で追記: worktree パスガードを追加した。`EnterWorktree` は常に `.claude/worktrees/<name>` 配下に worktree を作成する固定仕様のため（ツール自身の仕様）、この配下にいるかどうかは `git checkout main` を試行する前に確実に判定できる。実機検証の結果、worktree 内で `git checkout main` を実行すると `main` は主 worktree で既にチェックアウトされているため `fatal: 'main' is already used by worktree at '<主worktreeのパス>'` で必ず失敗することを確認した。この失敗を実行してからエラー文言を解釈するのではなく、事前のパスチェックで確実に回避する設計とした。通常の非 worktree checkout では `git checkout main` は workspace が clean であれば元のブランチとの分岐状況に関わらず常に成功することも実機で確認済みであり、このガードは非 worktree の場合の挙動に一切影響しない。）
+まず `git rev-parse --show-toplevel` を実行し、その結果が `.claude/worktrees/` を含むかを判定する。
+- 含む場合:  G-1 へ進む
+- 含まない場合: `git checkout main` を実行し、main ブランチに切り替える
 
 ### G-1: docs/.ai/repo.profile.json の存在確認
 - 存在しない場合: /init-docs の実行を促して終了する
@@ -20,9 +18,12 @@
 
 ### G-2: main ブランチの場合、ワークスペースの確認
 
-Claude Code では `bash ~/.claude/scripts/worktree-status.sh`、Codex CLI では `bash ~/.codex/scripts/worktree-status.sh` を実行する。このヘルパーは通常の `/work` では `git status --porcelain` と同じ出力を返し、worktree 隔離セッションで current session の自己作成 symlink manifest が存在するときだけ、その symlink を出力から自動除外する。
+- Claude Code の場合: `bash ~/.claude/scripts/worktree-status.sh` を実行する
+- Codex CLI の場合: `bash ~/.codex/scripts/worktree-status.sh` を実行する
 
-ヘルパーが manifest を使う場合も、manifest 中の行と完全一致するパス、および manifest 中の行の親ディレクトリ（例: status 側が `.pytest_cache/`、manifest 側が `.pytest_cache/.gitignore`）だけを除外する。manifest が存在しない場合は status をそのまま返すため、自己作成 symlink 以外の差分判定は変わらない。
+これらヘルパーは通常の `/work` では `git status --porcelain` と同じ出力を返し、worktree 隔離セッションで current session の自己作成 symlink manifest が存在するときだけ、その symlink を出力から自動除外する。
+ヘルパーが manifest を使う場合も、manifest 中の行と完全一致するパス、および manifest 中の行の親ディレクトリ（例: status 側が `.pytest_cache/`、manifest 側が `.pytest_cache/.gitignore`）だけを除外する。
+manifest が存在しない場合は status をそのまま返すため、自己作成 symlink 以外の差分判定は変わらない。
 
 除外後もなお差分がある場合、以下の選択肢をユーザーに提示する:
 
@@ -47,36 +48,46 @@ Claude Code では `bash ~/.claude/scripts/worktree-status.sh`、Codex CLI で�
 
 ## 開始判定とルーティング
 
-### ブランチ分類
+### Step 1. ブランチ分類
 
 以降の (A)/(B) 判定は、現在のブランチ名で行う:
 
-- `main` 自身、または `EnterWorktree` が作成する固定 prefix `worktree-` で始まるブランチ → (A) 新規作業
-- 上記以外の全ての非 main ブランチ → (B) 再開・エスカレーション（既存の B.1/B.2/B.3 判定へ進む）
+- `main` 自身、または `EnterWorktree` が作成する固定 prefix `worktree-` で始まるブランチの場合: (A) 新規作業
+- 上記以外の全ての非 main ブランチの場合: (B) 再開・エスカレーション（既存の B.1/B.2/B.3 判定へ進む）
 
-（issue #296 で追記、PR #304 の Codex CLI レビュー指摘を受けて修正: 当初は「`/task`・`/patch` が実際に作成する命名規則（`feat/` 等）に一致するか」で (A)/(B) を分類していたが、この判定基準だと、ユーザーが手動で作成した命名規則に沿わないブランチ（例: `docs/foo`）上で未コミット変更がある状態から `/work` を再実行し `git checkout main` が失敗した場合、B.1（未コミット変更があれば継続）に到達せず誤って (A) 新規作業に分類されてしまう問題があった。`worktree-` は `EnterWorktree` 自身が付与する固定的で衝突しない目印であるため、判定はこの prefix の有無だけに限定し、それ以外の非 main ブランチは全て従来通り (B) の B.1/B.2/B.3 判定に委ねることで、既存の「未コミット変更があれば継続」という安全な挙動を保つ。通常の非 worktree checkout では、`git checkout main` が成功した時点でブランチは必ず文字通り `main` になるため (A) に分類される。checkout が失敗して非 main ブランチのまま残るケースは、この修正後は例外なく (B) へ進み、既存の B.1/B.2/B.3 の判定結果は変わらない。）
+### Step 2. 現状調査（(A)/(B) 共通）
 
-### 現状調査（共通）
+この調査フェーズでは Read・Grep・Glob・WebFetch・WebSearch および `gh` の読み取り専用呼び出しのみ行う。
+WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど「現状変更」を伴う操作は一切行ってはならない。
+Edit・Write（session-tmp・session-approved ファイルへの書き込みを除く）は、task.md/patch.md の Step 2 プラン承認を得るまで実行してはならない。
+これらの禁止事項に該当する操作が調査上どうしても必要な場合は、理由をユーザーに報告し、実行可否の判断を仰いでからでなければ実行してはならない。
 
-この調査フェーズでは Read・Grep・Glob・WebFetch・WebSearch および `gh` の読み取り専用呼び出しのみ行う。WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど「現状変更」を伴う操作は一切行ってはならない。Edit・Write（session-tmp・session-approved ファイルへの書き込みを除く）は、task.md/patch.md の Step 2 プラン承認を得るまで実行してはならない。これらの禁止事項に該当する操作が調査上どうしても必要な場合は、理由をユーザーに報告し、実行可否の判断を仰いでからでなければ実行してはならない。
+(A)/(B) いずれの分岐でも、ルーティング判定または開始フェーズ報告の前に必ず以下を調査・整理する:
 
-(A)・(B) いずれの分岐でも、ルーティング判定または開始フェーズ報告の前に必ず以下を調査・整理する:
+- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs`:
+    - 存在する場合:
+        - `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む
+        - さらに候補ファイルに対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）を確認する:
+            - 存在する場合: まずその doc を Read し、関連セクションの `根拠: <file>:<line-range>` citation を確認したうえで、候補ファイル本体の Read は該当行範囲を `offset`/`limit` で指定した対象読みに絞る
+            - 存在しない、または対象箇所を特定できない場合:
+                - 候補ファイルを直接 Read して現在の状態を確認する
+                - 同一セッション内で既に読んだ範囲を対象理由なく再度 Read しない
+                - ドキュメントだけでは対象ファイルを特定できない場合のみ Glob/Grep を実行する
+    - 存在しない場合: `active_commands`・`doc_roots`・`deploy` を起点に対象ファイルを絞り込む
 
-- `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs` が存在する場合、まず `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む。候補ファイルに対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合は、まずその doc を Read し、関連セクションの `根拠: <file>:<line-range>` citation を確認したうえで、候補ファイル本体の Read は該当行範囲を `offset`/`limit` で指定した対象読みに絞る。L3 doc が存在しない、または対象箇所を特定できない場合は候補ファイルを直接 Read して現在の状態を確認する。同一セッション内で既に読んだ範囲を対象理由なく再度 Read しない。ドキュメントだけでは対象ファイルを特定できない場合のみ Glob/Grep を実行する
-- `primary_docs` が存在しない場合は `active_commands`・`doc_roots`・`deploy` を起点に対象ファイルを絞り込む
 - 変更対象となるファイル・関数・設定を特定する
 - 現在の振る舞いを把握する
 - 影響範囲（ファイル・テスト・設定）を列挙する
 - 不明点があれば未確認事項として明示する
 
-この調査結果は task.md または patch.md の実装フェーズに引き継がれる。
+これらの調査結果は task.md または patch.md の実装フェーズに引き継がれる。
 G-1 で Read した `docs/.ai/repo.profile.json` および現状調査で Read した `docs/L3_implementation/specification_summary.md` はコンテキスト内に保持されているため、task.md / patch.md で再度 Read しない。
 
 ### (A) 上記のブランチ分類が新規作業に該当する場合
 
 ユーザーに作業の目的を尋ねる。
 
-#### 親 issue・label の事前ルーティング
+#### 1. 親 issue・label の事前ルーティング
 
 ユーザーが issue 番号を明示している場合、現状調査より先に以下で親 issue と label を取得する。`subIssues` は GitHub の native sub-issue、`body` は既存の未完了 task list（`- [ ] #<issue番号>`）を確認するために使う:
 
@@ -91,11 +102,12 @@ gh issue view <issue番号> --json number,title,body,labels,subIssues
 gh issue view <子issue番号> --json number,title,state,blockedBy
 ```
 
-    - `state` が `OPEN` であり、`blockedBy.nodes` の全 issue が `CLOSED` である子 issue だけを「次に実行すべき issue」とする。親の子 issue 外にある blocker も未完了なら実行可能ではない。
-    - 実行可能な子 issue が複数ある場合は、上記の収集順で最初の 1 件を選ぶ。この順序を固定することで、次の着手先を再現可能にする。
-    - 子 issue ごとに番号・タイトル・state・未完了 blocker を報告し、実行可能な子 issue があればその番号・タイトル・選択理由とともに「次は `/work #<子issue番号>` を実行してください」と案内して終了する。選んだ子 issue の実装、`/task`・`/patch` へのルーティング、ブランチ作成は行わない。
-    - 実行可能な子 issue が 0 件の場合は、各子 issue の状態と未完了 blocker を報告して終了する。`/work` を呼び直したり、任意の子 issue を推測で選択したりしてはならない。
-    - GitHub の取得に失敗した場合、または `subIssues` / `blockedBy` が利用できない CLI・権限環境の場合は、エラーを報告して終了する。task list や本文中の語句から依存関係を推測してはならない。
+- `state` が `OPEN` であり、`blockedBy.nodes` の全 issue が `CLOSED` である子 issue だけを「次に実行すべき issue」とする。親の子 issue 外にある blocker も未完了なら実行可能ではない。
+- 実行可能な子 issue が複数ある場合は、上記の収集順で最初の 1 件を選ぶ。この順序を固定することで、次の着手先を再現可能にする。
+- 子 issue ごとに番号・タイトル・state・未完了 blocker を報告し、実行可能な子 issue があればその番号・タイトル・選択理由とともに「次は `/work #<子issue番号>` を実行してください」と案内して終了する。選んだ子 issue の実装、`/task`・`/patch` へのルーティング、ブランチ作成は行わない。
+- 実行可能な子 issue が 0 件の場合は、各子 issue の状態と未完了 blocker を報告して終了する。`/work` を呼び直したり、任意の子 issue を推測で選択したりしてはならない。
+- GitHub の取得に失敗した場合、または `subIssues` / `blockedBy` が利用できない CLI・権限環境の場合は、エラーを報告して終了する。task list や本文中の語句から依存関係を推測してはならない。
+
 - 子 issue が 0 件の場合に限り、以下の label 判定へ進む。
 - label に `agenda` が完全一致で含まれる場合:
     - `commands/mtg.md` を Read し、その内容に従う
@@ -106,13 +118,11 @@ gh issue view <子issue番号> --json number,title,state,blockedBy
     - 「この issue には hazard-candidate label が付いています。実装前に `/triage-issues-for-hazard` を実行してハザード審査を受けてください」と報告し、`/work` を終了する
     - このチェックは `/triage-issues-for-hazard` で承認され `triage-approved` label に付け替えられた issue には適用されない（label が既に外れているため自然に該当しなくなる）
 - 親 issue ではなく、いずれの label にも該当しない場合:
-    - 既存どおり現状調査と2段階ルーティングへ進む
+    - 上記の Step 2（現状調査）を実行してから 2段階ルーティングへ進む
 - issue の取得に失敗した場合:
     - エラーを報告して終了し、推測でルーティングしない
 
-#### 現状調査
-
-上記「現状調査（共通）」を実行する（ルーティング判定の前に必ず行う）。
+#### 2. 2段階ルーティング
 
 issue label の事前ルーティングに該当しなかった場合、以下の2段階でルーティングを判定する:
 
@@ -161,7 +171,7 @@ issue label の事前ルーティングに該当しなかった場合、以下�
 
 #### 現状調査
 
-上記「現状調査（共通）」を実行する（開始フェーズ報告の前に必ず行う）。
+上記の Step 2（現状調査）を実行する（開始フェーズ報告の前に必ず行う）。
 
 判定後、開始フェーズとその理由を報告し、ユーザーの許可を得てから作業を開始する。
 

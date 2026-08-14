@@ -4,32 +4,32 @@
 
 実装作業の入口として、main branch への切り替え、workspace gate、リポジトリ調査、後続 workflow へのルーティングを担う。
 
-根拠: `commands/work.md:1-40`
+根拠: `commands/work.md:1-46`
 
 ## 動作概要
 
-G-0 は `git rev-parse --show-toplevel` が `.claude/worktrees/` を含むかを先に判定し、含む場合（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）は `git checkout main` をスキップする。含まない場合は従来どおり `git checkout main` を実行する（issue #296、`commands/work.md:9-15`）。
+G-0 は `git rev-parse --show-toplevel` が `.claude/worktrees/` を含むかを先に判定し、含む場合（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）は `git checkout main` をスキップする。含まない場合は従来どおり `git checkout main` を実行する（issue #296、`commands/work.md:9-13`）。
 
 G-2 のワークスペース確認は、worktree 隔離セッションの場合、`hooks/lib/session-paths.sh session-tmp-dir` で解決した session tmp directory 配下の `worktree-untracked-symlinks.txt`（存在する場合）と `git status --porcelain` の出力を突き合わせ、manifest に列挙されたパスと完全一致またはその親ディレクトリであるエントリを除外してから「差分があるか」を判定する。`scripts/link-worktree-untracked.sh` が作成した symlink は `.gitignore` のディレクトリ限定パターンに一致せず `??`/`!!` として現れるための対処（issue #318）。manifest が存在しない場合は従来通り `git status` の出力をそのまま扱う。
 
 issue 番号が指定された場合は、実装向け調査より先に issue labels を取得する。name が `agenda` と完全一致する label があれば `commands/mtg.md` に委譲して終了し、実装 branch や `/task`・`/patch` flow には進まない。`agenda` に該当せず `hazard-candidate` と完全一致する label がある場合は、`/triage-issues-for-hazard` の実行を促すメッセージを出して `/work` を終了する。どちらの label にも該当しない issue は既存どおり issue 起点の `/task` へ進み、issue がない作業は docs 変更の要否によって `/task` または `/patch` に分岐する。
 
-「現状調査（共通）」の冒頭には、この調査フェーズで許可される手段（Read・Grep・Glob・WebFetch・WebSearch・`gh` の読み取り専用呼び出し）と、Edit・Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで実行してはならない旨を明示するガード文がある（issue #356）。WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど「現状変更」を伴う操作を一切禁止する一文、および禁止事項に該当する操作が調査上どうしても必要な場合は理由をユーザーに報告し実行可否の判断を仰ぐ旨のエスケープハッチ文が追加されている（issue #358）。
+「Step 2. 現状調査」の冒頭には、この調査フェーズで許可される手段（Read・Grep・Glob・WebFetch・WebSearch・`gh` の読み取り専用呼び出し）と、Edit・Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで実行してはならない旨を明示するガード文がある（issue #356）。WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど「現状変更」を伴う操作を一切禁止する一文、および禁止事項に該当する操作が調査上どうしても必要な場合は理由をユーザーに報告し実行可否の判断を仰ぐ旨のエスケープハッチ文が追加されている（issue #358）。
 
-根拠: `commands/work.md:59-61`, `commands/work.md:73-133`
+根拠: `commands/work.md:60-63`, `commands/work.md:90-123`
 
 (A)/(B) のルーティング判定は、現在ブランチが `main` 自身、または `EnterWorktree` が作成する固定 prefix `worktree-` で始まる場合のみ (A) 新規作業とし、それ以外の全ての非 main ブランチは (B) 再開・エスカレーション（既存の B.1/B.2/B.3 判定）として扱う（issue #296、PR #304 レビューで修正）。
 
-根拠: `commands/work.md:48-56`
+根拠: `commands/work.md:51-56`
 
 非 main branch で再開した場合は workspace と main 以降の commit の有無から task の再開地点を決め、調査結果と開始 phase をユーザーへ提示する。
 
-根拠: `commands/work.md:135-152`
+根拠: `commands/work.md:160-176`
 
 ## 重要な設計判断
 
 - 現状調査における候補ファイルの Read は、対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合、その doc の `根拠: <file>:<line-range>` citation を先に確認し、候補ファイル本体は該当行範囲の対象読み（`offset`/`limit`）に絞る。L3 doc がない、または対象箇所を特定できない場合のみ従来通り直接 Read する。`/analyze-access` の集計で、L3 doc を持つ大きいファイル（例: `hooks/auto-approve-readonly.sh`）がセッション内で繰り返しフル Read され、重複読み込みロスの大半を占めていたことが判明したための対処（issue #269）。
-- 「現状調査」の手順本文は (A)・(B) 両分岐で一字一句同一だったため、`## 開始判定とルーティング` 直下の「現状調査（共通）」に1箇所だけ定義し、(A)・(B) 側は「上記「現状調査（共通）」を実行する」という参照のみを持つ（issue #271）。分岐固有の実行タイミング（ルーティング判定の前 / 開始フェーズ報告の前）だけを各参照側の一文に残す。
+- 「現状調査」の手順本文は (A)・(B) 両分岐で一字一句同一だったため、`## 開始判定とルーティング` 直下の「Step 2. 現状調査」に1箇所だけ定義する（issue #271）。(B) 側は独立見出し `#### 現状調査` の下に「上記の Step 2（現状調査）を実行する」という参照文を持つ。(A) 側は独立見出しを持たず、「親 issue ではなく、いずれの label にも該当しない場合」の分岐結果として「上記の Step 2（現状調査）を実行してから 2段階ルーティングへ進む」という一文で同じ参照を行う（issue #360）。分岐固有の実行タイミング（ルーティング判定の前 / 開始フェーズ報告の前）は、この参照文自体の文言に含める。
 - agenda / hazard-candidate 判定は label name の完全一致とし、類似名による誤配送を避ける。
 - agenda・hazard-candidate の label routing を実装向け現状調査より前に置き、方針・実装境界が未決の issue や人間のハザード審査を経ていない issue に implementation planning を適用しない。
 - label 取得に失敗した場合は推測で既存 flow に進まず、安全に停止する。
@@ -45,7 +45,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
     - 対処として `rm -f` への回帰も検討したが不採用とした。commit 87ce937（fix #250）は `session-approved` を `rm -f` の自動承認対象から明示的に除外している（`is_rm_protected_path`）。これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴（過去に許可された実際のスコープを、確認なしに削除→再構築で置き換える）を塞ぐためのものであり、G-0 を `rm -f` に戻すとこの抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。同じ理由で、hook 側の Write ハンドラを「既存内容が空なら absent と同等に扱う」よう変更する案（`Write` 経由で同種の抜け穴が開く）も不採用とした。
     - 最終的に、G-0 の防御的クリア自体を削除する方針を採った。Stop hook が正常に動作している通常ケースでは `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして無条件承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）のみ、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする（新しい自動承認ロジックは追加しない）。
 
-根拠: `commands/work.md:9-15`, `commands/work.md:21-29`, `commands/work.md:59-61`, `commands/work.md:77-97`, `commands/work.md:135-152`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定、Edit/Write working-repo 無条件承認）, issue #148, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, issue #356, PR #304
+根拠: `commands/work.md:9-13`, `commands/work.md:51-56`, `commands/work.md:60-63`, `commands/work.md:90-123`, `commands/work.md:160-176`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定、Edit/Write working-repo 無条件承認）, issue #148, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, issue #356, issue #360, PR #304
 
 ## 統合ポイント
 
@@ -66,7 +66,8 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 
 ## 変更履歴（git log より自動生成）
 
-- 2e7603b docs(#358): prohibit web write/download during /work investigation
+- ae1c7f9 fix(#360): align /work heading wording and (A)/(B) investigation references
+- e501904 #358 Prohibit web write/download during /work investigation phase (#359)
 - 4ddff6e #356 Prohibit edits during /work investigation phase (#357)
 - f484a2d Route parent issues to their next ready child (#351)
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
@@ -75,6 +76,5 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 - 69c1e80 fix(#296): use worktree- prefix only for branch classification and NUL-delimited untracked enumeration
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
-- 4450e96 feat(#298): gate /work on the legacy candidate label, swap to triage-approved on approval
 
-根拠: `commands/work.md:9-162`
+根拠: `commands/work.md:9-176`
