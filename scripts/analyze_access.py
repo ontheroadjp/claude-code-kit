@@ -40,9 +40,11 @@ SECTION_RE = re.compile(
     r"^\[(" + "|".join(re.escape(h) for h in SECTION_HEADERS) + r")\]\n",
     re.MULTILINE,
 )
-DUPLICATE_RE = re.compile(r"^\s*-\s*(.+?)\s*\((\d+)回\)(?:\s*\[(.+?)\])?\s*$", re.MULTILINE)
+DUPLICATE_RE = re.compile(
+    r"^\s*-\s*(.+?)\s*\((\d+)回\)(?:\s*\[(.+?)\])?(?:\s*\(narrowed:(\d+)\))?\s*$", re.MULTILINE
+)
 PHASE_COUNT_RE = re.compile(r"([^,:\s]+):(\d+)")
-TOTAL_ACCESSES_RE = re.compile(r"総アクセス数:\s*(\d+)")
+TOTAL_ACCESSES_RE = re.compile(r"総アクセス数:\s*(\d+)(?:\s*\(絞り込み読み:\s*(\d+)\))?")
 MODIFIED_FILE_RE = re.compile(r"^\s*-\s*(.+)$", re.MULTILINE)
 TOKEN_FIELD_RE = {
     "input": re.compile(r"input:\s*(\d+)"),
@@ -67,6 +69,7 @@ class Session(TypedDict):
     timestamp: str
     user_instruction: str
     total_accesses: int
+    narrowed_accesses: int
     duplicates: list[dict[str, object]]
     modified_files: list[str]
     token_usage: TokenUsage | None
@@ -94,14 +97,20 @@ def parse_phase_breakdown(text: str) -> dict[str, int]:
     return {phase: int(count) for phase, count in PHASE_COUNT_RE.findall(text)}
 
 
-def parse_summary(text: str) -> tuple[int, list[dict[str, object]]]:
+def parse_summary(text: str) -> tuple[int, int, list[dict[str, object]]]:
     total_match = TOTAL_ACCESSES_RE.search(text)
     total = int(total_match.group(1)) if total_match else 0
+    narrowed_total = int(total_match.group(2)) if total_match and total_match.group(2) else 0
     duplicates = [
-        {"path": path, "count": int(count), "by_phase": parse_phase_breakdown(by_phase)}
-        for path, count, by_phase in DUPLICATE_RE.findall(text)
+        {
+            "path": path,
+            "count": int(count),
+            "by_phase": parse_phase_breakdown(by_phase),
+            "narrowed_count": int(narrowed_count) if narrowed_count else 0,
+        }
+        for path, count, by_phase, narrowed_count in DUPLICATE_RE.findall(text)
     ]
-    return total, duplicates
+    return total, narrowed_total, duplicates
 
 
 def parse_modified_files(text: str) -> list[str]:
@@ -142,11 +151,12 @@ def parse_token_usage(text: str) -> TokenUsage | None:
 def parse_session(sections: dict[str, str]) -> Session | None:
     if "日時" not in sections:
         return None
-    total, duplicates = parse_summary(sections.get("アクセスサマリ", ""))
+    total, narrowed_total, duplicates = parse_summary(sections.get("アクセスサマリ", ""))
     return {
         "timestamp": sections.get("日時", "").strip(),
         "user_instruction": sections.get("ユーザーからの指示内容", "").strip(),
         "total_accesses": total,
+        "narrowed_accesses": narrowed_total,
         "duplicates": duplicates,
         "modified_files": parse_modified_files(sections.get("修正したファイル", "")),
         "token_usage": parse_token_usage(sections.get("トークン使用量", "")),
@@ -167,9 +177,22 @@ def load_sessions(months: list[str]) -> list[Session]:
     return sessions
 
 
-def top_n(counts: dict[str, int], by_phase: dict[str, dict[str, int]], n: int) -> list[dict[str, object]]:
+def top_n(
+    counts: dict[str, int],
+    by_phase: dict[str, dict[str, int]],
+    narrowed_counts: dict[str, int],
+    n: int,
+) -> list[dict[str, object]]:
     ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:n]
-    return [{"path": path, "count": count, "by_phase": by_phase.get(path, {})} for path, count in ranked]
+    return [
+        {
+            "path": path,
+            "count": count,
+            "by_phase": by_phase.get(path, {}),
+            "narrowed_count": narrowed_counts.get(path, 0),
+        }
+        for path, count in ranked
+    ]
 
 
 def top_redundant_sessions(sessions: list[Session], n: int) -> list[dict[str, object]]:
@@ -264,8 +287,10 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
 
     duplicate_totals: dict[str, int] = {}
     duplicate_phase_totals: dict[str, dict[str, int]] = {}
+    duplicate_narrowed_totals: dict[str, int] = {}
     sessions_with_duplicates = 0
     redundant_accesses_total = 0
+    narrowed_accesses_total = sum(s["narrowed_accesses"] for s in sessions)
 
     for session in sessions:
         if session["duplicates"]:
@@ -279,6 +304,9 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
                 phase_totals = duplicate_phase_totals.setdefault(path, {})
                 for phase, count in by_phase.items():
                     phase_totals[phase] = phase_totals.get(phase, 0) + int(count)
+            duplicate_narrowed_totals[path] = duplicate_narrowed_totals.get(path, 0) + int(
+                duplicate.get("narrowed_count", 0)
+            )
 
     return {
         "log_type": "access",
@@ -286,7 +314,11 @@ def aggregate(months: list[str], sessions: list[Session]) -> dict[str, object]:
         "session_count": session_count,
         "total_accesses": total_accesses,
         "avg_accesses_per_session": round(total_accesses / session_count, 2) if session_count else 0,
-        "top_duplicate_files": top_n(duplicate_totals, duplicate_phase_totals, TOP_N),
+        "narrowed_accesses_total": narrowed_accesses_total,
+        "narrowed_read_ratio_pct": (
+            round(narrowed_accesses_total / total_accesses * 100, 2) if total_accesses else 0
+        ),
+        "top_duplicate_files": top_n(duplicate_totals, duplicate_phase_totals, duplicate_narrowed_totals, TOP_N),
         "redundant_accesses_total": redundant_accesses_total,
         "sessions_with_duplicates": sessions_with_duplicates,
         "sessions_with_duplicates_ratio": round(sessions_with_duplicates / session_count, 3) if session_count else 0,

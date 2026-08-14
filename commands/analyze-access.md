@@ -46,10 +46,11 @@ JSON の値をそのまま転記する。数値の再計算・推測は行わな
 - 総無駄読み込み回数 `redundant_accesses_total`
 - 推定損失トークン `redundant_access_waste.estimated_wasted_tokens` / 推定損失コスト `redundant_access_waste.estimated_wasted_cost_usd`
 - hook 処理時間 `duration_ms_stats.avg_ms` / `duration_ms_stats.p95_ms`（`hooks/log-access-stop.sh` 自体の実行時間。重複読み込みロスとは別軸の、ログ記録パイプライン自体の負荷診断指標。`"NA"`（`$EPOCHREALTIME` 非対応の bash < 5.0）は `duration_ms_stats.excluded_count` として数値集計から除外される）
+- 絞り込み読みの実施率 `narrowed_read_ratio_pct`（全 Read アクセスに占める、`offset`/`limit` を使った対象読みの割合。CLAUDE.md の「絞り込み読み（citation-based narrowed read）の検証」原則が実際に実践されているかの指標。目標: 高いほど良い。重複読み込みロスとは別軸だが、`top_duplicate_files`/`top_redundant_sessions` の各エントリが持つ `narrowed_count` と組み合わせることで、同一ファイルへの重複アクセスが対象読みだったか全文再読みだったかを判別できる。issue #363）
 
 **裏付けデータ（Evidence）**:
 - 対象月（`months`）、セッション数（`session_count`）、総アクセス数、セッションあたり平均アクセス数
-- 重複アクセス上位ファイル（`top_duplicate_files`、全セッション横断の合算。各エントリは発生元 phase/command 別の内訳 `by_phase` を持つ）
+- 重複アクセス上位ファイル（`top_duplicate_files`、全セッション横断の合算。各エントリは発生元 phase/command 別の内訳 `by_phase` と、絞り込み読みだった件数 `narrowed_count` を持つ）
 - 無駄な再読み込みが多いセッション上位（`top_redundant_sessions`。各要素は日時・指示内容・無駄な再読み込み回数・重複ファイル一覧・そのセッションで実際にファイルを修正したか（`modified`）を持つ）
 - hook 処理時間の分布（`duration_ms_stats.sample_count` / `median_ms` / `max_ms`）
 

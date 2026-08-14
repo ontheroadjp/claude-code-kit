@@ -79,6 +79,19 @@ hook はリテラル引数が既知の安全なパス（現在セッションの
 
 根拠・詳細: issue #248, `hooks/auto-approve-readonly.sh` の `is_rm_f_on_safe_literal_path`
 
+### 絞り込み読み（citation-based narrowed read）の検証
+`docs/L3_implementation/specification_summary.md` のような大きい集約 doc を読む際は、全文 Read せず、まず対象の見出し（`^#+` 行や `### <コマンド名>` 等）を Grep で特定してから、該当行範囲のみ `offset`/`limit` で対象読みする。
+
+L3 per-file doc の `根拠: <file>:<line-range>` citation を使った対象読みも含め、citation や見出し grep に基づく絞り込み読みは、対象読みした内容が期待する箇所（見出し・関数名・キーワード等、根拠として使った情報から特定できる目印）を実際に含んでいるかを確認してから信頼すること。
+
+理由: 絞り込みの起点（citation の行番号、見出しの位置）は対象ファイルの変更により古くなり得る（stale citation）。offset/limit 読みは指定範囲に何らかの内容があれば成功するため、範囲がずれていても目に見えるエラーにならず、誤った箇所を正しい箇所だと思い込んだまま作業を進めてしまう。
+
+含まれていなかった場合:
+1. 対象ファイルを Glob/Grep で独自に再検索するか、全文 Read にフォールバックする
+2. citation の起点となった doc（L3 per-file doc 等）の記述が古い可能性をユーザーに報告する
+
+根拠・詳細: issue #363（`commands/work.md` の investigation phase で発見した stale citation の実例が発端）
+
 ### /work フロー対象外の操作（git 管理操作）
 以下の操作は `/work` フローに乗らないが、実行前に必ず理由を説明しユーザーの明示的な確認を取ること:
 

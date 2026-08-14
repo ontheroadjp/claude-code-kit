@@ -29,6 +29,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 ## 重要な設計判断
 
 - 現状調査における候補ファイルの Read は、対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）が存在する場合、その doc の `根拠: <file>:<line-range>` citation を先に確認し、候補ファイル本体は該当行範囲の対象読み（`offset`/`limit`）に絞る。L3 doc がない、または対象箇所を特定できない場合のみ従来通り直接 Read する。`/analyze-access` の集計で、L3 doc を持つ大きいファイル（例: `hooks/auto-approve-readonly.sh`）がセッション内で繰り返しフル Read され、重複読み込みロスの大半を占めていたことが判明したための対処（issue #269）。
+- `primary_docs.investigation`（`specification_summary.md`）の対象読みと、上記 citation ベースの対象読みは、いずれも `CLAUDE.md`「絞り込み読み（citation-based narrowed read）の検証」の原則に従う。work.md 自身にはこの原則への参照のみを置き、見出し Grep の手順や citation の検証・フォールバック手順は重複して記述しない（issue #363。手順の実体は `CLAUDE.md` 側の L3 doc を参照）。
 - 「現状調査」の手順本文は (A)・(B) 両分岐で一字一句同一だったため、`## 開始判定とルーティング` 直下の「Step 2. 現状調査」に1箇所だけ定義する（issue #271）。(B) 側は独立見出し `#### 現状調査` の下に「上記の Step 2（現状調査）を実行する」という参照文を持つ。(A) 側は独立見出しを持たず、「親 issue ではなく、いずれの label にも該当しない場合」の分岐結果として「上記の Step 2（現状調査）を実行してから 2段階ルーティングへ進む」という一文で同じ参照を行う（issue #360）。分岐固有の実行タイミング（ルーティング判定の前 / 開始フェーズ報告の前）は、この参照文自体の文言に含める。
 - agenda / hazard-candidate 判定は label name の完全一致とし、類似名による誤配送を避ける。
 - agenda・hazard-candidate の label routing を実装向け現状調査より前に置き、方針・実装境界が未決の issue や人間のハザード審査を経ていない issue に implementation planning を適用しない。
@@ -45,7 +46,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
     - 対処として `rm -f` への回帰も検討したが不採用とした。commit 87ce937（fix #250）は `session-approved` を `rm -f` の自動承認対象から明示的に除外している（`is_rm_protected_path`）。これはエージェントが確認なしにスコープガードのベースラインをリセットできる抜け穴（過去に許可された実際のスコープを、確認なしに削除→再構築で置き換える）を塞ぐためのものであり、G-0 を `rm -f` に戻すとこの抜け穴を「レアケースの救済」としてではなく「通常フローで毎回」再開放することになる。同じ理由で、hook 側の Write ハンドラを「既存内容が空なら absent と同等に扱う」よう変更する案（`Write` 経由で同種の抜け穴が開く）も不採用とした。
     - 最終的に、G-0 の防御的クリア自体を削除する方針を採った。Stop hook が正常に動作している通常ケースでは `session-approved` は既に absent であり、G-0 が何もしなくても Step 2 の書き込みが自然に初回書き込みとして無条件承認される。Stop hook が削除に失敗していた場合（真にイレギュラーなケース）のみ、Step 2 の書き込みが既存のスコープ拡大チェックにそのまま委ねられ、通常の確認プロンプトにフォールスルーする（新しい自動承認ロジックは追加しない）。
 
-根拠: `commands/work.md:9-13`, `commands/work.md:51-56`, `commands/work.md:60-63`, `commands/work.md:90-123`, `commands/work.md:160-176`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定、Edit/Write working-repo 無条件承認）, issue #148, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, issue #356, issue #360, PR #304
+根拠: `commands/work.md:9-13`, `commands/work.md:51-56`, `commands/work.md:60-63`, `commands/work.md:67-76`, `commands/work.md:90-123`, `commands/work.md:160-176`, `CLAUDE.md:82-94`, `hooks/lib/session-id.sh`, `hooks/auto-approve-readonly.sh`（Write ハンドラの `session-approved` 判定、Edit/Write working-repo 無条件承認）, issue #148, issue #210, issue #227, issue #248, issue #250, issue #261, issue #269, issue #271, issue #296, issue #298, issue #318, issue #356, issue #360, issue #363, PR #304
 
 ## 統合ポイント
 

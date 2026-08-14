@@ -66,9 +66,9 @@ Edit・Write（session-tmp・session-approved ファイルへの書き込みを�
 
 - `docs/.ai/repo.profile.json`（G-1 で Read 済み）の `primary_docs`:
     - 存在する場合:
-        - `primary_docs.investigation` を Read して変更対象ファイルの候補を絞り込む
+        - `primary_docs.investigation` を CLAUDE.md の「絞り込み読み（citation-based narrowed read）の検証」に従って対象読みし、変更対象ファイルの候補を絞り込む
         - さらに候補ファイルに対応する L3 per-file doc（`docs/L3_implementation/<path>.md`）を確認する:
-            - 存在する場合: まずその doc を Read し、関連セクションの `根拠: <file>:<line-range>` citation を確認したうえで、候補ファイル本体の Read は該当行範囲を `offset`/`limit` で指定した対象読みに絞る
+            - 存在する場合: まずその doc を Read し、関連セクションの `根拠: <file>:<line-range>` citation を確認したうえで、候補ファイル本体は同原則に従って `offset`/`limit` で対象読みに絞る
             - 存在しない、または対象箇所を特定できない場合:
                 - 候補ファイルを直接 Read して現在の状態を確認する
                 - 同一セッション内で既に読んだ範囲を対象理由なく再度 Read しない
