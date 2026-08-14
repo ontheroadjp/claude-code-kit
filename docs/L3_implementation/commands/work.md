@@ -14,7 +14,7 @@ G-2 のワークスペース確認は、worktree 隔離セッションの場合�
 
 issue 番号が指定された場合は、実装向け調査より先に issue labels を取得する。name が `agenda` と完全一致する label があれば `commands/mtg.md` に委譲して終了し、実装 branch や `/task`・`/patch` flow には進まない。`agenda` に該当せず `hazard-candidate` と完全一致する label がある場合は、`/triage-issues-for-hazard` の実行を促すメッセージを出して `/work` を終了する。どちらの label にも該当しない issue は既存どおり issue 起点の `/task` へ進み、issue がない作業は docs 変更の要否によって `/task` または `/patch` に分岐する。
 
-「現状調査（共通）」の冒頭には、この調査フェーズで許可される手段（Read・Grep・Glob・WebFetch・WebSearch・`gh` の読み取り専用呼び出し）と、Edit・Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで実行してはならない旨を明示するガード文がある（issue #356）。
+「現状調査（共通）」の冒頭には、この調査フェーズで許可される手段（Read・Grep・Glob・WebFetch・WebSearch・`gh` の読み取り専用呼び出し）と、Edit・Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで実行してはならない旨を明示するガード文がある（issue #356）。WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど「現状変更」を伴う操作を一切禁止する一文、および禁止事項に該当する操作が調査上どうしても必要な場合は理由をユーザーに報告し実行可否の判断を仰ぐ旨のエスケープハッチ文が追加されている（issue #358）。
 
 根拠: `commands/work.md:59-61`, `commands/work.md:73-133`
 
@@ -34,6 +34,7 @@ issue 番号が指定された場合は、実装向け調査より先に issue l
 - agenda・hazard-candidate の label routing を実装向け現状調査より前に置き、方針・実装境界が未決の issue や人間のハザード審査を経ていない issue に implementation planning を適用しない。
 - label 取得に失敗した場合は推測で既存 flow に進まず、安全に停止する。
 - `hooks/auto-approve-readonly.sh` は working-repo 内の Edit/Write を `is_in_working_repo` → `do_wip_commit` 経由で無条件承認する（issue #148）ため、調査フェーズでの Edit/Write を止める technical gate は存在しない。唯一の防御は work.md/task.md/patch.md の手順順序という behavioral gate であり、それ自体を明文化した禁止がどこにもなかった。issue 番号明示時の親子issue・label 事前ルーティングが拡大し「現状調査（共通）」に到達するまでの区間が長くなったことが引き金となり、ユーザーから調査フェーズ中の意図しない編集が報告された（issue #356）。対処として「現状調査（共通）」冒頭に、この段階で許可される手段（Read/Grep/Glob/WebFetch/WebSearch/`gh` 読み取り専用呼び出し）と Edit/Write 禁止を明示するガード文を追加した。
+- WebFetch・WebSearch は `hooks/auto-approve-readonly.sh` の対象外（同 hook が扱うのは Bash・Edit・Write のみ）であり、Edit/Write と同様に technical gate が存在しない。issue #356 のガード文はこれらを「許可される読み取り専用手段」として一括で列挙していたが、web 由来の素材のダウンロード・取得や外部サービスへの書き込みを明示的に禁止していなかったため、この抜け穴を塞ぐ一文を追加した（issue #358）。さらに、禁止事項に該当する操作が調査上どうしても必要になるケース（真に読み取りだけでは調査を完了できない場合）を想定し、無断実行ではなくユーザーへの理由報告と実行可否確認を経由する運用上のエスケープハッチを明文化した。これも behavioral gate であり、technical な強制力は持たない。
 - hazard-candidate チェックは `/analyze-hazard-scan` が起票した issue に対し `/work #N` を直接叩くと、`/triage-issues-for-hazard` のハザード分析開示・yes/no 確認を一切経由せず実装まで進んでしまう問題への対処である。`/triage-issues-for-hazard` で `yes` と回答された issue は `hazard-candidate` → `triage-approved` へ label が swap されるため、このチェックには再度ひっかからず通常の `/task` ルーティングに進める。
 - worktree パスガードと (A)/(B) のブランチ分類変更は `/work-multi`（issue #296）が `commands/work.md` を無改変のまま実行するとの前提で設計されたが、実機検証で `git checkout main` が worktree 内では `fatal: 'main' is already used by worktree` で必ず失敗することが判明し、この前提は成立しなかった。パスガードは、失敗してからエラー文言を解釈するのではなく `.claude/worktrees/` という `EnterWorktree` 自身の固定仕様を事前チェックすることで確実に判定する設計とした。
 - (A)/(B) 分類は当初「`/task`・`/patch` が実際に作成する命名規則（`feat/` 等）に一致するか」で判定していたが、PR #304 の Codex CLI レビューで、この基準だとユーザーが手動で作成した命名規則に沿わないブランチ（例: `docs/foo`）上で未コミット変更がある状態から `git checkout main` が失敗した場合、既存の B.1（未コミット変更があれば継続）に到達せず誤って (A) 新規作業に分類されてしまう問題を指摘された。修正後は分類基準を `worktree-` prefix の有無だけに限定し、それ以外の非 main ブランチは全て従来通り (B) の B.1/B.2/B.3 判定に委ねることで、既存の「未コミット変更があれば継続」という安全な挙動を保持しつつ、fresh worktree のブランチ（`worktree-<name>`）だけを (A) 新規作業として扱う。
