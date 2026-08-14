@@ -58,7 +58,7 @@ Claude Code では `bash ~/.claude/scripts/worktree-status.sh`、Codex CLI で�
 
 ### 現状調査（共通）
 
-この調査フェーズでは Read・Grep・Glob・WebFetch・WebSearch および `gh` の読み取り専用呼び出しのみ行う。Edit・Write（session-tmp・session-approved ファイルへの書き込みを除く）は、task.md/patch.md の Step 2 プラン承認を得るまで実行してはならない。
+この調査フェーズでは Read・Grep・Glob・WebFetch・WebSearch および `gh` の読み取り専用呼び出しのみ行う。WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど「現状変更」を伴う操作は一切行ってはならない。Edit・Write（session-tmp・session-approved ファイルへの書き込みを除く）は、task.md/patch.md の Step 2 プラン承認を得るまで実行してはならない。これらの禁止事項に該当する操作が調査上どうしても必要な場合は、理由をユーザーに報告し、実行可否の判断を仰いでからでなければ実行してはならない。
 
 (A)・(B) いずれの分岐でも、ルーティング判定または開始フェーズ報告の前に必ず以下を調査・整理する:
 
