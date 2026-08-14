@@ -12,7 +12,7 @@
 
 全作業の通常入口。G-0 はまず `git rev-parse --show-toplevel` が `.claude/worktrees/` 配下かを判定し、配下であれば（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）main は主 worktree で既にチェックアウト済みのため `git checkout main` をスキップする。配下でなければ従来どおり `git checkout main` を実行する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。G-2 は agent 別に配布された `worktree-status.sh` を使う。通常実行では `git status --porcelain` と同じ結果を返し、隔離 worktree の current session manifest があるときだけ自己作成 symlink を自動除外する。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に親子関係と labels を取得する。親 issue なら native `subIssues` と未完了 task list から子 issue を収集し、open かつ GitHub native `blockedBy` が全て `CLOSED` の最初の子 issue、または実行不能な理由を報告して終了する。子 issue の実装・`/task`・`/patch` への委譲は行わない。
 
-exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず終了する。`agenda` に該当せず exact `hazard-candidate` label があれば、`/triage-issues-for-hazard` の実行を促して終了する。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。「現状調査（共通）」の間は Read/Grep/Glob/WebFetch/WebSearch/`gh` の読み取り専用呼び出しのみを許可し、Edit/Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで行わない。
+exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず終了する。`agenda` に該当せず exact `hazard-candidate` label があれば、`/triage-issues-for-hazard` の実行を促して終了する。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。「現状調査（共通）」の間は Read/Grep/Glob/WebFetch/WebSearch/`gh` の読み取り専用呼び出しのみを許可し、Edit/Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで行わない。WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど現状変更を伴う操作は禁止する。これらの禁止事項に該当する操作が調査上どうしても必要な場合は、理由をユーザーに報告し実行可否の判断を仰ぐ（issue #358）。
 
 非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
 
