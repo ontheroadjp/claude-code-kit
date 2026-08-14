@@ -12,7 +12,7 @@
 - symlink-only 原則と docs/task workflow の境界を示す
 - local tooling と template installed path を記録する
 
-根拠: `CLAUDE.md:13-97`
+根拠: `CLAUDE.md:13-109`
 
 ## 主要な判定ロジック・フロー
 
@@ -28,11 +28,20 @@ template の実体は repository の `templates/` に保持する。Claude Code 
 
 根拠: `CLAUDE.md:71-80`, `hooks/auto-approve-readonly.sh`（`is_rm_f_on_safe_literal_path`）, issue #248
 
+「リポジトリへの操作ルール（必須）」節には「絞り込み読み（citation-based narrowed read）の検証」もある。`docs/L3_implementation/specification_summary.md` のような大きい集約 doc は見出し Grep で対象範囲を絞ってから `offset`/`limit` で対象読みし、L3 per-file doc の `根拠: <file>:<line-range>` citation を使った対象読みも含め、絞り込み読みした内容が期待する見出し・目印を実際に含んでいるかを確認してから信頼する。含んでいない場合（citation が古い行範囲を指す stale citation）は Glob/Grep での再検索または全文 Read へフォールバックし、citation の起点となった doc が古い可能性をユーザーに報告する。`commands/work.md` の investigation phase はこの原則への参照のみを持ち、手順を重複して記述しない。
+
+根拠: `CLAUDE.md:82-94`, `commands/work.md:67-76`, issue #363
+
 ## 重要な設計判断
 
 `~/.claude/` と `~/.codex/` を symlink-only とすることで、agent ごとの installed path を提供しながら repository を唯一の編集対象として維持する。
 
 resolve-then-embed 規約は `commands/coding-general.md`（ソースコード編集時の言語非依存原則）ではなく `CLAUDE.md` の操作ルール節に置く。対象がソースコード編集ではなく、AI が発行する Bash コマンドそのものの構造化方法であり、セッション開始時に必ず読まれるこのファイルの方が適切なため（issue #248 での判断）。
+
+絞り込み読みの検証原則も同じ理由で `CLAUDE.md` に置く（issue #363）。検討した代替案:
+- `commands/work.md` へのインライン追加: `commands/docs-sync.md` の Phase 2 に既に同種の検証手順が個別実装されており、work.md にも書くと同じ原則が複数コマンドへ重複してしまう（#362 は docs-sync.md 側をこの共有原則への参照に簡略化する追跡issue）
+- Claude Code の `~/.claude/rules/`（`paths:` frontmatter で対象ファイル読込時のみ条件付きロード）: work.md の肥大化は避けられるが、Codex CLI はこの機構を持たないためこの安全策を完全に失い、両エージェントを常に並記して同一挙動を維持するこのリポジトリの設計原則に反する。また `paths:` ロードが実際の Read 呼び出しより先に間に合うかも未検証だった
+- 結論: `CLAUDE.md` は `AGENTS.md` symlink 経由で Codex CLI にも届き、複数コマンドから参照される共有プロトコルを置く既存の場所（resolve-then-embed と同じ位置付け）でもあるため、これを採用した
 
 ## 統合ポイント
 

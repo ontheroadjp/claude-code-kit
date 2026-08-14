@@ -9,13 +9,13 @@ PostToolUse hook。tool アクセス順序と重複、修正したファイル�
 ## 動作の概要
 
 1. stdin の hook payload から `session_id` / `tool_name` / `tool_input` を取り出す（いずれか空なら終了）
-2. tool 種別ごとに対象パスを抽出する（Read: `file_path`、Glob: `pattern`、Grep: `path`、Edit/Write: `file_path`。対象外の tool は終了）
+2. tool 種別ごとに対象パスを抽出する（Read: `file_path`、Glob: `pattern`、Grep: `path`、Edit/Write: `file_path`。対象外の tool は終了）。Read のみ、`tool_input.offset`/`.limit` のいずれかが non-null なら `narrowed=true`、それ以外（他の全 tool type を含む）は `narrowed=false` とする（issue #363）
 3. `$HOME` を `~` に正規化し（パラメータ展開 `${file_path//$HOME/\~}`）、`basename` を求める
 4. `STATE_FILE` が存在しなければ終了（`log-access-prompt.sh` が UserPromptSubmit で初期化する前提）
 5. `basename` が phase を切り替えるコマンドファイルなら `current_phase` を更新する。`work.md` の場合のみ「新規 `/work` 開始 かつ 前セッションの pending が残っている」を検知して flush + state リセットする分岐がある
-6. Edit/Write は `modified_files`、それ以外は `accesses`（`seq` インクリメント）に追記して `STATE_FILE` に書き戻す
+6. Edit/Write は `modified_files`、それ以外は `accesses`（`seq` インクリメント、`narrowed` を含む）に追記して `STATE_FILE` に書き戻す
 
-根拠: `hooks/log-access-tool.sh:4-85`
+根拠: `hooks/log-access-tool.sh:4-92`
 
 ## 統合ポイント
 
@@ -27,6 +27,7 @@ PostToolUse hook。tool アクセス順序と重複、修正したファイル�
 
 - `set -euo pipefail` を宣言している。guard 節（`[ -z "$file_path" ] && exit 0` 等）は `&&` list の一部であるため `set -e` と衝突しない
 - `$HOME` の正規化は以前 `echo "$file_path" | sed "s|${HOME}|~|g"` だったが、ShellCheck (SC2001) の指摘に従いパラメータ展開 `${file_path//$HOME/\~}` に置き換えた。`$HOME` が通常のパス文字列である前提では両者は等価
+- `narrowed` は `CLAUDE.md`「絞り込み読み（citation-based narrowed read）の検証」原則（issue #363）が実践されているかを観測するための指標であり、Read の `offset`/`limit` 使用有無のみで判定する。Grep/Glob は既に対象を絞った呼び出しだが、この指標の対象外（常に `false`）とする
 
 ## 変更履歴（git log より自動生成）
 

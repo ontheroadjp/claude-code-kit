@@ -17,9 +17,9 @@ SESSION_1 = textwrap.dedent(
     Do something
 
     [アクセスサマリ]
-    総アクセス数: 3
+    総アクセス数: 3 (絞り込み読み: 1)
     重複アクセス:
-      - /path/a (2回) [work:2]
+      - /path/a (2回) [work:2] (narrowed:1)
 
     [フェーズ別アクセス順序]
     [work] 3件
@@ -134,7 +134,10 @@ def test_parse_session_extracts_summary_and_token_usage() -> None:
     session = analyze_access.parse_session(analyze_access.split_sections(block))
     assert session is not None
     assert session["total_accesses"] == 3
-    assert session["duplicates"] == [{"path": "/path/a", "count": 2, "by_phase": {"work": 2}}]
+    assert session["narrowed_accesses"] == 1
+    assert session["duplicates"] == [
+        {"path": "/path/a", "count": 2, "by_phase": {"work": 2}, "narrowed_count": 1}
+    ]
     assert session["modified_files"] == ["/path/a"]
     assert session["token_usage"] == {
         "input": 100,
@@ -157,15 +160,28 @@ def test_parse_phase_breakdown_returns_empty_for_missing_suffix() -> None:
 def test_parse_summary_backward_compatible_with_pre_308_format() -> None:
     """Log lines flushed before issue #308 lack the `[phase:count, ...]` suffix."""
     text = "総アクセス数: 2\n重複アクセス:\n  - /path/x (2回)\n"
-    total, duplicates = analyze_access.parse_summary(text)
+    total, narrowed_total, duplicates = analyze_access.parse_summary(text)
     assert total == 2
-    assert duplicates == [{"path": "/path/x", "count": 2, "by_phase": {}}]
+    assert narrowed_total == 0
+    assert duplicates == [{"path": "/path/x", "count": 2, "by_phase": {}, "narrowed_count": 0}]
+
+
+def test_parse_summary_extracts_narrowed_counts() -> None:
+    """Log lines written after issue #363 carry a `(narrowed:N)` suffix."""
+    text = "総アクセス数: 5 (絞り込み読み: 2)\n重複アクセス:\n  - /path/y (3回) [work:3] (narrowed:2)\n"
+    total, narrowed_total, duplicates = analyze_access.parse_summary(text)
+    assert total == 5
+    assert narrowed_total == 2
+    assert duplicates == [
+        {"path": "/path/y", "count": 3, "by_phase": {"work": 3}, "narrowed_count": 2}
+    ]
 
 
 def test_parse_session_handles_no_duplicates_and_no_token_usage() -> None:
     block = analyze_access.split_blocks(LOG_CONTENT)[1]
     session = analyze_access.parse_session(analyze_access.split_sections(block))
     assert session is not None
+    assert session["narrowed_accesses"] == 0
     assert session["duplicates"] == []
     assert session["modified_files"] == []
     assert session["token_usage"] is None
@@ -188,13 +204,16 @@ def test_aggregate_across_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     assert result["session_count"] == 4
     assert result["total_accesses"] == 13
+    assert result["narrowed_accesses_total"] == 1
+    assert result["narrowed_read_ratio_pct"] == 7.69
     assert result["top_duplicate_files"] == [
-        {"path": "/path/a", "count": 4, "by_phase": {"work": 4}},
-        {"path": "/path/d", "count": 3, "by_phase": {"work": 3}},
+        {"path": "/path/a", "count": 4, "by_phase": {"work": 4}, "narrowed_count": 1},
+        {"path": "/path/d", "count": 3, "by_phase": {"work": 3}, "narrowed_count": 0},
         {
             "path": "hooks/auto-approve-readonly.sh",
             "count": 3,
             "by_phase": {"work": 2, "task": 1},
+            "narrowed_count": 0,
         },
     ]
     assert result["redundant_access_waste"] == {
@@ -222,8 +241,8 @@ def test_aggregate_tracks_redundant_reads_per_session(
     assert [entry["redundant_accesses"] for entry in top_redundant_sessions] == [3, 2, 1]
     assert top_redundant_sessions[0]["timestamp"] == "2026.08.03 10.00"
     assert top_redundant_sessions[0]["duplicate_files"] == [
-        {"path": "/path/d", "count": 3, "by_phase": {"work": 3}},
-        {"path": "/path/a", "count": 2, "by_phase": {"work": 2}},
+        {"path": "/path/d", "count": 3, "by_phase": {"work": 3}, "narrowed_count": 0},
+        {"path": "/path/a", "count": 2, "by_phase": {"work": 2}, "narrowed_count": 0},
     ]
     assert top_redundant_sessions[0]["modified"] is False
     assert top_redundant_sessions[1]["timestamp"] == "2026.08.04 11.00"
@@ -232,6 +251,7 @@ def test_aggregate_tracks_redundant_reads_per_session(
             "path": "hooks/auto-approve-readonly.sh",
             "count": 3,
             "by_phase": {"work": 2, "task": 1},
+            "narrowed_count": 0,
         },
     ]
     assert top_redundant_sessions[1]["modified"] is False

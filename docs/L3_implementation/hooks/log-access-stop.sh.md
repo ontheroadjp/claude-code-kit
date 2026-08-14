@@ -4,7 +4,7 @@
 
 Stop hook。`hooks/log-access-prompt.sh` / `hooks/log-access-tool.sh` が `STATE_FILE`（`/tmp/claude-access-sessions/<session_id>.json`）に蓄積したセッション状態を、`logs/access/*.log` が期待する固定セクション形式のブロックにフォーマットし、`PENDING_FILE` へ書き出す。`scripts/analyze_access.py`（呼び出し元は `commands/analyze-access.md`）がこのログを消費する。
 
-根拠: `hooks/log-access-stop.sh:1-148`
+根拠: `hooks/log-access-stop.sh:1-151`
 
 ## 動作の概要
 
@@ -14,7 +14,7 @@ Stop hook。`hooks/log-access-prompt.sh` / `hooks/log-access-tool.sh` が `STATE
 4. `hook_duration_ms "$HOOK_START_TIME"` でこの回の実行時間を求め、`STATE_FILE` の `hook_durations_ms` 配列に追記して書き戻す。この配列（このセッションで過去に呼ばれた全 Stop 呼び出しの実行時間）を `[Hook処理時間]` セクションとしてカンマ区切りで出力する
 5. 全体を `{ ... } > "$PENDING_FILE"` でまとめて書き出す。`PENDING_FILE` は次の `/work` 開始時（`log-access-prompt.sh`/`log-access-tool.sh` 側）に main log へ flush される
 
-根拠: `hooks/log-access-stop.sh:1-148`
+根拠: `hooks/log-access-stop.sh:1-151`
 
 ## 主要な判定ロジック・フロー
 
@@ -23,8 +23,9 @@ Stop hook。`hooks/log-access-prompt.sh` / `hooks/log-access-tool.sh` が `STATE
 - `printf '%s' "$state" > "$STATE_FILE"` は `{ ... } > "$PENDING_FILE"` ブロックの**内部**にあるが、個別コマンドのリダイレクトはブロック全体のリダイレクトより優先されるため、この行の出力は `PENDING_FILE` ではなく `STATE_FILE` に書き込まれる
 - `[Hook処理時間]` の値に `"NA"`（計測不能）が混在し得る。`scripts/analyze_access.py` 側でパース時に非数値トークンとして除外する
 - `重複アクセス:` の各行は `group_by(.path)` でセッション内の重複を検出した上で、各グループ内をさらに `group_by(.phase)` して `by_phase`（例: `{"work":2,"task":1}`）を計算し、`  - <path> (<count>回) [phase:count, ...]` として出力する（issue #308）。合計 `count` はこれまでどおり全 phase 横断（変更なし、後方互換）で、`[phase:count, ...]` サフィックスはその内訳。`.accesses[].phase` は `hooks/log-access-tool.sh` が既に付与しているため、この hook 側では phase の再計算・再判定は行わず、既存フィールドを集計軸として使うだけである
+- 同じ `重複アクセス:` 行に、`hooks/log-access-tool.sh` が付与した `.accesses[].narrowed` を集計した `(narrowed:N)` サフィックスも追記する（issue #363）。`narrowed` を新規フィールドとして持たない旧 `STATE_FILE`（この機能追加前に開始したセッション）でも `select(.narrowed == true)` は単に一致せず `narrowed:0` になるだけで、後方互換を維持する。`[アクセスサマリ]` の `総アクセス数:` 行にも `narrowed_total`（`.accesses` 全体で `narrowed == true` の件数）を同じ optional-suffix 形式で追記する
 
-根拠: `hooks/log-access-stop.sh:46-56`, `hooks/log-access-stop.sh:132-148`
+根拠: `hooks/log-access-stop.sh:46-59`, `hooks/log-access-stop.sh:71`, `hooks/log-access-stop.sh:135-151`
 
 ## 重要な設計判断とその理由
 
@@ -33,6 +34,8 @@ Stop hook。`hooks/log-access-prompt.sh` / `hooks/log-access-tool.sh` が `STATE
 `issue #216` で「重複読み込みロスの特定」に一本化する目的から一般的な生産性指標を除外する方針が確立されていたが、hook 自体の処理時間はその重複読み込みという問いとは別軸の「ログ記録パイプライン自体の負荷診断」指標として、issue #252 で明示的に追加した。
 
 `by_phase`（issue #308）は既存の `重複アクセス:` 行にサフィックスとして追記する形にし、新規セクションは作らなかった。理由は2つ: (1) `重複アクセス:` の合計 `count` は phase をまたいだ再読み込み（例: `/work` が読み、後で `/docs-sync` が同じファイルを再度読む）も含めて検出する必要があり、これは #307 が解消しようとした対象そのものである。`group_by([.phase, .path])` のように phase を先に区切って重複判定してしまうと、この cross-phase の重複が検出できなくなってしまう（同一 phase 内で1回しか読まれていなければ「重複」に数えられない）。(2) `by_phase` を既存行のサフィックスとして追記する設計は `scripts/analyze_access.py` 側の後方互換パースを容易にする（正規表現の末尾を optional group にするだけで済む）。
+
+`narrowed` の集計（issue #363）も同じ optional-suffix パターンを踏襲した。`CLAUDE.md`「絞り込み読み（citation-based narrowed read）の検証」原則が実際に実践されているかを観測する目的で、`/analyze-access` の Primary KPI（重複読み込みロス）とは別軸の指標として追加した。既存の `重複アクセス:` 行への追記に留めたのは `by_phase` と同じ理由（正規表現側は末尾に optional group を1つ足すだけで済み、`[Hook処理時間]` のような新規セクションを起こすよりログフォーマットへの影響が小さい）。
 
 ## 統合ポイント
 

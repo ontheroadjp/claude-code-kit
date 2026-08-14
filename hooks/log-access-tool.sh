@@ -13,9 +13,15 @@ SESSION_DIR="/tmp/claude-access-sessions"
 STATE_FILE="${SESSION_DIR}/${session_id}.json"
 PENDING_FILE="${SESSION_DIR}/${session_id}.pending"
 
-# Extract relevant path by tool type
+# Extract relevant path by tool type. narrowed tracks whether a Read call
+# used offset/limit to target a specific range instead of reading the whole
+# file; it is always false for other tool types (the concept doesn't apply).
+narrowed="false"
 case "$tool_name" in
-  Read)  file_path=$(echo "$tool_input" | jq -r '.file_path // empty') ;;
+  Read)
+    file_path=$(echo "$tool_input" | jq -r '.file_path // empty')
+    narrowed=$(echo "$tool_input" | jq -r 'if (.offset != null or .limit != null) then "true" else "false" end')
+    ;;
   Glob)  file_path=$(echo "$tool_input" | jq -r '.pattern // empty') ;;
   Grep)  file_path=$(echo "$tool_input" | jq -r '.path // empty') ;;
   Edit|Write) file_path=$(echo "$tool_input" | jq -r '.file_path // empty') ;;
@@ -78,8 +84,9 @@ else
   state=$(echo "$state" | jq \
     --arg f "$file_path" \
     --arg t "$tool_name" \
+    --argjson n "$narrowed" \
     '.seq += 1 |
-     .accesses += [{seq:.seq, phase:.current_phase, tool:$t, path:$f}]')
+     .accesses += [{seq:.seq, phase:.current_phase, tool:$t, path:$f, narrowed:$n}]')
 fi
 
 echo "$state" > "$STATE_FILE"

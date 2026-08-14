@@ -43,16 +43,19 @@ format_modified() {
   fi
 }
 
+narrowed_total=$(echo "$state" | jq '[.accesses[] | select(.narrowed == true)] | length')
+
 duplicates=$(echo "$state" | jq -r '
   .accesses
   | group_by(.path)
   | map(select(length > 1) | {
       path: .[0].path,
       count: length,
-      by_phase: (group_by(.phase) | map({key: .[0].phase, value: length}) | from_entries)
+      by_phase: (group_by(.phase) | map({key: .[0].phase, value: length}) | from_entries),
+      narrowed: (map(select(.narrowed == true)) | length)
     })
   | sort_by(-.count)[]
-  | "  - \(.path) (\(.count)回) [\(.by_phase | to_entries | map("\(.key):\(.value)") | join(", "))]"
+  | "  - \(.path) (\(.count)回) [\(.by_phase | to_entries | map("\(.key):\(.value)") | join(", "))] (narrowed:\(.narrowed))"
 ')
 
 phases=$(echo "$state" | jq -r '
@@ -65,7 +68,7 @@ phases=$(echo "$state" | jq -r '
   printf '\n---\n\n'
   printf '[日時]\n%s\n\n' "$start_time"
   printf '[ユーザーからの指示内容]\n%s\n\n' "$user_instruction"
-  printf '[アクセスサマリ]\n総アクセス数: %d\n' "$total"
+  printf '[アクセスサマリ]\n総アクセス数: %d (絞り込み読み: %d)\n' "$total" "$narrowed_total"
 
   if [ -n "$duplicates" ]; then
     printf '重複アクセス:\n%s\n' "$duplicates"
