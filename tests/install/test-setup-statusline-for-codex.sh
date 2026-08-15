@@ -6,7 +6,7 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-SCRIPT="$REPO_DIR/setup_statusline_for_codex.sh"
+SCRIPT="$REPO_DIR/scripts/setup_statusline_for_codex.sh"
 
 run_setup() {
   local test_home=$1

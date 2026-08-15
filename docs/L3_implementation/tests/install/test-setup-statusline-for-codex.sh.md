@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`setup_statusline_for_codex.sh` が利用者の実 HOME に副作用を与えず、Codex config を正しく冪等更新することを検証する shell test である。
+`scripts/setup_statusline_for_codex.sh` が利用者の実 HOME に副作用を与えず、Codex config を正しく冪等更新することを検証する shell test である。
 
 根拠: `tests/install/test-setup-statusline-for-codex.sh:1-14`
 
@@ -21,7 +21,7 @@
 
 ## 統合ポイント
 
-- test target: `setup_statusline_for_codex.sh`
+- test target: `scripts/setup_statusline_for_codex.sh`
 - execution: `bash tests/install/test-setup-statusline-for-codex.sh`
 - dependencies: Bash, awk, cmp, diff
 

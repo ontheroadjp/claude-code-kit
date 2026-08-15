@@ -8,7 +8,7 @@
 
 ## 動作の概要
 
-fixture repository と一時 HOME を作成し、fixture にコピーした installer と Codex status line setup script を使って installer を2回実行する。各実行後、Claude/Codex 両 target の symlink、Codex config の4つの status item、および auto-approve hook migration を検証する。
+fixture repository と一時 HOME を作成し、fixture の `scripts/` にコピーした Codex status line setup script と installer を使って installer を2回実行する。各実行後、Claude/Codex 両 target の symlink、Codex config の4つの status item、および auto-approve hook migration を検証する。
 
 根拠: `tests/install/test-install.sh:9-55`, `tests/install/test-install.sh:127-176`
 

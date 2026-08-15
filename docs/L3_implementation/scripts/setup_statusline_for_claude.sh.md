@@ -1,13 +1,14 @@
-# setup_statusline_for_claude.sh
+# scripts/setup_statusline_for_claude.sh
 
 ## 目的・役割
 
 Claude Code 用 status line の実体を repository に保ったまま `~/.claude/statusline.sh` へ symlink し、Claude Code settings に command 型の `statusLine` を登録する installer である。
 
-根拠: `setup_statusline_for_claude.sh:1-9`
+根拠: `scripts/setup_statusline_for_claude.sh:1-9`
 
 ## 動作の概要
 
+- 自身が `scripts/` 配下にあることを前提に repository root を解決する
 - repository 内の `scripts/statusline.sh` が存在することを確認する
 - 既存 target が symlink なら置換し、実ファイルなら `.bak` へ退避する
 - `~/.claude/statusline.sh` を repository source への symlink として作成する
@@ -15,18 +16,18 @@ Claude Code 用 status line の実体を repository に保ったまま `~/.claud
 - `jq` があれば、未設定の場合だけ `statusLine` command、padding、refresh interval を追加する
 - `jq` がなければ手動設定例を表示する
 
-根拠: `setup_statusline_for_claude.sh:11-57`
+根拠: `scripts/setup_statusline_for_claude.sh:6-57`
 
 ## 重要な設計判断
 
-status line 本体は配布先へコピーせず symlink する。既存の実ファイルは破棄せず `.bak` に退避し、既存 `statusLine` 設定は上書きしない。
+status line 本体は配布先へコピーせず symlink する。既存の実ファイルは破棄せず `.bak` に退避し、既存 `statusLine` 設定は上書きしない。setup script は他の utility script と同じ `scripts/` に配置し、repository root は script 自身の親 directory として解決する。
 
 ## 統合ポイント
 
 - source: `scripts/statusline.sh`
 - symlink target: `~/.claude/statusline.sh`
 - config: `~/.claude/settings.json`
-- manual entry point: `./setup_statusline_for_claude.sh`
+- manual entry point: `./scripts/setup_statusline_for_claude.sh`
 
 ## 注意事項・既知の制限
 
