@@ -9,8 +9,8 @@
   ],
   "commands": {
     "install": "./install.sh",
-    "statusline:claude:install": "./setup_statusline_for_claude.sh",
-    "statusline:codex:install": "./setup_statusline_for_codex.sh",
+    "statusline:claude:install": "./scripts/setup_statusline_for_claude.sh",
+    "statusline:codex:install": "./scripts/setup_statusline_for_codex.sh",
     "ci:install": "cd site && npm ci",
     "site:dev": "cd site && npm run docs:dev",
     "site:build": "cd site && npm run docs:build",
@@ -199,11 +199,11 @@
       "method": "manual installer",
       "source": "scripts/statusline.sh",
       "target": "~/.claude/statusline.sh",
-      "installer": "./setup_statusline_for_claude.sh"
+      "installer": "./scripts/setup_statusline_for_claude.sh"
     },
     "codex_statusline": {
       "method": "config.toml registration",
-      "source": "setup_statusline_for_codex.sh",
+      "source": "scripts/setup_statusline_for_codex.sh",
       "target": "~/.codex/config.toml",
       "installer": "./install.sh"
     },

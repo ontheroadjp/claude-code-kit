@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`setup_statusline_for_codex.sh` が利用者の実 HOME に副作用を与えず、Codex config を正しく冪等更新することを検証する shell test である。
+`scripts/setup_statusline_for_codex.sh` が利用者の実 HOME に副作用を与えず、Codex config を正しく冪等更新することを検証する shell test である。
 
 根拠: `tests/install/test-setup-statusline-for-codex.sh:1-14`
 
@@ -21,10 +21,15 @@
 
 ## 統合ポイント
 
-- test target: `setup_statusline_for_codex.sh`
+- test target: `scripts/setup_statusline_for_codex.sh`
 - execution: `bash tests/install/test-setup-statusline-for-codex.sh`
 - dependencies: Bash, awk, cmp, diff
 
 ## 注意事項・既知の制限
 
 Codex TUI の描画自体ではなく、Codex が読み込む `config.toml` の生成契約を検証する。
+
+## 変更履歴（git log より自動生成）
+
+- abf4f53 chore(#372): move status line setup scripts
+- 3fa2055 #370 Add idempotent Codex status line setup (#371)

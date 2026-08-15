@@ -54,7 +54,7 @@ bash tests/commands/test-work-multi.sh
 
 ## Installer contract test
 
-`tests/install/test-install.sh` は temporary fixture repository と isolated HOME を作成し、`install.sh` を2回実行する。symlink と hook migration に加え、`setup_statusline_for_codex.sh` が `~/.codex/config.toml` に4つの status itemを設定し、再実行しても結果が変わらないことを検証する。
+`tests/install/test-install.sh` は temporary fixture repository と isolated HOME を作成し、`install.sh` を2回実行する。symlink と hook migration に加え、`scripts/setup_statusline_for_codex.sh` が `~/.codex/config.toml` に4つの status itemを設定し、再実行しても結果が変わらないことを検証する。
 
 ```bash
 bash tests/install/test-install.sh

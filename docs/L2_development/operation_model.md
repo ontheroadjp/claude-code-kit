@@ -100,8 +100,8 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 | コマンド | 用途 | 根拠 |
 |---|---|---|
 | `./install.sh` | symlink、Claude/Codex hook settings、Codex status line 登録 | `install.sh:13-202` |
-| `./setup_statusline_for_claude.sh` | Claude statusline symlink と settings 登録 | `setup_statusline_for_claude.sh:6-57` |
-| `./setup_statusline_for_codex.sh` | Codex TUI status line の冪等設定 | `setup_statusline_for_codex.sh:6-93` |
+| `./scripts/setup_statusline_for_claude.sh` | Claude statusline symlink と settings 登録 | `scripts/setup_statusline_for_claude.sh:6-57` |
+| `./scripts/setup_statusline_for_codex.sh` | Codex TUI status line の冪等設定 | `scripts/setup_statusline_for_codex.sh:6-93` |
 | `cd site && npm ci` | CI と同じ lockfile-based install | `.github/workflows/deploy.yml:31-33` |
 | `cd site && npm run docs:dev` | VitePress dev server | `site/package.json:4-8` |
 | `cd site && npm run docs:build` | VitePress build。CI でも実行 | `site/package.json:4-8`, `.github/workflows/deploy.yml:35-37` |

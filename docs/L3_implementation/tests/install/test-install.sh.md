@@ -8,7 +8,7 @@
 
 ## 動作の概要
 
-fixture repository と一時 HOME を作成し、fixture にコピーした installer と Codex status line setup script を使って installer を2回実行する。各実行後、Claude/Codex 両 target の symlink、Codex config の4つの status item、および auto-approve hook migration を検証する。
+fixture repository と一時 HOME を作成し、fixture の `scripts/` にコピーした Codex status line setup script と installer を使って installer を2回実行する。各実行後、Claude/Codex 両 target の symlink、Codex config の4つの status item、および auto-approve hook migration を検証する。
 
 根拠: `tests/install/test-install.sh:9-55`, `tests/install/test-install.sh:127-176`
 
@@ -43,7 +43,9 @@ installer 全体を fixture で実行することで、静的文字列検査だ�
 
 ## 変更履歴（git log より自動生成）
 
-- a4aa210 feat(#367): automate CLAUDE.md/AGENTS.md global symlinks in install.sh
+- abf4f53 chore(#372): move status line setup scripts
+- 3fa2055 #370 Add idempotent Codex status line setup (#371)
+- 396533d #367 Automate CLAUDE.md/AGENTS.md global symlinks in install.sh (#368)
 - d5359f7 #340 Approve Codex permission requests (#341)
 - 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard

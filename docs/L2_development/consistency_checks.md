@@ -25,8 +25,8 @@ Repo Profile の commands はすべて実体に対応する。
 | 分類 | Repo Profile の command | 実体 |
 |---|---|---|
 | install | `./install.sh` | executable installer |
-| statusline | `./setup_statusline_for_claude.sh` | executable Claude installer |
-| statusline | `./setup_statusline_for_codex.sh` | executable Codex installer |
+| statusline | `./scripts/setup_statusline_for_claude.sh` | executable Claude installer |
+| statusline | `./scripts/setup_statusline_for_codex.sh` | executable Codex installer |
 | site | `cd site && npm ci` | CI install step |
 | site | `cd site && npm run docs:dev` | `site/package.json:scripts.docs:dev` |
 | site | `cd site && npm run docs:build` | package script and CI build step |

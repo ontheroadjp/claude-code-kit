@@ -16,7 +16,7 @@ Claude Code の statusLine コマンドとして登録されるスクリプト�
 
 ## 統合ポイント
 
-- セットアップ: `setup_statusline_for_claude.sh` が `~/.claude/statusline.sh` へ symlink し settings に登録する（直接編集は本体の `scripts/statusline.sh` に対して行う）
+- セットアップ: `scripts/setup_statusline_for_claude.sh` が `~/.claude/statusline.sh` へ symlink し settings に登録する（直接編集は本体の `scripts/statusline.sh` に対して行う）
 - 入力: Claude Code が statusLine 呼び出し時に渡す JSON（`context_window`/`rate_limits`）
 
 ## 注意事項・既知の制限

@@ -70,15 +70,15 @@ It also configures the native Codex TUI status line in `~/.codex/config.toml`, a
 For Claude Code:
 
 ```bash
-./setup_statusline_for_claude.sh
+./scripts/setup_statusline_for_claude.sh
 ```
 
 This links `scripts/statusline.sh` to `~/.claude/statusline.sh` and adds a `statusLine` entry to `~/.claude/settings.json` when `jq` is available.
 
-For Codex, `./install.sh` automatically runs the idempotent `setup_statusline_for_codex.sh`. It configures context usage, used tokens, five-hour limit, and weekly limit in `~/.codex/config.toml`. To update only this setting, run:
+For Codex, `./install.sh` automatically runs the idempotent `scripts/setup_statusline_for_codex.sh`. It configures context usage, used tokens, five-hour limit, and weekly limit in `~/.codex/config.toml`. To update only this setting, run:
 
 ```bash
-./setup_statusline_for_codex.sh
+./scripts/setup_statusline_for_codex.sh
 ```
 
 Codex omits status items whose current values are unavailable. Restart the relevant CLI after changing its status line configuration.
@@ -157,8 +157,8 @@ site/                         VitePress documentation site
 scripts/                      status line and token usage utilities
 tests/                        verification scripts for hooks, workflows, and installer contracts
 install.sh                    symlink installer for commands/hooks/skills/templates
-setup_statusline_for_claude.sh  Claude Code status line installer
-setup_statusline_for_codex.sh   Codex TUI status line installer
+scripts/setup_statusline_for_claude.sh  Claude Code status line installer
+scripts/setup_statusline_for_codex.sh   Codex TUI status line installer
 global/CLAUDE.md              distributed framework file (symlinked to ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md)
 CLAUDE.md                     this repository's own project-local AI operating guidance
 AGENTS.md                     symlink to CLAUDE.md (project-local) for Codex CLI

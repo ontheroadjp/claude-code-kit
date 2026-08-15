@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT_SRC="$REPO_DIR/scripts/statusline.sh"
 SYMLINK="$HOME/.claude/statusline.sh"
 SETTINGS="$HOME/.claude/settings.json"

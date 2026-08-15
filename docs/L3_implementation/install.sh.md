@@ -14,7 +14,7 @@
 2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.claude/hooks/lib`, `~/.codex/hooks/lib`, `~/.claude/scripts`, `~/.codex/scripts`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
 3. `keybindings.json` を symlink した直後に、`global/CLAUDE.md` を `~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` の両方へ symlink する（issue #367。以前は README 記載の手動 `ln -s` に依存していた）。
 4. repository 内の commands / hooks / hooks/lib / scripts / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。`hooks/lib/*.sh` は `commands/*.md` が `bash ~/.claude/hooks/lib/session-paths.sh <mode>` のように直接実行するために symlink する（issue #316）。`scripts/*.sh` も agent 別の installed path から直接実行できるよう両 target に symlink する（issue #324）。存在しないファイルに対する glob 展開を避けるため hooks/lib の loop は `[ -e "$src" ] || continue` で空展開をスキップする。
-5. `setup_statusline_for_codex.sh` を実行して `~/.codex/config.toml` の status line を設定する。
+5. `scripts/setup_statusline_for_codex.sh` を実行して `~/.codex/config.toml` の status line を設定する。
 6. `jq` がない場合は JSON settings 更新をスキップして終了する。
 7. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
 8. migration helper でバージョン間の hook 変更を適用する。
@@ -24,9 +24,9 @@
 
 ### Codex status line 設定の委譲
 
-installer は `setup_statusline_for_codex.sh` を呼び出すだけとし、TOML の検出・追加・置換・冪等性は専用 script に委譲する。この呼び出しは `jq` availability gate より前にあるため、JSON hook settings を自動更新できない環境でも Codex status line は設定される。
+installer は `scripts/setup_statusline_for_codex.sh` を呼び出すだけとし、TOML の検出・追加・置換・冪等性は専用 script に委譲する。この呼び出しは `jq` availability gate より前にあるため、JSON hook settings を自動更新できない環境でも Codex status line は設定される。
 
-根拠: `install.sh:108-109`, `install.sh:132-138`, `setup_statusline_for_codex.sh:1-93`
+根拠: `install.sh:108-109`, `install.sh:132-138`, `scripts/setup_statusline_for_codex.sh:1-93`
 
 ## 主要な判定ロジック
 
@@ -108,7 +108,9 @@ Codex hooks は installer が登録しただけでは信頼済みとは限らな
 
 ## 変更履歴（git log より自動生成）
 
-- a4aa210 feat(#367): automate CLAUDE.md/AGENTS.md global symlinks in install.sh
+- abf4f53 chore(#372): move status line setup scripts
+- 3fa2055 #370 Add idempotent Codex status line setup (#371)
+- 396533d #367 Automate CLAUDE.md/AGENTS.md global symlinks in install.sh (#368)
 - d5359f7 #340 Approve Codex permission requests (#341)
 - 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
@@ -116,7 +118,3 @@ Codex hooks は installer が登録しただけでは信頼済みとは限らな
 - 25a8151 fix: sync self-referential skill symlinks to .gitignore in install.sh
 - bfc5f9f feat(install): add keybindings.json and symlink it during install
 - 27f1861 feat(#76): install templates for claude and codex
-- 15e9c5c fix(#181): remap Stop hook to ✅ and add clear mode to tmux-agent-status.sh
-- 31702d1 fix(#179): map Stop hook to 🔴 and add process-exit ✅ via shell wrapper
-- 612b51e fix(#154): replace tmux-agent-status emojis for better terminal visibility
-- e160237 feat(#104): auto-configure settings.json hook entries in install.sh

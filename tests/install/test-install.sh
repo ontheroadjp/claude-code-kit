@@ -20,7 +20,7 @@ mkdir -p \
   "$TEST_HOME"
 
 cp "$REPO_DIR/install.sh" "$FIXTURE_REPO/install.sh"
-cp "$REPO_DIR/setup_statusline_for_codex.sh" "$FIXTURE_REPO/setup_statusline_for_codex.sh"
+cp "$REPO_DIR/scripts/setup_statusline_for_codex.sh" "$FIXTURE_REPO/scripts/setup_statusline_for_codex.sh"
 touch "$FIXTURE_REPO/.gitignore"
 printf '# claude\n' > "$FIXTURE_REPO/global/CLAUDE.md"
 printf '# command\n' > "$FIXTURE_REPO/commands/example.md"
