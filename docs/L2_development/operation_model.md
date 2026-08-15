@@ -99,8 +99,9 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 | コマンド | 用途 | 根拠 |
 |---|---|---|
-| `./install.sh` | commands/hooks/skills/templates symlink と Claude/Codex hook settings 登録 | `install.sh:13-194` |
-| `./setup_statusline.sh` | statusline symlink と settings 登録 | `setup_statusline.sh:6-55` |
+| `./install.sh` | symlink、Claude/Codex hook settings、Codex status line 登録 | `install.sh:13-202` |
+| `./setup_statusline_for_claude.sh` | Claude statusline symlink と settings 登録 | `setup_statusline_for_claude.sh:6-57` |
+| `./setup_statusline_for_codex.sh` | Codex TUI status line の冪等設定 | `setup_statusline_for_codex.sh:6-93` |
 | `cd site && npm ci` | CI と同じ lockfile-based install | `.github/workflows/deploy.yml:31-33` |
 | `cd site && npm run docs:dev` | VitePress dev server | `site/package.json:4-8` |
 | `cd site && npm run docs:build` | VitePress build。CI でも実行 | `site/package.json:4-8`, `.github/workflows/deploy.yml:35-37` |
@@ -112,6 +113,7 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 | `bash tests/commands/test-mtg.sh` | agenda / mtg workflow contract | `tests/commands/test-mtg.sh` |
 | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition and portability contract | `tests/commands/test-coding-guidelines.sh` |
 | `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract | `tests/install/test-install.sh` |
+| `bash tests/install/test-setup-statusline-for-codex.sh` | Codex config の追加・置換・設定維持・冪等性 contract | `tests/install/test-setup-statusline-for-codex.sh` |
 | `python3 -m pytest tests/scripts/` | log analysis scripts の parse / aggregate / CLI contract | `tests/scripts/` |
 
 ## CI/CD

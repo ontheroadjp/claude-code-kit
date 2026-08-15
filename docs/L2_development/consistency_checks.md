@@ -1,14 +1,14 @@
 # Consistency Checks
 
-最終実行: 2026-08-06
+最終実行: 2026-08-15
 
 ## docs → 実体
 
 ### Command / skill paths
 
-- `commands/` には README を除いて23個の command specification が存在する。
-- `skills/` には23個の `SKILL.md` が存在し、command basename と1:1で対応する。
-- `docs/.ai/repo.profile.json` の `active_commands` と `skills` は、この23件を漏れなく列挙する。
+- `commands/` には README を除いて26個の command specification が存在する。
+- `skills/` には26個の `SKILL.md` が存在し、command basename と1:1で対応する。
+- `docs/.ai/repo.profile.json` の `active_commands` と `skills` は、この26件を漏れなく列挙する。
 
 根拠: `commands/` 実体一覧、`skills/` 実体一覧、`docs/.ai/repo.profile.json:active_commands`、`docs/.ai/repo.profile.json:skills`
 
@@ -25,7 +25,8 @@ Repo Profile の commands はすべて実体に対応する。
 | 分類 | Repo Profile の command | 実体 |
 |---|---|---|
 | install | `./install.sh` | executable installer |
-| statusline | `./setup_statusline.sh` | executable installer |
+| statusline | `./setup_statusline_for_claude.sh` | executable Claude installer |
+| statusline | `./setup_statusline_for_codex.sh` | executable Codex installer |
 | site | `cd site && npm ci` | CI install step |
 | site | `cd site && npm run docs:dev` | `site/package.json:scripts.docs:dev` |
 | site | `cd site && npm run docs:build` | package script and CI build step |
@@ -37,6 +38,7 @@ Repo Profile の commands はすべて実体に対応する。
 | shell test | `bash tests/commands/test-mtg.sh` | agenda / mtg contract |
 | shell test | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition, routing, portability contract |
 | shell test | `bash tests/install/test-install.sh` | installer contract |
+| shell test | `bash tests/install/test-setup-statusline-for-codex.sh` | Codex status line config contract |
 | Python test | `python3 -m pytest tests/scripts/` | analysis-script contract |
 
 根拠: `docs/.ai/repo.profile.json:commands`, `site/package.json:4-8`, `.github/workflows/deploy.yml:31-37`, `commands/analyze-access.md:27-35`, `commands/analyze-auto-approve.md:28-36`, `commands/analyze-token-usage.md:27-35`, `tests/` 実体一覧
@@ -45,8 +47,8 @@ Repo Profile の commands はすべて実体に対応する。
 
 - `doc_roots` の4 directory は実在し、L0、L1、L2、L3 の生成済み構造と一致する。
 - `primary_docs.investigation` と `primary_docs.structure` は実在する。
-- `commands` の全13項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
-- `active_commands` 23件、`skills` 23件、`hooks` 9件は実体一覧と一致する。
+- `commands` の全16項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
+- `active_commands` 26件、`skills` 26件、`hooks` 9件は実体一覧と一致する。
 
 根拠: `docs/.ai/repo.profile.json`, `docs/L2_development/operation_model.md`, `docs/L2_development/test.md`, `docs/L2_development/cicd.md`
 
@@ -59,11 +61,11 @@ CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg
 ## README / AGENTS / CLAUDE
 
 - README は template が要求する Features、Installation、Usage、Design Principles を持つ。
-- README の Features は23 command のうち内部委譲用を含む全 command を列挙する。
+- README の Features は26 command のうち内部委譲用を含む全 command を列挙する。
 - repository root に license file は存在しないため、根拠のない license 名は README に記載しない。
 - `AGENTS.md` は `CLAUDE.md`（project-local）への symlink であり、このリポジトリで作業する両 agent は project-local な AI 運用情報を参照する。
 - 配布用ファイルは `global/CLAUDE.md` に分離されており、`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` の両方がこれへ `install.sh` により自動 symlink される（issue #365 以前は `CLAUDE.md`（project-local）自身が配布物を兼ねていた。issue #367 で手動symlinkから自動化に変更）。
-- `CLAUDE.md` の local tooling は 2026-08-06 の観測値（gh 2.96.0、Node.js v24.16.0、npm 11.13.0、mise hint）と一致する。
+- `CLAUDE.md` の local tooling は観測済みの gh 2.97.0、Node.js v24.16.0、npm 11.13.0、mise hint と一致する。
 
 根拠: `templates/readme.md:5-21`, `README.md`, `readlink AGENTS.md` の結果 `CLAUDE.md`, `CLAUDE.md:95-106`, `docs/.ai/repo.profile.json`（`deploy.claude_md`, `deploy.codex_agents_md`）, issue #365
 
@@ -78,7 +80,7 @@ CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg
 | 条件 | 判定 | 理由 |
 |---|---|---|
 | docs の事実が実体と矛盾しない | yes | path、command、workflow、dependency、entry point を再観測した |
-| Repo Profile と docs が相互に説明可能 | yes | 14 commands、23 command/skill、9 hooks を双方向に突合した |
+| Repo Profile と docs が相互に説明可能 | yes | 16 commands、26 command/skill、9 hooks を双方向に突合した |
 | CI と docs が一致する | yes | Node.js 24 と site npm build/deploy を CI から採用した |
 | 未確認事項が分離されている | yes | coverage、CI test 非登録、Python dependency pin 不在を明記した |
 

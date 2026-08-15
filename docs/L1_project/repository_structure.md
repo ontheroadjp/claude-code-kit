@@ -8,8 +8,9 @@ core-toolkit-for-claude/
 ├── CLAUDE.md                    # このリポジトリ自身の project-local な AI 運用指示（配布物ではない）
 ├── global/CLAUDE.md             # 配布用フレームワークファイル。~/.claude/CLAUDE.md・~/.codex/AGENTS.md の symlink 元（issue #365）
 ├── README.md                    # 人間向け概要、インストール、利用手順
-├── install.sh                   # commands/hooks/skills/templates symlink と Claude/Codex hook settings 登録
-├── setup_statusline.sh          # status line symlink と settings 登録
+├── install.sh                   # symlink、hook settings、Codex status line 登録
+├── setup_statusline_for_claude.sh # Claude status line symlink と settings 登録
+├── setup_statusline_for_codex.sh  # Codex TUI status line の冪等設定
 ├── .github/workflows/deploy.yml     # VitePress site を GitHub Pages へ deploy
 ├── .github/workflows/shellcheck.yml # 全 *.sh に ShellCheck を実行
 ├── commands/                    # Claude/Codex が読む Markdown command 仕様（README.md あり）
@@ -47,7 +48,7 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 ### `tests/`
 
-shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-mtg.sh` は agenda routing とユーザー主導の対話境界、`tests/commands/test-coding-guidelines.sh` は coding layerの合成・routing・repository非依存性、`tests/commands/test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`tests/commands/test-work-multi.sh` は work-multi 関連ファイルの契約（issue #296）、`tests/install/test-install.sh` は fixture HOME に対する template symlink と installer の冪等性、`tests/scripts/test-link-worktree-untracked.sh` は untracked symlink の functional test（issue #296）、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
+shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-mtg.sh` は agenda routing とユーザー主導の対話境界、`tests/commands/test-coding-guidelines.sh` は coding layerの合成・routing・repository非依存性、`tests/commands/test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`tests/commands/test-work-multi.sh` は work-multi 関連ファイルの契約（issue #296）、`tests/install/test-install.sh` は fixture HOME に対する installer の統合契約、`tests/install/test-setup-statusline-for-codex.sh` は Codex config 更新と冪等性、`tests/scripts/test-link-worktree-untracked.sh` は untracked symlink の functional test（issue #296）、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
 
 根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-mtg.sh`, `tests/commands/test-coding-guidelines.sh:1-53`, `tests/commands/test-workflow-contracts.sh:1-47`, `tests/commands/test-work-multi.sh:1-83`, `tests/install/test-install.sh:1-71`, `tests/scripts/test-link-worktree-untracked.sh:1-126`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
 
@@ -69,11 +70,11 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 
 根拠: `site/package.json:1-14`, `site/.vitepress/config.mts:1-183`, `.github/workflows/deploy.yml:24-42`
 
-### `scripts/` と `setup_statusline.sh`
+### `scripts/` と status line setup
 
-`setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/statusline.sh` は `jq` と `bc` を使って context / rate limit 情報を表示する。`scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py`（および共通処理 `scripts/lib/analyze_common.py`）は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する Python script で、対応する `/analyze-*` command から呼ばれる。`scripts/link-worktree-untracked.sh` は `commands/work-multi.md` から呼ばれ、`EnterWorktree` が作成した worktree に元の working tree の untracked/ignored ファイル・ディレクトリを symlink する（issue #296）。
+`setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`setup_statusline_for_codex.sh` は `~/.codex/config.toml` の `[tui].status_line` を4項目へ冪等更新し、`install.sh` からも呼ばれる。`scripts/statusline.sh` は `jq` と `bc` を使って Claude Code の context / rate limit 情報を表示する。ログ解析 scripts は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する。
 
-根拠: `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`, `scripts/analyze_access.py:1-6`, `scripts/link-worktree-untracked.sh:1-59`, `scripts/README.md`
+根拠: `setup_statusline_for_claude.sh:6-57`, `setup_statusline_for_codex.sh:6-93`, `install.sh:108-109`, `scripts/statusline.sh:10-83`
 
 ### `logs/`
 
@@ -92,7 +93,8 @@ access、auto-approval、token usage の月次ログを置く。log hooks と to
 | Codex skills | `skills/*/` | `~/.codex/skills/*` | `install.sh` が symlink | `install.sh:49-54` |
 | Claude templates | `templates/*.md` | `~/.claude/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
 | Codex templates | `templates/*.md` | `~/.codex/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
-| statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `setup_statusline.sh` が symlink | `setup_statusline.sh:6-28` |
+| Claude statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `setup_statusline_for_claude.sh` が symlink | `setup_statusline_for_claude.sh:6-28` |
+| Codex statusline | `setup_statusline_for_codex.sh` | `~/.codex/config.toml` | `install.sh` が専用 installer を実行 | `install.sh:108-109`, `setup_statusline_for_codex.sh:6-93` |
 | site | `site/.vitepress/dist` | GitHub Pages | GitHub Actions | `.github/workflows/deploy.yml:39-52` |
 | Claude global instructions | `global/CLAUDE.md` | `~/.claude/CLAUDE.md` | `install.sh` が symlink | `install.sh`, `docs/.ai/repo.profile.json`（`deploy.claude_md`）, issue #365, issue #367 |
 | Codex global instructions | `global/CLAUDE.md` | `~/.codex/AGENTS.md` | `install.sh` が symlink | `install.sh`, `docs/.ai/repo.profile.json`（`deploy.codex_agents_md`）, issue #365, issue #367 |
