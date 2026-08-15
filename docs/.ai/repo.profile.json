@@ -168,14 +168,16 @@
       "target": "~/.claude/hooks/"
     },
     "claude_md": {
-      "method": "manual symlink",
+      "method": "symlink",
       "source": "global/CLAUDE.md",
-      "target": "~/.claude/CLAUDE.md"
+      "target": "~/.claude/CLAUDE.md",
+      "installer": "./install.sh"
     },
     "codex_agents_md": {
-      "method": "manual symlink",
+      "method": "symlink",
       "source": "global/CLAUDE.md",
-      "target": "~/.codex/AGENTS.md"
+      "target": "~/.codex/AGENTS.md",
+      "installer": "./install.sh"
     },
     "skills": {
       "method": "symlink",

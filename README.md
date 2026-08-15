@@ -56,17 +56,14 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 - `skills/*/` -> `~/.codex/skills/`
 - `templates/*.md` -> `~/.claude/templates/`
 - `templates/*.md` -> `~/.codex/templates/`
+- `global/CLAUDE.md` -> `~/.claude/CLAUDE.md`
+- `global/CLAUDE.md` -> `~/.codex/AGENTS.md`
 
 It also updates `~/.claude/settings.json` and `~/.codex/hooks.json` when `jq` is available. Codex users should review and trust registered hooks with `/hooks` before relying on them.
 
 ### Global AI Instructions
 
-`global/CLAUDE.md` is the distributed framework file (single source of truth). The repo-root `CLAUDE.md` is this repository's own project-local file and is not distributed.
-
-```bash
-ln -s /path/to/core-toolkit-for-claude/global/CLAUDE.md ~/.claude/CLAUDE.md
-ln -s /path/to/core-toolkit-for-claude/global/CLAUDE.md ~/.codex/AGENTS.md
-```
+`global/CLAUDE.md` is the distributed framework file (single source of truth), symlinked by `install.sh` to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. The repo-root `CLAUDE.md` is this repository's own project-local file and is not distributed.
 
 ### Status Line
 

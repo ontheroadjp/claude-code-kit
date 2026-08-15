@@ -52,8 +52,8 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 ## 統合ポイント
 
 - `AGENTS.md`（project-local） → `CLAUDE.md`（project-local） symlink
-- `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`（共に配布先） → `global/CLAUDE.md` symlink（手動、`README.md` の Global AI Instructions 手順）
-- installer: `install.sh`（CLAUDE.md/AGENTS.md の配布は対象外、手動 symlink のまま）
+- `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`（共に配布先） → `global/CLAUDE.md` symlink（`install.sh` が自動化、issue #367）
+- installer: `install.sh`
 - template source: `templates/*.md`
 
 ## 注意事項・既知の制限

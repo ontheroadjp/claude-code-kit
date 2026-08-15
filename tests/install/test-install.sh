@@ -16,10 +16,12 @@ mkdir -p \
   "$FIXTURE_REPO/scripts" \
   "$FIXTURE_REPO/skills/example" \
   "$FIXTURE_REPO/templates" \
+  "$FIXTURE_REPO/global" \
   "$TEST_HOME"
 
 cp "$REPO_DIR/install.sh" "$FIXTURE_REPO/install.sh"
 touch "$FIXTURE_REPO/.gitignore"
+printf '# claude\n' > "$FIXTURE_REPO/global/CLAUDE.md"
 printf '# command\n' > "$FIXTURE_REPO/commands/example.md"
 printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/hooks/example.sh"
 printf '#!/usr/bin/env bash\n' > "$FIXTURE_REPO/hooks/lib/example-lib.sh"
@@ -112,6 +114,15 @@ assert_codex_auto_approve_registration() {
   fi
 }
 
+assert_global_claude_links() {
+  assert_symlink \
+    "$TEST_HOME/.claude/CLAUDE.md" \
+    "$FIXTURE_REPO/global/CLAUDE.md"
+  assert_symlink \
+    "$TEST_HOME/.codex/AGENTS.md" \
+    "$FIXTURE_REPO/global/CLAUDE.md"
+}
+
 run_installer
 assert_template_links "$TEST_HOME/.claude/templates"
 assert_template_links "$TEST_HOME/.codex/templates"
@@ -120,6 +131,7 @@ assert_hooks_lib_links "$TEST_HOME/.codex/hooks/lib"
 assert_script_links "$TEST_HOME/.claude/scripts"
 assert_script_links "$TEST_HOME/.codex/scripts"
 assert_codex_auto_approve_registration
+assert_global_claude_links
 
 LEGACY_CONFIG_DIR="$TEST_HOME/.config/claude-code-kit"
 if [ -e "$LEGACY_CONFIG_DIR/templates" ]; then
@@ -135,5 +147,6 @@ assert_hooks_lib_links "$TEST_HOME/.codex/hooks/lib"
 assert_script_links "$TEST_HOME/.claude/scripts"
 assert_script_links "$TEST_HOME/.codex/scripts"
 assert_codex_auto_approve_registration
+assert_global_claude_links
 
 printf 'All install contract tests passed.\n'

@@ -94,8 +94,8 @@ access、auto-approval、token usage の月次ログを置く。log hooks と to
 | Codex templates | `templates/*.md` | `~/.codex/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
 | statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `setup_statusline.sh` が symlink | `setup_statusline.sh:6-28` |
 | site | `site/.vitepress/dist` | GitHub Pages | GitHub Actions | `.github/workflows/deploy.yml:39-52` |
-| Claude global instructions | `global/CLAUDE.md` | `~/.claude/CLAUDE.md` | 手動 symlink（`README.md` Global AI Instructions） | `README.md`, `docs/.ai/repo.profile.json`（`deploy.claude_md`）, issue #365 |
-| Codex global instructions | `global/CLAUDE.md` | `~/.codex/AGENTS.md` | 手動 symlink（同上） | `README.md`, `docs/.ai/repo.profile.json`（`deploy.codex_agents_md`）, issue #365 |
+| Claude global instructions | `global/CLAUDE.md` | `~/.claude/CLAUDE.md` | `install.sh` が symlink | `install.sh`, `docs/.ai/repo.profile.json`（`deploy.claude_md`）, issue #365, issue #367 |
+| Codex global instructions | `global/CLAUDE.md` | `~/.codex/AGENTS.md` | `install.sh` が symlink | `install.sh`, `docs/.ai/repo.profile.json`（`deploy.codex_agents_md`）, issue #365, issue #367 |
 
 ## 補足
 
