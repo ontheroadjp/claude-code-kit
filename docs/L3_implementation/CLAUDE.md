@@ -2,9 +2,11 @@
 
 ## 目的・役割
 
-`CLAUDE.md` はこの repository で作業する AI agent の運用起点であり、`AGENTS.md` からも symlink 参照される single source of truth である。
+`CLAUDE.md`（リポジトリルート）は、このリポジトリ自身に対する project-local な AI 運用ドキュメントである。`AGENTS.md` はこのファイルへの symlink として、このリポジトリで作業する Codex CLI にも同じ内容を届ける。
 
-根拠: `CLAUDE.md:1-15`
+配布用（`~/.claude/CLAUDE.md`・`~/.codex/AGENTS.md` の symlink 先）は `global/CLAUDE.md` に分離されている（issue #365）。分離直後の現時点では両ファイルは同一内容だが、今後 `global/CLAUDE.md` は `/work` を通じた汎用フレームワークの改善対象、このファイル（ルート `CLAUDE.md`）は他のどのリポジトリとも同じく `/init-docs` が観測・再生成する project-local な内容として、別々に発展していく想定である。
+
+根拠: `CLAUDE.md:1-15`, `global/CLAUDE.md`, `docs/.ai/repo.profile.json`（`deploy.claude_md`, `deploy.codex_agents_md`）, issue #365
 
 ## 動作の概要
 
@@ -43,10 +45,15 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 - Claude Code の `~/.claude/rules/`（`paths:` frontmatter で対象ファイル読込時のみ条件付きロード）: work.md の肥大化は避けられるが、Codex CLI はこの機構を持たないためこの安全策を完全に失い、両エージェントを常に並記して同一挙動を維持するこのリポジトリの設計原則に反する。また `paths:` ロードが実際の Read 呼び出しより先に間に合うかも未検証だった
 - 結論: `CLAUDE.md` は `AGENTS.md` symlink 経由で Codex CLI にも届き、複数コマンドから参照される共有プロトコルを置く既存の場所（resolve-then-embed と同じ位置付け）でもあるため、これを採用した
 
+**配布用ファイルと project-local ファイルの分離（issue #365）**: このリポジトリは「AI 実行基盤そのものを配布する」という特殊性ゆえ、リポジトリルートの `CLAUDE.md` が長らく配布物（`~/.claude/CLAUDE.md` の symlink 元）を兼ねており、他のどのリポジトリとも異なり「global 層」と「project-local 層」が同一ファイルに収束していた。この収束は、`/init-docs` が他リポジトリに対して行うのと同じ「project-local な CLAUDE.md の観測・再生成」をこのリポジトリ自身に適用できない、という歪みを生んでいた。検討した代替案:
+- symlink-only 原則等のフレームワーク固有事項を `docs/L0_concept/policy.md` に一本化し、`/work` の G-1 で毎回 gate read する: L0 は repo-local のため、他リポジトリで作業中に `~/.claude/CLAUDE.md` を直接編集してしまう懸念への対処にはならず、かつ「レポをまたいだ修正」自体がそもそも AI の判断範囲外（人間の運用ルールで縛るべき事項）と判断し、この懸念自体を前提から外した
+- 結論: 配布用ファイルを `global/CLAUDE.md` として物理的に分離し、`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md`（Codex CLI が `~/.codex/AGENTS.md` から project root まで AGENTS.md を加算的に連結する仕様を確認済み）の双方から symlink する。これによりルート `CLAUDE.md` は他リポジトリと同じ project-local な位置付けを取り戻す
+
 ## 統合ポイント
 
-- `AGENTS.md` → `CLAUDE.md` symlink
-- installer: `install.sh`
+- `AGENTS.md`（project-local） → `CLAUDE.md`（project-local） symlink
+- `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`（共に配布先） → `global/CLAUDE.md` symlink（手動、`README.md` の Global AI Instructions 手順）
+- installer: `install.sh`（CLAUDE.md/AGENTS.md の配布は対象外、手動 symlink のまま）
 - template source: `templates/*.md`
 
 ## 注意事項・既知の制限

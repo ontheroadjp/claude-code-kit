@@ -59,10 +59,13 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 
 It also updates `~/.claude/settings.json` and `~/.codex/hooks.json` when `jq` is available. Codex users should review and trust registered hooks with `/hooks` before relying on them.
 
-### Claude Global Instructions
+### Global AI Instructions
+
+`global/CLAUDE.md` is the distributed framework file (single source of truth). The repo-root `CLAUDE.md` is this repository's own project-local file and is not distributed.
 
 ```bash
-ln -s /path/to/core-toolkit-for-claude/CLAUDE.md ~/.claude/CLAUDE.md
+ln -s /path/to/core-toolkit-for-claude/global/CLAUDE.md ~/.claude/CLAUDE.md
+ln -s /path/to/core-toolkit-for-claude/global/CLAUDE.md ~/.codex/AGENTS.md
 ```
 
 ### Status Line
@@ -147,6 +150,7 @@ scripts/                      status line and token usage utilities
 tests/                        verification scripts for hooks, workflows, and installer contracts
 install.sh                    symlink installer for commands/hooks/skills/templates
 setup_statusline.sh           status line installer
-CLAUDE.md                     AI operating guidance source of truth
-AGENTS.md                     symlink to CLAUDE.md for Codex CLI
+global/CLAUDE.md              distributed framework file (symlinked to ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md)
+CLAUDE.md                     this repository's own project-local AI operating guidance
+AGENTS.md                     symlink to CLAUDE.md (project-local) for Codex CLI
 ```
