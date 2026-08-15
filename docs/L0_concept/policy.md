@@ -13,6 +13,7 @@
 - 読み取り専用操作とセッション承認済み操作を `hooks/auto-approve-readonly.sh` が自動承認し、repo 内 write には WIP commit による動的防御を適用する。根拠: `hooks/auto-approve-readonly.sh:375-590`
 - セッション承認は Stop hook で削除し、次ターンへ持ち越さない。根拠: `hooks/cleanup-session.sh:15-24`
 - コミット前に個人情報、IP アドレス、ドメイン名、絶対パスを staged diff から確認する。根拠: `commands/git-commit.md:47-61`
+- `session-approved` による既存リソースへの書き込み権限は、セッション全体への包括的な許可ではなく、issue・PR 番号など具体的な対象リソースにスコープする。対象が一致しない、またはスコープが不正な場合は fail closed とし、通常の許可フローへ戻す。作成前で識別番号が存在しない操作は、リソース種別と操作を限定した権限として扱う。これにより、prompt injection が成功した場合も無関係なリソースへ書き込める範囲を抑制する。根拠: `docs/L3_implementation/hooks/auto_approve_readonly.md:298-306`, issue #297
 - `/report-review` はファイル、Git state、GitHub issue / PR を変更せず、評価を標準出力だけに提示する。根拠: `commands/report-review.md:5-14`, `commands/report-review.md:63-91`
 - Bash 自動承認の allowlist は、危険なフラグを列挙する denylist ではなく、安全な形（単一引数・フラグなしなど）だけを許可する allowlist 型で設計する。オプション名の表記ゆれ（ハイフン/アンダースコア等）や新規フラグの追加に対し、denylist は網羅性を保証できない。根拠: issue #196
 - allowlist の拡張は `logs/auto-approve/*.log` の実使用ログから摩擦点を特定した上で行う。推測でルールを追加しない。根拠: `logs/auto-approve/`

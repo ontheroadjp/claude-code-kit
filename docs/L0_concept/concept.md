@@ -26,4 +26,4 @@ Claude Code または Codex CLI を使い、実装・ドキュメント同期・
 - 通常作業は `/work` から始め、report issue も `/work #N` 経由で read-only workflow へ送る。`/work`（および `/task`）のゴールは ready PR の作成までであり、PR レビューコメント対応は `/review-resolve` が担う。根拠: `CLAUDE.md`, `commands/work.md:49-68`
 - report issue 以外は docs 変更要否を単一質問として扱う。根拠: `commands/work.md:84-115`, `CLAUDE.md`
 - docs 同期は `git diff` を事実として扱う。根拠: `commands/docs-sync.md:1-10`, `CLAUDE.md:35`
-- L0 は `/docs-sync` では更新せず、設計方針の再観測時に `/init-docs` が更新する。根拠: `commands/init-docs.md:104-122`, `commands/docs-sync.md:86-88`
+- L0 は 100% ユーザー管理とする。ユーザー自身による手動の追加・変更を許容する一方、AI が既存の `docs/L0_concept/concept.md`・`policy.md` を直接変更してはならない。AI による書き込みは、L0 が存在しない場合の `/init-docs` による初回作成と、候補ごとの文言調整およびユーザーの明示承認を伴う `/concept-maker` に限定する。根拠: `docs/L3_implementation/commands/init-docs.md:25-31`, issue #273
