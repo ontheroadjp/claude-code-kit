@@ -9,15 +9,13 @@ core-toolkit-for-claude/
 ├── global/CLAUDE.md             # 配布用フレームワークファイル。~/.claude/CLAUDE.md・~/.codex/AGENTS.md の symlink 元（issue #365）
 ├── README.md                    # 人間向け概要、インストール、利用手順
 ├── install.sh                   # symlink、hook settings、Codex status line 登録
-├── setup_statusline_for_claude.sh # Claude status line symlink と settings 登録
-├── setup_statusline_for_codex.sh  # Codex TUI status line の冪等設定
 ├── .github/workflows/deploy.yml     # VitePress site を GitHub Pages へ deploy
 ├── .github/workflows/shellcheck.yml # 全 *.sh に ShellCheck を実行
 ├── commands/                    # Claude/Codex が読む Markdown command 仕様（README.md あり）
 ├── docs/                        # /init-docs が管理する L0-L3 設計 docs
 ├── hooks/                       # Claude Code / Codex hook scripts（README.md あり）
 ├── logs/                        # access / auto-approval / token usage の月次ログ
-├── scripts/                     # status line / token usage 表示、ログ解析 scripts（README.md あり）
+├── scripts/                     # status line setup / token usage 表示、ログ解析 scripts（README.md あり）
 ├── site/                        # VitePress documentation site
 ├── skills/                      # Codex skill wrappers（README.md あり）
 ├── tests/                       # hook などの検証 scripts（README.md あり）
@@ -72,9 +70,9 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 
 ### `scripts/` と status line setup
 
-`setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`setup_statusline_for_codex.sh` は `~/.codex/config.toml` の `[tui].status_line` を4項目へ冪等更新し、`install.sh` からも呼ばれる。`scripts/statusline.sh` は `jq` と `bc` を使って Claude Code の context / rate limit 情報を表示する。ログ解析 scripts は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する。
+`scripts/setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/setup_statusline_for_codex.sh` は `~/.codex/config.toml` の `[tui].status_line` を4項目へ冪等更新し、`install.sh` からも呼ばれる。`scripts/statusline.sh` は `jq` と `bc` を使って Claude Code の context / rate limit 情報を表示する。ログ解析 scripts は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する。
 
-根拠: `setup_statusline_for_claude.sh:6-57`, `setup_statusline_for_codex.sh:6-93`, `install.sh:108-109`, `scripts/statusline.sh:10-83`
+根拠: `scripts/setup_statusline_for_claude.sh:6-57`, `scripts/setup_statusline_for_codex.sh:6-93`, `install.sh:108-109`, `scripts/statusline.sh:10-83`
 
 ### `logs/`
 
@@ -93,8 +91,8 @@ access、auto-approval、token usage の月次ログを置く。log hooks と to
 | Codex skills | `skills/*/` | `~/.codex/skills/*` | `install.sh` が symlink | `install.sh:49-54` |
 | Claude templates | `templates/*.md` | `~/.claude/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
 | Codex templates | `templates/*.md` | `~/.codex/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
-| Claude statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `setup_statusline_for_claude.sh` が symlink | `setup_statusline_for_claude.sh:6-28` |
-| Codex statusline | `setup_statusline_for_codex.sh` | `~/.codex/config.toml` | `install.sh` が専用 installer を実行 | `install.sh:108-109`, `setup_statusline_for_codex.sh:6-93` |
+| Claude statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `scripts/setup_statusline_for_claude.sh` が symlink | `scripts/setup_statusline_for_claude.sh:6-28` |
+| Codex statusline | `scripts/setup_statusline_for_codex.sh` | `~/.codex/config.toml` | `install.sh` が専用 installer を実行 | `install.sh:108-109`, `scripts/setup_statusline_for_codex.sh:6-93` |
 | site | `site/.vitepress/dist` | GitHub Pages | GitHub Actions | `.github/workflows/deploy.yml:39-52` |
 | Claude global instructions | `global/CLAUDE.md` | `~/.claude/CLAUDE.md` | `install.sh` が symlink | `install.sh`, `docs/.ai/repo.profile.json`（`deploy.claude_md`）, issue #365, issue #367 |
 | Codex global instructions | `global/CLAUDE.md` | `~/.codex/AGENTS.md` | `install.sh` が symlink | `install.sh`, `docs/.ai/repo.profile.json`（`deploy.codex_agents_md`）, issue #365, issue #367 |

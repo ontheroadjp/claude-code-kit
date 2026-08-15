@@ -32,3 +32,7 @@ TOML 編集ロジックは `install.sh` に埋め込まず、この script に�
 ## 注意事項・既知の制限
 
 Codex は値が未取得の status item を表示時に省略する。設定反映には Codex の再起動が必要である。
+
+## 変更履歴（git log より自動生成）
+
+- abf4f53 chore(#372): move status line setup scripts

@@ -108,7 +108,9 @@ Codex hooks は installer が登録しただけでは信頼済みとは限らな
 
 ## 変更履歴（git log より自動生成）
 
-- a4aa210 feat(#367): automate CLAUDE.md/AGENTS.md global symlinks in install.sh
+- abf4f53 chore(#372): move status line setup scripts
+- 3fa2055 #370 Add idempotent Codex status line setup (#371)
+- 396533d #367 Automate CLAUDE.md/AGENTS.md global symlinks in install.sh (#368)
 - d5359f7 #340 Approve Codex permission requests (#341)
 - 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
@@ -116,7 +118,3 @@ Codex hooks は installer が登録しただけでは信頼済みとは限らな
 - 25a8151 fix: sync self-referential skill symlinks to .gitignore in install.sh
 - bfc5f9f feat(install): add keybindings.json and symlink it during install
 - 27f1861 feat(#76): install templates for claude and codex
-- 15e9c5c fix(#181): remap Stop hook to ✅ and add clear mode to tmux-agent-status.sh
-- 31702d1 fix(#179): map Stop hook to 🔴 and add process-exit ✅ via shell wrapper
-- 612b51e fix(#154): replace tmux-agent-status emojis for better terminal visibility
-- e160237 feat(#104): auto-configure settings.json hook entries in install.sh

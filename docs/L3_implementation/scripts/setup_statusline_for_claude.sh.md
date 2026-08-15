@@ -32,3 +32,7 @@ status line 本体は配布先へコピーせず symlink する。既存の実�
 ## 注意事項・既知の制限
 
 settings の自動更新には `jq` が必要である。反映には Claude Code の再起動が必要である。
+
+## 変更履歴（git log より自動生成）
+
+- abf4f53 chore(#372): move status line setup scripts

@@ -28,3 +28,8 @@
 ## 注意事項・既知の制限
 
 Codex TUI の描画自体ではなく、Codex が読み込む `config.toml` の生成契約を検証する。
+
+## 変更履歴（git log より自動生成）
+
+- abf4f53 chore(#372): move status line setup scripts
+- 3fa2055 #370 Add idempotent Codex status line setup (#371)

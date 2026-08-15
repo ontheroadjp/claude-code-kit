@@ -258,11 +258,11 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 ## Install and Status Line
 
-`install.sh` は commands、hooks、scripts、skills、templates、global instructions を Claude/Codex の target へ symlink し、`setup_statusline_for_codex.sh` を実行する。その後 `jq` があれば hook migration と idempotent registration を行う。Codex status line は jq gate より前に設定される。
+`install.sh` は commands、hooks、scripts、skills、templates、global instructions を Claude/Codex の target へ symlink し、`scripts/setup_statusline_for_codex.sh` を実行する。その後 `jq` があれば hook migration と idempotent registration を行う。Codex status line は jq gate より前に設定される。
 
-`setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、settings に `statusLine` を追加する。`setup_statusline_for_codex.sh` は既存 TOML の他設定を維持しながら `[tui].status_line` を `context-used`, `used-tokens`, `five-hour-limit`, `weekly-limit` へ冪等更新する。Codex は取得不能な項目を表示時に省略する。
+`scripts/setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、settings に `statusLine` を追加する。`scripts/setup_statusline_for_codex.sh` は既存 TOML の他設定を維持しながら `[tui].status_line` を `context-used`, `used-tokens`, `five-hour-limit`, `weekly-limit` へ冪等更新する。Codex は取得不能な項目を表示時に省略する。
 
-根拠: `install.sh:12-211`, `setup_statusline_for_claude.sh:6-57`, `setup_statusline_for_codex.sh:6-93`, `scripts/statusline.sh:10-83`
+根拠: `install.sh:12-211`, `scripts/setup_statusline_for_claude.sh:6-57`, `scripts/setup_statusline_for_codex.sh:6-93`, `scripts/statusline.sh:10-83`
 
 `scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py` は `logs/<type>/*.log` を月単位（`--month YYYY-MM` / `--all` / 省略時は最新月）でパースし、集計結果を JSON として標準出力へ出力する（対応する `/analyze-*` command から呼ばれる）。`scripts/lib/analyze_common.py` が対象月解決・ログ列挙・CLI引数定義・百分位計算（`percentile()`）を3スクリプト共通で提供する。`analyze_token_usage.py` は `logs/token-usage/*.log` がセッションごとの累積値である点を踏まえ、セッションIDごとの最終行のみを集計する。3スクリプトとも、対応する hook 自身の実行時間（`duration_ms`）を `duration_ms_stats` として集計する。
 
