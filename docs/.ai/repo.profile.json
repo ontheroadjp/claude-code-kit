@@ -9,7 +9,8 @@
   ],
   "commands": {
     "install": "./install.sh",
-    "statusline:install": "./setup_statusline.sh",
+    "statusline:claude:install": "./setup_statusline_for_claude.sh",
+    "statusline:codex:install": "./setup_statusline_for_codex.sh",
     "ci:install": "cd site && npm ci",
     "site:dev": "cd site && npm run docs:dev",
     "site:build": "cd site && npm run docs:build",
@@ -21,6 +22,7 @@
     "test:mtg": "bash tests/commands/test-mtg.sh",
     "test:coding-guidelines": "bash tests/commands/test-coding-guidelines.sh",
     "test:install": "bash tests/install/test-install.sh",
+    "test:codex-statusline": "bash tests/install/test-setup-statusline-for-codex.sh",
     "test:analysis-scripts": "python3 -m pytest tests/scripts/"
   },
   "active_commands": [
@@ -197,7 +199,13 @@
       "method": "manual installer",
       "source": "scripts/statusline.sh",
       "target": "~/.claude/statusline.sh",
-      "installer": "./setup_statusline.sh"
+      "installer": "./setup_statusline_for_claude.sh"
+    },
+    "codex_statusline": {
+      "method": "config.toml registration",
+      "source": "setup_statusline_for_codex.sh",
+      "target": "~/.codex/config.toml",
+      "installer": "./install.sh"
     },
     "github_pages": {
       "method": "github-actions",

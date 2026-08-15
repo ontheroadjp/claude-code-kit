@@ -240,9 +240,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/commands/test-workflow-contracts.sh:26-31`
 
-`tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、Claude Code と Codex CLI の両 template directory に repository source への個別 symlink が作られること、旧 target が作成されないこと、再実行が冪等であることを検証する。`hooks/lib/*.sh` が Claude/Codex 両 `hooks/lib/` target へ symlink されることも合わせて検証する（issue #316）。
+`tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、symlink、hook migration、Codex native status line 登録の統合契約と冪等性を検証する。`tests/install/test-setup-statusline-for-codex.sh` は fresh config、`[tui]` 不在、既存 status line 置換、他設定の維持、再実行を個別に検証する。
 
-根拠: `tests/install/test-install.sh:1-85`
+根拠: `tests/install/test-install.sh:1-176`, `tests/install/test-setup-statusline-for-codex.sh:1-122`
 
 `tests/hooks/test-session-paths.sh` は `hooks/lib/session-paths.sh`（issue #316）の functional test である。`session-approved`/`session-tmp-dir` 両モードの既定 formula、`CLAUDE_CODE_KIT_STATE_HOME`/`CLAUDE_CODE_KIT_SESSION_DIR`/`CLAUDE_CODE_KIT_SESSION_APPROVED_FILE`/`CLAUDE_CODE_KIT_TMP_ROOT` オーバーライドの優先順位、symlink 経由実行時の自己位置解決、不正引数時の異常終了を検証する。
 
@@ -258,11 +258,11 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 ## Install and Status Line
 
-`install.sh` は `commands/*.md` を `~/.claude/commands/` と `~/.codex/commands/`、`hooks/*.sh` を `~/.claude/hooks/` と `~/.codex/hooks/`、`hooks/lib/*.sh` を `~/.claude/hooks/lib/` と `~/.codex/hooks/lib/`（issue #316。`[ -e "$src" ] || continue` で空 glob 展開をスキップするガード付き）、`skills/*/` を `~/.codex/skills/`、`templates/*.md` を `~/.claude/templates/` と `~/.codex/templates/` に個別 symlink する。旧 `~/.config/claude-code-kit/templates` は作成も削除もしない。その後 `jq` があれば migration helper（`remove_claude_hook` / `remove_codex_hook`）で旧 hook entry を除去してから `add_claude_hook` / `add_codex_hook` で新 entry を追加する。idempotent な設計のため複数回実行しても重複しない。Codex hooks は `/hooks` で review/trust してから利用する前提で案内する。
+`install.sh` は commands、hooks、scripts、skills、templates、global instructions を Claude/Codex の target へ symlink し、`setup_statusline_for_codex.sh` を実行する。その後 `jq` があれば hook migration と idempotent registration を行う。Codex status line は jq gate より前に設定される。
 
-`setup_statusline.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、settings に `statusLine` を追加する。`scripts/statusline.sh` は stdin JSON から context / five-hour / seven-day rate limit を抽出して表示する。
+`setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、settings に `statusLine` を追加する。`setup_statusline_for_codex.sh` は既存 TOML の他設定を維持しながら `[tui].status_line` を `context-used`, `used-tokens`, `five-hour-limit`, `weekly-limit` へ冪等更新する。Codex は取得不能な項目を表示時に省略する。
 
-根拠: `install.sh:12-208`, `setup_statusline.sh:6-55`, `scripts/statusline.sh:10-83`
+根拠: `install.sh:12-211`, `setup_statusline_for_claude.sh:6-57`, `setup_statusline_for_codex.sh:6-93`, `scripts/statusline.sh:10-83`
 
 `scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py` は `logs/<type>/*.log` を月単位（`--month YYYY-MM` / `--all` / 省略時は最新月）でパースし、集計結果を JSON として標準出力へ出力する（対応する `/analyze-*` command から呼ばれる）。`scripts/lib/analyze_common.py` が対象月解決・ログ列挙・CLI引数定義・百分位計算（`percentile()`）を3スクリプト共通で提供する。`analyze_token_usage.py` は `logs/token-usage/*.log` がセッションごとの累積値である点を踏まえ、セッションIDごとの最終行のみを集計する。3スクリプトとも、対応する hook 自身の実行時間（`duration_ms`）を `duration_ms_stats` として集計する。
 

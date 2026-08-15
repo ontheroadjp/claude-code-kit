@@ -105,6 +105,9 @@ for target in "$CLAUDE_TEMPLATES_TARGET" "$CODEX_TEMPLATES_TARGET"; do
   done
 done
 
+echo "Configuring Codex status line..."
+bash "${REPO_DIR}/setup_statusline_for_codex.sh"
+
 echo "Creating self-referential skill symlinks..."
 for src in "$REPO_DIR"/skills/*/; do
   name="$(basename "$src")"

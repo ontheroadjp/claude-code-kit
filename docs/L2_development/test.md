@@ -54,13 +54,19 @@ bash tests/commands/test-work-multi.sh
 
 ## Installer contract test
 
-`tests/install/test-install.sh` は temporary fixture repository と isolated HOME を作成し、`install.sh` を2回実行する。repository の `templates/*.md` が `~/.claude/templates/` と `~/.codex/templates/` の両方へ個別 symlink されること、旧 `~/.config/claude-code-kit/templates` が作成されないこと、再実行しても結果が変わらないことを検証する。
+`tests/install/test-install.sh` は temporary fixture repository と isolated HOME を作成し、`install.sh` を2回実行する。symlink と hook migration に加え、`setup_statusline_for_codex.sh` が `~/.codex/config.toml` に4つの status itemを設定し、再実行しても結果が変わらないことを検証する。
 
 ```bash
 bash tests/install/test-install.sh
 ```
 
-根拠: `tests/install/test-install.sh:1-71`, `tests/README.md`
+`tests/install/test-setup-statusline-for-codex.sh` は fresh config、`[tui]` がない config、既存の複数行 `status_line` を持つ config を isolated HOME で検証する。既存 key と後続 table を維持し、2回目の実行で差分が生じないことも確認する。
+
+```bash
+bash tests/install/test-setup-statusline-for-codex.sh
+```
+
+根拠: `tests/install/test-install.sh:1-176`, `tests/install/test-setup-statusline-for-codex.sh:1-122`
 
 ## Worktree untracked-file link test
 
@@ -102,5 +108,5 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-mtg.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-install.sh`, `test-link-worktree-untracked.sh`）と pytest は CI に登録されていない。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-mtg.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-install.sh`, `test-setup-statusline-for-codex.sh`, `test-link-worktree-untracked.sh`）と pytest は CI に登録されていない。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。

@@ -20,6 +20,7 @@ mkdir -p \
   "$TEST_HOME"
 
 cp "$REPO_DIR/install.sh" "$FIXTURE_REPO/install.sh"
+cp "$REPO_DIR/setup_statusline_for_codex.sh" "$FIXTURE_REPO/setup_statusline_for_codex.sh"
 touch "$FIXTURE_REPO/.gitignore"
 printf '# claude\n' > "$FIXTURE_REPO/global/CLAUDE.md"
 printf '# command\n' > "$FIXTURE_REPO/commands/example.md"
@@ -123,6 +124,27 @@ assert_global_claude_links() {
     "$FIXTURE_REPO/global/CLAUDE.md"
 }
 
+assert_codex_status_line() {
+  local config_file="$TEST_HOME/.codex/config.toml"
+  local expected_file="$TMP_DIR/expected-codex-config.toml"
+
+  cat > "$expected_file" <<'EOF'
+[tui]
+status_line = [
+  "context-used",
+  "used-tokens",
+  "five-hour-limit",
+  "weekly-limit",
+]
+EOF
+
+  if ! cmp -s "$expected_file" "$config_file"; then
+    printf 'FAIL: unexpected Codex status line configuration\n'
+    diff -u "$expected_file" "$config_file" || true
+    exit 1
+  fi
+}
+
 run_installer
 assert_template_links "$TEST_HOME/.claude/templates"
 assert_template_links "$TEST_HOME/.codex/templates"
@@ -132,6 +154,7 @@ assert_script_links "$TEST_HOME/.claude/scripts"
 assert_script_links "$TEST_HOME/.codex/scripts"
 assert_codex_auto_approve_registration
 assert_global_claude_links
+assert_codex_status_line
 
 LEGACY_CONFIG_DIR="$TEST_HOME/.config/claude-code-kit"
 if [ -e "$LEGACY_CONFIG_DIR/templates" ]; then
@@ -148,5 +171,6 @@ assert_script_links "$TEST_HOME/.claude/scripts"
 assert_script_links "$TEST_HOME/.codex/scripts"
 assert_codex_auto_approve_registration
 assert_global_claude_links
+assert_codex_status_line
 
 printf 'All install contract tests passed.\n'

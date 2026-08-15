@@ -2,7 +2,7 @@
 
 ## 目的・役割
 
-`install.sh` はこのリポジトリの commands, hooks, scripts, skills, templates を Claude Code / Codex の実行環境へ symlink し、`jq` が利用可能な場合は Claude Code と Codex の hook 設定も登録する installer である。
+`install.sh` はこのリポジトリの commands, hooks, scripts, skills, templates を Claude Code / Codex の実行環境へ symlinkし、Codex native status line を設定する。`jq` が利用可能な場合は Claude Code と Codex の hook 設定も登録する installer である。
 
 このリポジトリを single source of truth とし、`~/.claude/` や `~/.codex/` 配下へ実体ファイルを複製しない。
 
@@ -14,12 +14,19 @@
 2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.claude/hooks/lib`, `~/.codex/hooks/lib`, `~/.claude/scripts`, `~/.codex/scripts`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
 3. `keybindings.json` を symlink した直後に、`global/CLAUDE.md` を `~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` の両方へ symlink する（issue #367。以前は README 記載の手動 `ln -s` に依存していた）。
 4. repository 内の commands / hooks / hooks/lib / scripts / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。`hooks/lib/*.sh` は `commands/*.md` が `bash ~/.claude/hooks/lib/session-paths.sh <mode>` のように直接実行するために symlink する（issue #316）。`scripts/*.sh` も agent 別の installed path から直接実行できるよう両 target に symlink する（issue #324）。存在しないファイルに対する glob 展開を避けるため hooks/lib の loop は `[ -e "$src" ] || continue` で空展開をスキップする。
-5. `jq` がない場合は settings 更新をスキップして終了する。
-6. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
-7. migration helper でバージョン間の hook 変更を適用する。
-8. idempotent な helper で hook entries を追加する。
+5. `setup_statusline_for_codex.sh` を実行して `~/.codex/config.toml` の status line を設定する。
+6. `jq` がない場合は JSON settings 更新をスキップして終了する。
+7. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
+8. migration helper でバージョン間の hook 変更を適用する。
+9. idempotent な helper で hook entries を追加する。
 
-根拠: `install.sh:3-90`, `install.sh:92-199`, issue #367
+根拠: `install.sh:3-109`, `install.sh:111-202`, issue #367
+
+### Codex status line 設定の委譲
+
+installer は `setup_statusline_for_codex.sh` を呼び出すだけとし、TOML の検出・追加・置換・冪等性は専用 script に委譲する。この呼び出しは `jq` availability gate より前にあるため、JSON hook settings を自動更新できない環境でも Codex status line は設定される。
+
+根拠: `install.sh:108-109`, `install.sh:132-138`, `setup_statusline_for_codex.sh:1-93`
 
 ## 主要な判定ロジック
 
