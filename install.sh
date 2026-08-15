@@ -30,6 +30,12 @@ mkdir -p "$CODEX_TEMPLATES_TARGET"
 echo "Linking commands -> ${CLAUDE_HOME}"
 ln -sf "${REPO_DIR}/keybindings.json" "${CLAUDE_HOME}/keybindings.json"
 
+for target in "${CLAUDE_HOME}/CLAUDE.md" "${HOME}/.codex/AGENTS.md"; do
+  echo "Linking global/CLAUDE.md -> ${target}"
+  ln -sf "${REPO_DIR}/global/CLAUDE.md" "${target}"
+  echo "  ${target} -> ${REPO_DIR}/global/CLAUDE.md"
+done
+
 echo "Linking commands -> ${COMMANDS_TARGET}"
 for src in "$REPO_DIR"/commands/*.md; do
   name="$(basename "$src")"

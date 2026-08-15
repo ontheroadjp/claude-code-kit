@@ -25,14 +25,14 @@
 
 ## 統合ポイント
 
-- `~/.claude/CLAUDE.md` ← 手動 symlink（`README.md` Global AI Instructions）
-- `~/.codex/AGENTS.md` ← 手動 symlink（同上）。Codex CLI は `~/.codex/AGENTS.md` から project root を経て cwd までの AGENTS.md を加算的に連結する仕様のため、このファイルはどのリポジトリでも最上位層として読まれる
-- `install.sh` はこの配布経路を自動化しない（既存の CLAUDE.md 配布方針を踏襲し、意図的に手動のまま）
+- `~/.claude/CLAUDE.md` ← `install.sh` が symlink（issue #367。以前は `README.md` の手動手順に依存していた）
+- `~/.codex/AGENTS.md` ← `install.sh` が symlink（同上）。Codex CLI は `~/.codex/AGENTS.md` から project root を経て cwd までの AGENTS.md を加算的に連結する仕様のため、このファイルはどのリポジトリでも最上位層として読まれる
+- Claude Code も同様に、`~/.claude/CLAUDE.md`（user instructions）と project-local `CLAUDE.md` を override ではなく context へ連結する（project の方が後に配置される）。根拠: https://code.claude.com/docs/en/memory
 
 ## 注意事項・既知の制限
 
 - 分離直後は project-local `CLAUDE.md` と内容が重複している。今後の編集で内容が乖離していくのは想定通りであり、同期を維持する必要はない
-- `install.sh` にこのファイルの配布ロジックはないため、新規セットアップ時は `README.md` の手動 symlink 手順を必ず実行する必要がある
+- `install.sh` が既存の `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` を `ln -sf` で無条件に上書きする（issue #367）。これらのパスに実ファイルを置いていたユーザーは上書きされる点に注意
 
 ## 変更履歴（git log より自動生成）
 

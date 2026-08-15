@@ -12,13 +12,14 @@
 
 1. repository root を解決する。
 2. `~/.claude/commands`, `~/.codex/commands`, `~/.claude/hooks`, `~/.codex/hooks`, `~/.claude/hooks/lib`, `~/.codex/hooks/lib`, `~/.claude/scripts`, `~/.codex/scripts`, `~/.codex/skills`, `~/.claude/templates`, `~/.codex/templates` などの target directory を作成する。
-3. repository 内の commands / hooks / hooks/lib / scripts / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。`hooks/lib/*.sh` は `commands/*.md` が `bash ~/.claude/hooks/lib/session-paths.sh <mode>` のように直接実行するために symlink する（issue #316）。`scripts/*.sh` も agent 別の installed path から直接実行できるよう両 target に symlink する（issue #324）。存在しないファイルに対する glob 展開を避けるため hooks/lib の loop は `[ -e "$src" ] || continue` で空展開をスキップする。
-4. `jq` がない場合は settings 更新をスキップして終了する。
-5. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
-6. migration helper でバージョン間の hook 変更を適用する。
-7. idempotent な helper で hook entries を追加する。
+3. `keybindings.json` を symlink した直後に、`global/CLAUDE.md` を `~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` の両方へ symlink する（issue #367。以前は README 記載の手動 `ln -s` に依存していた）。
+4. repository 内の commands / hooks / hooks/lib / scripts / skills を対応 target へ、templates を Claude/Codex 両 target へ symlink する。`hooks/lib/*.sh` は `commands/*.md` が `bash ~/.claude/hooks/lib/session-paths.sh <mode>` のように直接実行するために symlink する（issue #316）。`scripts/*.sh` も agent 別の installed path から直接実行できるよう両 target に symlink する（issue #324）。存在しないファイルに対する glob 展開を避けるため hooks/lib の loop は `[ -e "$src" ] || continue` で空展開をスキップする。
+5. `jq` がない場合は settings 更新をスキップして終了する。
+6. `~/.claude/settings.json` と `~/.codex/hooks.json` がない場合は空 JSON として作成する。
+7. migration helper でバージョン間の hook 変更を適用する。
+8. idempotent な helper で hook entries を追加する。
 
-根拠: `install.sh:3-85`, `install.sh:87-194`
+根拠: `install.sh:3-90`, `install.sh:92-199`, issue #367
 
 ## 主要な判定ロジック
 
@@ -81,6 +82,7 @@ codex()  { command codex  "$@"; bash ~/.claude/hooks/tmux-agent-status.sh 2>/dev
 
 ## 統合ポイント
 
+- `global/CLAUDE.md`: `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` の symlink 元（issue #367）
 - `hooks/auto-approve-readonly.sh`: safe/read-only tool approval
 - `hooks/guard-destructive-cmd.sh`: destructive Bash guard
 - `hooks/log-access-prompt.sh`, `hooks/log-access-tool.sh`, `hooks/log-access-stop.sh`: access logging

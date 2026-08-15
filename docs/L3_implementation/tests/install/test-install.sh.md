@@ -18,6 +18,7 @@ fixture repository と一時 HOME を作成し、fixture にコピーした inst
 - `assert_template_links` は repository 内4 template を target ごとに検証する
 - `assert_hooks_lib_links` は fixture の `hooks/lib/example-lib.sh` が `~/.claude/hooks/lib/` と `~/.codex/hooks/lib/` の両方へ symlink されることを検証する（issue #316: `install.sh` に追加した `hooks/lib/*.sh` symlink ループの回帰防止）
 - `assert_script_links` は fixture の `scripts/example.sh` が `~/.claude/scripts/` と `~/.codex/scripts/` の両方へ symlink されることを検証する（issue #324: command specification が consumer repo 内の script を仮定しない配布契約の回帰防止）
+- `assert_global_claude_links` は fixture の `global/CLAUDE.md` が `~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` の両方へ symlink されることを検証する（issue #367: CLAUDE.md/AGENTS.md 配布の手動 symlink から自動化への回帰防止）
 - fresh HOME に legacy template target が作られないことを確認する
 - installer 再実行後も同じ contract が成立することを確認する
 - Codex auto-approve hook が legacy `PreToolUse` から `PermissionRequest` へ移行され、再実行でも重複・復活しないことを確認する
