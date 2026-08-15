@@ -169,8 +169,13 @@
     },
     "claude_md": {
       "method": "manual symlink",
-      "source": "CLAUDE.md",
+      "source": "global/CLAUDE.md",
       "target": "~/.claude/CLAUDE.md"
+    },
+    "codex_agents_md": {
+      "method": "manual symlink",
+      "source": "global/CLAUDE.md",
+      "target": "~/.codex/AGENTS.md"
     },
     "skills": {
       "method": "symlink",
