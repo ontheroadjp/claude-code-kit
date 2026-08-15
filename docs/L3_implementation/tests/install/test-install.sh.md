@@ -42,7 +42,8 @@ installer 全体を fixture で実行することで、静的文字列検査だ�
 
 ## 変更履歴（git log より自動生成）
 
-- c146ead fix(#340): approve Codex permission requests
-- dc5b568 fix(#324): install worktree linker for consumers
+- a4aa210 feat(#367): automate CLAUDE.md/AGENTS.md global symlinks in install.sh
+- d5359f7 #340 Approve Codex permission requests (#341)
+- 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 27f1861 feat(#76): install templates for claude and codex
