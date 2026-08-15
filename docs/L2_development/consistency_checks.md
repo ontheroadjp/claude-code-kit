@@ -61,10 +61,11 @@ CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg
 - README は template が要求する Features、Installation、Usage、Design Principles を持つ。
 - README の Features は23 command のうち内部委譲用を含む全 command を列挙する。
 - repository root に license file は存在しないため、根拠のない license 名は README に記載しない。
-- `AGENTS.md` は `CLAUDE.md` への symlink であり、両 agent は同じ AI 運用情報を参照する。
+- `AGENTS.md` は `CLAUDE.md`（project-local）への symlink であり、このリポジトリで作業する両 agent は project-local な AI 運用情報を参照する。
+- 配布用ファイルは `global/CLAUDE.md` に分離されており、`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` の両方がこれへ手動 symlink される（issue #365 以前は `CLAUDE.md`（project-local）自身が配布物を兼ねていた）。
 - `CLAUDE.md` の local tooling は 2026-08-06 の観測値（gh 2.96.0、Node.js v24.16.0、npm 11.13.0、mise hint）と一致する。
 
-根拠: `templates/readme.md:5-21`, `README.md`, `readlink AGENTS.md` の結果 `CLAUDE.md`, `CLAUDE.md:95-106`
+根拠: `templates/readme.md:5-21`, `README.md`, `readlink AGENTS.md` の結果 `CLAUDE.md`, `CLAUDE.md:95-106`, `docs/.ai/repo.profile.json`（`deploy.claude_md`, `deploy.codex_agents_md`）, issue #365
 
 ## 未確認事項
 

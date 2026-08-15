@@ -4,8 +4,9 @@
 
 ```text
 core-toolkit-for-claude/
-├── AGENTS.md                    # CLAUDE.md への symlink（Codex CLI 向け入口）
-├── CLAUDE.md                    # AI 運用指示の source of truth
+├── AGENTS.md                    # CLAUDE.md（project-local）への symlink（Codex CLI 向け入口）
+├── CLAUDE.md                    # このリポジトリ自身の project-local な AI 運用指示（配布物ではない）
+├── global/CLAUDE.md             # 配布用フレームワークファイル。~/.claude/CLAUDE.md・~/.codex/AGENTS.md の symlink 元（issue #365）
 ├── README.md                    # 人間向け概要、インストール、利用手順
 ├── install.sh                   # commands/hooks/skills/templates symlink と Claude/Codex hook settings 登録
 ├── setup_statusline.sh          # status line symlink と settings 登録
@@ -22,7 +23,7 @@ core-toolkit-for-claude/
 └── templates/                   # issue / PR / README templates（README.md あり）
 ```
 
-根拠: `rg --files -uu`, `.github/workflows/deploy.yml:1-53`, `.github/workflows/shellcheck.yml:1-19`, `site/package.json:1-14`
+根拠: `rg --files -uu`, `.github/workflows/deploy.yml:1-53`, `.github/workflows/shellcheck.yml:1-19`, `site/package.json:1-14`, `README.md`（Repository Structure）, issue #365
 
 ## ディレクトリ責務
 
@@ -93,6 +94,8 @@ access、auto-approval、token usage の月次ログを置く。log hooks と to
 | Codex templates | `templates/*.md` | `~/.codex/templates/*.md` | `install.sh` が個別 symlink | `install.sh:10-19`, `install.sh:56-63` |
 | statusline | `scripts/statusline.sh` | `~/.claude/statusline.sh` | `setup_statusline.sh` が symlink | `setup_statusline.sh:6-28` |
 | site | `site/.vitepress/dist` | GitHub Pages | GitHub Actions | `.github/workflows/deploy.yml:39-52` |
+| Claude global instructions | `global/CLAUDE.md` | `~/.claude/CLAUDE.md` | 手動 symlink（`README.md` Global AI Instructions） | `README.md`, `docs/.ai/repo.profile.json`（`deploy.claude_md`）, issue #365 |
+| Codex global instructions | `global/CLAUDE.md` | `~/.codex/AGENTS.md` | 手動 symlink（同上） | `README.md`, `docs/.ai/repo.profile.json`（`deploy.codex_agents_md`）, issue #365 |
 
 ## 補足
 

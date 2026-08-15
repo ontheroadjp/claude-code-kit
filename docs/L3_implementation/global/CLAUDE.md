@@ -36,4 +36,4 @@
 
 ## 変更履歴（git log より自動生成）
 
-（新規ファイルのため次回 `/docs-sync` 実行時に追加される）
+- c4b0aeb chore(#365): split distributed CLAUDE.md from this repo's project-local CLAUDE.md
