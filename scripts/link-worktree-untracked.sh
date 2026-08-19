@@ -8,7 +8,7 @@ MANIFEST_NAME='worktree-untracked-symlinks.txt'
 SOURCE_NAME='worktree-untracked-source.txt'
 
 usage() {
-    echo "Usage: $0 prepare <source-working-tree> | link <relative-path>" >&2
+    echo "Usage: $0 prepare <source-working-tree> | link <relative-path> | venv <relative-path>" >&2
     exit 1
 }
 
@@ -117,6 +117,39 @@ case "$1" in
             exit 1
         else
             ln -s "${source_dir}/${relative_path}" "$relative_path"
+        fi
+
+        append_manifest_path "$manifest" "$relative_path"
+        ;;
+    venv)
+        [[ "$#" -eq 2 ]] || usage
+        relative_path=${2%/}
+        reject_unsafe_path "$relative_path"
+
+        case "$(basename -- "$relative_path")" in
+            venv|.venv) ;;
+            *)
+                echo "refusing venv build for non-venv path: $relative_path" >&2
+                exit 1
+                ;;
+        esac
+
+        if [[ -e "$relative_path" || -L "$relative_path" ]]; then
+            echo "refusing existing path for venv build: $relative_path" >&2
+            exit 1
+        fi
+
+        if ! git check-ignore -q -- "${relative_path}/"; then
+            echo "refusing venv build for path not covered by .gitignore: $relative_path" >&2
+            exit 1
+        fi
+
+        mkdir -p "$tmp_dir"
+        mkdir -p "$(dirname "$relative_path")"
+        if command -v uv >/dev/null 2>&1; then
+            uv venv "$relative_path"
+        else
+            python3 -m venv "$relative_path"
         fi
 
         append_manifest_path "$manifest" "$relative_path"

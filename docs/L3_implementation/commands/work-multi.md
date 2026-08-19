@@ -14,9 +14,11 @@ issue 番号が親 issue を指す場合は Step 1 で実装対象を決定す�
 
 lazy link した path は読み取り専用として扱う。単独・並行を問わず symlink 経由の書き込みは禁止し、`npm install` など package manager による依存 directory への書き込みも含める。書き込みが必要な path は link 前に worktree 内へ独立して作成する。worktree を削除しても、リンク先の元 working tree に書き込まれた変更は戻らない。
 
+venv/.venv だけは `link` ではなく `venv <relative-path>` サブコマンドを使う（issue #374）。venv はセッション中に `pip install` 等で書き込まれるため、symlink 経由で共有すると `node_modules` と同じ書き込み衝突リスクを持つ。`venv` サブコマンドは symlink を作らず、`uv`（なければ `python3 -m venv`）で worktree 内に独立した実体の仮想環境を構築するため、構築後の venv/.venv は書き込み境界の制限対象外であり `pip install`・`uv pip install` 等を自由に行ってよい。basename が `venv`・`.venv` 以外、path が既に存在する、または対象 path が `.gitignore` で ignore されていない場合は失敗する。
+
 Step 2 で `commands/work.md` を Read し、一字一句そのまま実行する。`commands/work.md` 自体のゲート・ルーティングロジックはここでは重複定義しない。
 
-根拠: `commands/work-multi.md:9-51`
+根拠: `commands/work-multi.md:9-62`
 
 ## 重要な設計判断
 
@@ -27,10 +29,11 @@ Step 2 で `commands/work.md` を Read し、一字一句そのまま実行す�
 - `git worktree add`（`EnterWorktree` の内部実装）は tracked ファイルのみをチェックアウトするため、lazy linker は必要になった untracked/ignored path だけを symlink する。初期化時に大きな `node_modules` 等を処理せず、対象リポジトリ固有の path をあらかじめ仮定しない。
 - `.claude` を丸ごと除外したのは、`EnterWorktree` 自身が worktree を `.claude/worktrees/<name>` 配下に作成する固定仕様のため。`.claude` を symlink すると、新しい worktree の中に worktrees ディレクトリ自身への自己参照ループが生じる。副作用として worktree は `.claude/settings.local.json`（ローカル権限設定）を引き継がない（安全側＝確認プロンプト増加の方向のみ）。
 - node_modules 等セッション中に書き換わり得る依存ディレクトリも一律 symlink の対象に含められるため、symlink は読み取り用途に限定する。書き込みが必要な path を worktree 内に独立作成させることで、リポジトリ固有の directory 名を linker の除外対象として持たずに、元 working tree への書き戻しと並行セッション間の共有可変状態を防ぐ。
+- venv/.venv だけは「lazy link しない」例外を設けた（issue #374）。node_modules と異なり、venv は `uv venv`/`python3 -m venv` という決まった構築コマンドで worktree ごとに独立した実体を作り直せるため、symlink 共有による書き込み衝突を根本的に避けられる。設計判断・安全策の詳細は `scripts/link-worktree-untracked.sh` の L3 doc を参照。
 - `ExitWorktree` は明示的なユーザー指示がない限り呼ばない。セッション終了時の keep/remove 確認は harness の既存機能に委ねる。
 - symlink 化した untracked/ignored パスは `.gitignore` のディレクトリ限定パターン（末尾 `/`）に一致せず `git status` に `??`/`!!` として現れる（実機で `ExitWorktree` が無害な symlink を「未コミットの変更」として検出し `discard_changes` を要求する事例で発覚。issue #318）。git 側の ignore 判定を変える案（`extensions.worktreeConfig` + 各 worktree 専用 `core.excludesFile`）を実機検証し機能することを確認したが、目的は「git status を完全にクリーンにする」ことではなく「予期しない untracked ファイルを見た際に無駄な調査（`ls -la`・`readlink` 等）をせず即座に判別できる」ことであるため、git 設定を変更しないスコープの小さい manifest 方式（`scripts/link-worktree-untracked.sh` が symlink 化したパス一覧を session tmp directory に書き出し、`commands/work.md` G-2・`commands/task.md` Phase 2 が突き合わせる）を採用した。`ExitWorktree` 自体の判定（harness 機能のため変更不可）は変わらないが、manifest と突き合わせれば既知のものと即座に判別できる。
 
-根拠: `commands/work-multi.md:23-51`, issue #296, issue #318
+根拠: `commands/work-multi.md:23-76`, issue #296, issue #318
 
 ## 統合ポイント
 
@@ -42,8 +45,9 @@ Step 2 で `commands/work.md` を Read し、一字一句そのまま実行す�
 ## 注意事項・既知の制限
 
 - 既存 worktree への再入場（`EnterWorktree` の `path` 引数）はスコープ外。常に新規 worktree を作成する。
-- lazy link した path への書き込みは、単独・並行を問わず禁止する。書き込みが必要な path は link 前に worktree 内へ独立して作成する。
+- lazy link した path への書き込みは、単独・並行を問わず禁止する。書き込みが必要な path は link 前に worktree 内へ独立して作成する。venv/.venv は `venv` サブコマンドで構築した実体であればこの制限の対象外。
 - 子 issue の本文に書かれた依存関係は対象にせず、GitHub native dependency のみを実装順の根拠にする。native dependency を取得できない環境では安全側で停止する。
+- `venv` サブコマンドは対象 repository の `.gitignore` に venv/.venv 相当のパターンが無い場合、および `uv`・`python3` のいずれも利用できない環境では失敗する。
 
 ## 変更履歴（git log より自動生成）
 

@@ -13,6 +13,8 @@
 - `commands/work-multi.md` が `EnterWorktree`・agent 別 installed path（`~/.claude/scripts/` と `~/.codex/scripts/`）・`commands/work.md` への言及を含み、consumer repo 相対の `bash scripts/link-worktree-untracked.sh` を含まず、`### G-0`/`### G-1`/`### G-2` を重複定義していない
 - `ORIGINAL_WORKDIR` を Step 0.3 の linker `prepare` 引数だけに使い、共有 checkout への `cd` / `git -C` を行わず、Read・調査・Git 操作を隔離 worktree から実行することを明記している
 - lazy link した path を読み取り専用として扱い、symlink 経由の書き込みを禁止し、書き込みが必要な path を worktree 内へ独立作成するよう明記している
+- venv/.venv だけは `link` ではなく `venv <relative-path>` サブコマンドの使用例・basename/既存path/`.gitignore` 制約・`venv` 実体は書き込み境界の対象外である旨を明記している（issue #374）
+- `scripts/link-worktree-untracked.sh` が `venv`/`.venv` basename 制限、`uv` の利用、`.gitignore` 事前検証、`uv venv` による構築を実装している
 - `work-multi` 自身は親 issue の依存関係を重複取得せず `work.md` へ委譲し、`work.md` が native `subIssues` と未完了 task list を収集して、native `blockedBy` が全て `CLOSED` の最初の open 子 issue を報告のみして終了すること
 - `skills/work-multi/SKILL.md` が `skills/work/SKILL.md` と同じ scope guard パターンを持つ
 - `commands/work.md` が `.claude/worktrees/` パスガードと `worktree-` prefix ベースのブランチ分類、B.1（未コミット変更があれば継続）の保持を含む

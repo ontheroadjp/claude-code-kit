@@ -48,7 +48,15 @@ bash ~/.claude/scripts/link-worktree-untracked.sh link "site/node_modules"
 
 Codex CLI では `~/.codex/scripts/` を使う。linker は source 側でその path が untracked/ignored であること、相対 path が `.git`・`.claude`・親 directory traversal を含まないこと、worktree 側に衝突する実体がないことを検証する。作成した path だけを `${SESSION_TMP_DIR}/worktree-untracked-symlinks.txt` に一度だけ記録する。`commands/work.md` G-2・`commands/task.md` Phase 2 の `worktree-status.sh` は、この manifest と完全一致する path またはその親 directory だけを自動除外する。manifest が空なら status は通常どおりであり、単体 `/work` の挙動も変わらない。
 
-**書き込み境界（必須）**: lazy link した path は読み取り専用として扱う。単独・並行を問わず、symlink 経由でその path を書き換えるコマンドは実行してはならない。`npm install` など package manager による依存 directory への書き込みもこれに含まれる。書き込みが必要な path は link する前に、worktree 内へ独立して作成する。symlink を含む worktree を削除しても、リンク先の元 working tree に既に書き込まれた変更は元に戻らない。
+**venv/.venv の例外**: Python の仮想環境（`venv`・`.venv`）はセッション中に `pip install` 等で書き込まれるため、`node_modules` と同様に symlink 経由で共有すると書き込み衝突を招く。この2つの path 名に限り `link` ではなく `venv <relative-path>` サブコマンドを使い、`uv` で worktree 内に独立した実体の仮想環境を構築する（symlink は作らない）:
+
+```bash
+bash ~/.claude/scripts/link-worktree-untracked.sh venv ".venv"
+```
+
+Codex CLI では `~/.codex/scripts/` を使う。`venv` サブコマンドは、指定 path の basename が `venv`・`.venv` のいずれでもない場合、path が既に存在する場合、または対象 path が worktree の `.gitignore` で ignore されていない場合に失敗する（誤って `git add` の対象になることを防ぐため）。構築には `uv` があれば `uv venv` を、なければ標準ライブラリの `python3 -m venv`（pip 同梱）にフォールバックする。成功した path は他の lazy link と同じ manifest に記録され、`worktree-status.sh` の除外対象になる。
+
+**書き込み境界（必須）**: lazy link した path は読み取り専用として扱う。単独・並行を問わず、symlink 経由でその path を書き換えるコマンドは実行してはならない。`npm install` など package manager による依存 directory への書き込みもこれに含まれる。書き込みが必要な path は link する前に、worktree 内へ独立して作成する。symlink を含む worktree を削除しても、リンク先の元 working tree に既に書き込まれた変更は元に戻らない。`venv` サブコマンドで構築した venv/.venv はこの制限の対象外であり、symlink ではなく worktree 内の独立した実体であるため、`pip install`・`uv pip install` 等の書き込みを行ってよい。
 
 ---
 
