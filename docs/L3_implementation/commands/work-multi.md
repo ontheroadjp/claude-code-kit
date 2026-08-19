@@ -51,9 +51,11 @@ Step 2 で `commands/work.md` を Read し、一字一句そのまま実行す�
 
 ## 変更履歴（git log より自動生成）
 
-- 314fbc1 docs(#334): clarify worktree symlink write isolation
-- 8e9b9bb feat(#332): select ready child issue in work-multi
-- 1453def fix(#330): preserve worktree isolation
+- fa82b85 feat(#374): build venv/.venv via uv in /work-multi worktrees instead of lazy-linking
+- f484a2d Route parent issues to their next ready child (#351)
+- 6f0a4d8 #334 Document worktree symlink write isolation (#335)
+- aeec3ff #332 Select ready child issues in work-multi (#333)
+- 095ec20 Preserve worktree isolation in work-multi (#331)
 - e624ef2 #328 Add lazy worktree linker (#329)
 - ea565ac #326 Automate worktree symlink status filtering (#327)
 - 4f4aab8 #324 Install the worktree linker for consumer repositories (#325)
