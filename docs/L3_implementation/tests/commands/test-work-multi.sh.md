@@ -20,7 +20,7 @@
 - `commands/work.md` が `.claude/worktrees/` パスガードと `worktree-` prefix ベースのブランチ分類、B.1（未コミット変更があれば継続）の保持を含む
 - `scripts/link-worktree-untracked.sh` と `scripts/worktree-status.sh` が実行権限を持ち、前者が NUL 区切り列挙と `.git`/`.claude` 除外を行い、後者が linker manifest を読む
 
-根拠: `tests/commands/test-work-multi.sh:53-76`
+根拠: `tests/commands/test-work-multi.sh:53-112`
 
 ## 重要な設計判断
 
