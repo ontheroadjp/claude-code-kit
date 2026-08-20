@@ -15,7 +15,7 @@
 3. 親agentがissue別調査とbatch integration planをまとめ、全planの承認を得る。
 4. 承認後、最新baseからissueごとのisolated worktreeとbranchを作る。
 5. issueごとに実体のある `task-worker` sub-agentを最大3つ起動する。workerは親modelを継承する。
-6. 各workerが実装、test、direct commit/push、Draft source PR、structured handoffまでを担当する。
+6. 各workerが実装、test、direct commit/push、`#<issue-number> <English title>` 形式のDraft source PR、structured handoffまでを担当する。
 7. 親がcomplete Draft PR setを検証してユーザーへ提示し、NGなら該当workerによる修正後に全体を再提示する。
 8. OK後、approved headを最新mainへ重ねたcombined resultを検証する。integration conflictはsession-localなresolution artifactとして記録し、後続PRの実branch refreshで同等性を証明できる場合だけ解消判断をreplayする。
 9. source PRを入力順に1本ずつReady化・mergeする。各実branchは最新mainへ通常mergeでrefreshし、artifactをreplayした場合もfocused checksとmergeabilityを再検証する。
@@ -49,6 +49,10 @@ branch、worktree、file変更、GitHub書き込みより前にissue別planを�
 accepted issueごとに1つの実sub-agentを割り当て、最大3workerを実行する。model overrideを省略して親modelを継承し、approved plan、worktree、branch、allowed paths、禁止事項をself-contained payloadで渡す。共通worker protocolとhandoff schemaを同じcommand内に置くため、公開 `task-worker` command/skillは不要である。
 
 根拠: `commands/task-manager.md:157-239`
+
+task-workerが直接作成するDraft source PRのtitleは、`/work` のtask flowと同じ `#<issue-number> <English title>` 形式とする。PR bodyは英語で、closing reference、changed files、test results、design intentを含める。batch全体を扱うdocumentation PRにはこの単一issue向けtitle形式を適用しない。
+
+根拠: `commands/task-manager.md:200-215`, `commands/task-manager.md:361-369`
 
 ### source統合とmerge
 
