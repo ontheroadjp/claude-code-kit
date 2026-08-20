@@ -28,11 +28,11 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 1〜3件のimplementation issueを1つのbatchとして扱う、既存implementation/documentation workflowから独立した入口。4件以上、重複、不正形式はrepository変更前に拒否する。親agentが全issueを調査してissue-specific planとbatch integration planを一括提示し、承認後にissueごとのisolated worktree・branchと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、approved scopeの実装・test・direct commit/push・`#<issue-number> <English title>` 形式のDraft source PR・structured handoffまでを担当するが、documentation、Ready化、merge、独自のユーザー確認は行わない。
 
-親はcomplete Draft source PR setだけを提示し、そのbatch-wide承認後にapproved headをlatest mainへ入力順に重ねてintegration検証する。integration conflictの解消結果はpreimage、resolution-only patch、resolved blob、validated treeを含むsession-local artifactとして保持し、後続PRの実branchをlatest mainへ通常mergeした際にpath、context、order、scope、tree resultの同等性を証明できる場合だけreplayする。replay後もfocused checks、normal repair commit、push、mergeability再取得を行い、不一致時はcleanなmergeから通常forward repairへ戻る。source PRは対象1本だけをReady化して直ちにmergeし、反映確認後に次へ進む。全source merge後、merged batch source PRのchanged-file unionをscope、finalization時のlatest mainをtruthとして独立したlocalized documentation syncを1回行い、documentation-only PRを追加承認なしで検証・Ready化・mergeする。全source PRとdocumentation PRのmerge確認後だけbatch成功を報告する。
+親はcomplete Draft source PR setだけを提示し、そのbatch-wide承認後にsource PRを入力順に処理する。最初の1本を含む各actual PR branchへlatest mainをnormal mergeし、conflictはそのbranch上で一度だけ解消する。clean refreshではCIがcoverするlocal worker testを繰り返さず、conflict時はfocused test、CI coverage不足時は必要なplanned validationだけをlocal fallbackで実行する。pushed exact headのrequired checksとmain driftを検証し、対象PRだけをReady化してmergeをrequestする。merge API resultをauthoritativeに扱い、base drift時はrefresh loopへ戻り、main反映確認後に次へ進む。全source merge後、merged batch source PRのchanged-file unionをscope、finalization時のlatest mainをtruthとして独立したlocalized documentation syncを1回行い、documentation-only PRを追加承認なしで検証・Ready化・mergeする。全source PRとdocumentation PRのmerge確認後だけbatch成功を報告する。
 
 初期実装は1repository 1sessionの運用disciplineに依存し、worker queue、model設定、永続batch state、cross-session resume、distributed lock、GitHub Actions state manager、PM schedulerを持たない。`task-worker` protocolは親command内にあり、単独command/skillとして公開しない。
 
-根拠: `commands/task-manager.md:1-46`, `commands/task-manager.md:48-139`, `commands/task-manager.md:141-315`, `commands/task-manager.md:317-422`, issue #377, issue #379
+根拠: `commands/task-manager.md:1-48`, `commands/task-manager.md:50-141`, `commands/task-manager.md:143-301`, `commands/task-manager.md:303-419`, issue #377, issue #384
 
 ### `/mtg` (`commands/mtg.md`)
 
@@ -262,7 +262,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
 
-`tests/commands/test-task-manager.sh` は `/task-manager` の1〜3件入力境界、4件以上・重複拒否、最大3つの実sub-agentと親model継承、plan/Draft set gate、入力順source merge、session-local conflict resolution artifactのcapture・equivalent replay・path/scope/tree検証・mismatch fallback・cleanup、no-conflict時の既存挙動、changed-file unionとlatest mainによるlocalized documentation sync、追加承認なしのdocumentation PR merge、永続state/resume/lockの非導入、既存workflowからのruntime独立性を固定文字列で検証する。
+`tests/commands/test-task-manager.sh` は `/task-manager` の1〜3件入力境界、4件以上・重複拒否、最大3つの実sub-agentと親model継承、plan/Draft set gate、入力順source merge、全actual PR branchのlatest-main refresh、一度だけのconflict解消、focused testとCI/local fallback、main drift retry、expected-head・required-check・authoritative merge resultのguard、synthetic integration artifactの不在、changed-file unionとlatest mainによるlocalized documentation sync、追加承認なしのdocumentation PR merge、永続state/resume/lockの非導入、既存workflowからのruntime独立性を固定文字列で検証する。
 
 根拠: `tests/commands/test-task-manager.sh:1-122`
 

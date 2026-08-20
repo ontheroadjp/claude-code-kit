@@ -116,6 +116,7 @@ source PRにdocumentationを混ぜず、全source merge後に1回だけ独立し
 
 ## 変更履歴（git log より自動生成）
 
-- a634701 fix(#381): align task manager source PR titles
+- 07dc279 feat(#384): simplify task manager source integration
+- 823f676 #381 Align task-manager source PR titles with work (#382)
 - 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)
