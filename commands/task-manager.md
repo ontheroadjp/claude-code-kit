@@ -210,7 +210,7 @@ Forbidden:
 7. `docs/**`、L3 per-file docs、README、project documentationがdiffにあればsource commit前に除外する。ただし`commands/**`や`skills/**`などplanで実装artifactとして明示されたMarkdownはsourceとして扱う。
 8. `<type>(#<issue-number>): <short description>` のConventional Commitを直接作る。
 9. forceなしでbranchをpushする。
-10. `gh pr create --draft` を直接実行し、英語title/body、`Closes #<issue-number>`、changed files、test results、design intentを記載する。
+10. `gh pr create --draft` を直接実行する。source PR titleは `/work` のtask flowと同じ `#<issue-number> <English title>` 形式とし、bodyは英語で `Closes #<issue-number>`、changed files、test results、design intentを記載する。
 11. PRがDraftで、base/headが正しく、documentation diffを含まないことを再確認する。
 12. 親へhandoffを返す。Ready化、merge、独自のユーザー確認は行わない。
 

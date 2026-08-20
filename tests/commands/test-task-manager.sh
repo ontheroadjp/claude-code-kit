@@ -67,6 +67,7 @@ assert_contains "$TASK_MANAGER" 'sub-agent model overrideを指定せず、親ag
 assert_contains "$TASK_MANAGER" 'Role: task-worker' 'worker launch payload names the role'
 assert_contains "$TASK_MANAGER" 'structured handoff' 'workers return a structured handoff'
 assert_contains "$TASK_MANAGER" 'gh pr create --draft' 'workers create Draft source PRs directly'
+assert_contains "$TASK_MANAGER" '#<issue-number> <English title>' 'source PR titles match the work task flow format'
 assert_contains "$TASK_MANAGER" 'documentation変更を含まない' 'source PRs exclude documentation'
 
 # Batch review, ordered source integration, and automatic docs delivery.

@@ -24,6 +24,7 @@
 - plan承認前のread-only boundary
 - task-workerが実sub-agentであり、最大3worker、親model継承であること
 - self-contained worker payload、structured handoff、direct Draft PR作成
+- source PR titleの `#<issue-number> <English title>` 形式
 - complete Draft PR setのreview loop
 - approved head SHA固定、入力順逐次merge、対象PRだけのReady化
 - integration conflictのsession-local artifact、multiple path、`AUTO_MERGE` preimage、resolved blob、validated tree hash
@@ -37,7 +38,7 @@
 - 既存workflow commandへのruntime依存禁止
 - `task-worker`を公開command/skillにしないこと
 
-根拠: `tests/commands/test-task-manager.sh:52-116`
+根拠: `tests/commands/test-task-manager.sh:52-117`
 
 ## 重要な設計判断
 
@@ -64,5 +65,6 @@ agent runtimeやGitHubへ実際のbranch/PR/mergeを作るend-to-end testでは�
 
 ## 変更履歴（git log より自動生成）
 
-- 0a06664 feat(#379): reuse task manager conflict resolutions
-- 9ef8e99 feat(#377): add independent task manager workflow
+- a634701 fix(#381): align task manager source PR titles
+- 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
+- 5f1d984 #377 Add independent task-manager batch workflow (#378)
