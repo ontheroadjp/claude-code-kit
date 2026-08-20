@@ -38,3 +38,7 @@ modelをskill内で固定しないため、workerは親agentと同じmodelを使
 - `task-worker`はuser-facing entry pointではない。
 
 根拠: `skills/task-manager/SKILL.md:21-25`
+
+## 変更履歴（git log より自動生成）
+
+- 9ef8e99 feat(#377): add independent task manager workflow

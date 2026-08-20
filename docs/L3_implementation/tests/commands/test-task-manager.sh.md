@@ -57,3 +57,7 @@ agent runtimeやGitHubへ実際のbranch/PR/mergeを作るend-to-end testでは�
 - literal Markdown backtickとinstalled `~` pathに対するShellCheck warningは、理由付きで限定的に抑制する。
 
 根拠: `tests/commands/test-task-manager.sh:1-3`, `tests/commands/test-task-manager.sh:94-95`
+
+## 変更履歴（git log より自動生成）
+
+- 9ef8e99 feat(#377): add independent task manager workflow

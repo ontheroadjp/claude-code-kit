@@ -99,3 +99,7 @@ source PRにdocumentationを混ぜず、全source merge後に1回だけ独立し
 - periodicなrepository-wide documentation initializationは引き続き別途必要である。
 
 根拠: `commands/task-manager.md:352-401`
+
+## 変更履歴（git log より自動生成）
+
+- 9ef8e99 feat(#377): add independent task manager workflow
