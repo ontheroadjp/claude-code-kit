@@ -39,6 +39,8 @@
 - 1 issue の場合も source PR 1本 + documentation PR 1本とする。
 - source PR を1本でも plan gate 前または Draft set gate 前に merge しない。
 - source PR は1本ずつ Ready 化し、直ちに merge する。全件を先に Ready 化しない。
+- actual source PR branch と latest `main` を source integration の唯一の truth とし、別の combined source result を構築しない。
+- source PR は最初の1本を含め、merge processing の直前に latest `main` へ refresh する。
 - documentation scope は merged batch source PR の changed-file union とする。
 - documentation truth は finalization 開始時点の最新 `main` とする。
 - documentation PR diff は最新 `main` と fresh documentation branch の差分とする。
@@ -120,7 +122,7 @@ batch planには次を含めます。
 
 - fixed membership と merge order
 - worker数（issue数と同数、最大3）
-- integration test strategy
+- source PRごとのrefresh・CI・local fallbackを分けたvalidation strategy
 - Draft PR set のレビュー方法
 - documentation scope の組み立て方法
 - Git/GitHubへの書き込み範囲
@@ -251,6 +253,8 @@ worker失敗時、親は同じworkerへfailure evidenceと修復指示を返し�
 - required testがpassしている。
 - worker handoffがcompleteである。
 
+この検証ではworkerが報告したtest結果とcurrent Draft headに対するGitHub checksを確認し、同じlocal testを再実行しません。requiredなplanned validationがGitHub CIに存在しない場合はPhase 4のactual PR branch refresh時にだけfallbackとして実行します。missing validationをpassとして扱ってはなりません。
+
 1件でも不足・失敗があれば内部修復し、部分的なPR setをユーザーへ提示しません。
 
 ### 3.2 ユーザーへの提示
@@ -264,55 +268,37 @@ worker失敗時、親は同じworkerへfailure evidenceと修復指示を返し�
 
 個別PRだけを先行承認・mergeしません。修正対象が1件でも、毎回complete setを再提示します。
 
-## Phase 4: source integration と逐次merge
+## Phase 4: actual source PR の逐次refreshとmerge
 
-### 4.1 merge前integration
+2回目の承認後、source PRを入力順に1本ずつ処理します。別のpre-merge integration stateは作らず、各actual PR branchと処理時点のlatest `origin/main`だけをsource integrationのtruthとします。
 
-2回目の承認後、別のfresh integration worktreeで次を行います。
+### 4.1 actual PR branch のrefreshとvalidation
 
-1. `git fetch origin main` と各approved PR headのfetchを行う。
-2. source PR番号、approved head SHA、current remote head SHAが一致することを確認する。
-3. CI/check、review state、Draft state、mergeabilityを確認する。
-4. 最新 `origin/main` へ入力順にapproved headsを重ねたcombined source resultを構築する。
-5. worker handoffのtest unionと、overlapに必要なintegration testを実行する。
-6. batch外でmainへ到達した変更との競合・behavior影響を確認する。
+最初のPRを含む各source PRについて、次のrefresh loopを実行します。
 
-combined resultの構築中にconflictが発生した場合は、手動で解消する前にconflict eventごとのsession-localな`resolution reuse artifact`を作ります。
+1. `git fetch origin main` とcurrent remote PR headをfetchし、latest main SHA、PR番号、branch、expected head SHAを記録する。最初のexpected headはPhase 3.2で承認されたheadとし、このworkflowがrepair commitをpushした後はそのnew headへ更新する。remote headがexpected headと一致しない場合は第三者変更として処理を止め、差分を調査する。
+2. worker worktreeまたはそのPR専用のisolated repair worktreeでactual PR branchをcheckoutし、latest `origin/main`をnormal non-rewriting mergeで取り込む。rebase、reset、force push、history rewriteは使用しない。既にlatest mainを含む場合はclean refreshとして続ける。
+3. conflictがあれば、そのactual branch上で一度だけ解消する。解消結果のchanged pathsとapproved scopeを照合し、unmerged index entryとconflict markerがなく、`git diff --check`がpassすることを確認する。別worktreeで同じconflictを事前解消したり、resolutionをreplayするためのartifactを作ったりしない。
+4. conflict repairではaffected pathまたはobservable behaviorにfocusedしたtestだけを実行する。clean base refreshでは、planned validationをrequired GitHub CIが同等にcoverする限りworkerのlocal testを再実行しない。
+5. issue-specific planned validationごとに、worker result、required GitHub check、今回のfocused testのどれがcoverするかを確認する。required GitHub CIに存在しないplanned validationだけを、refreshed actual PR branch上でlocal fallbackとして実行する。missing、skipped、対応不明のvalidationをpassとして扱わない。
+6. mergeまたはconflict resolutionでcommitが必要ならnormal repair commitを作成し、forceなしでpushする。push後のcurrent remote headを取得してexpected headを更新する。
+7. expected headに対するrequired GitHub checksの完了を待ち、全required checkがpassしたことを確認する。failureは同じactual branch上のnew repair commitでforward repairし、validationをやり直す。
+8. checks完了後に`origin/main`を再fetchする。latest main SHAがStep 1で記録した値から進んでいれば、現在のPRをReady化・mergeせずStep 1へ戻り、新しいmainに対してrefreshとvalidationを繰り返す。
 
-1. latest integration base SHA、入力順のsource PR番号とapproved head SHA、現在までのmerge order、全conflicted pathを記録する。multiple conflicted pathsは1つのeventとして同じartifactへ保持する。
-2. 各conflicted pathのindex stage 1/2/3 blobと、Gitが提供する場合は`AUTO_MERGE` treeをconflict preimageとして記録する。`AUTO_MERGE`がない場合は同等のpre-resolution working-tree snapshotを使う。
-3. conflict解消後、記録したpreimageとresolved working treeの差分から、recorded conflicted pathsだけを対象にbinary-safeなresolution-only patchを生成する。
-4. resolved blob hashをpathごとに記録し、通常のintegration構築を続ける。全integration testがpassした時点のvalidated combined tree hashをartifactへ追記する。
-5. artifactはcurrent session temp areaまたはfresh integration worktree内だけに置き、repository、GitHub、cross-session stateへ保存しない。repository-globalまたはundeclared persistent Git configの`rerere`を有効化しない。
+refreshまたはconflict repairがreview済みcode、observable behavior、public contract、security boundary、approved scopeをmaterialに変える場合は、対象PRをDraftのcomplete setへ戻してPhase 3.2の承認を取り直します。latest mainだけを取り込むclean refresh、同じbehaviorを保つ機械的なconflict解消、SHAだけの更新は再承認理由にしません。
 
-no-conflict batchではartifactを作らず、従来のintegrationと逐次mergeをそのまま行います。artifactはapproved headとinput merge orderに結び付け、別の順序、別のhead、approved scope外へ流用しません。
+### 4.2 guarded merge
 
-conflict、CI failure、base driftは内部でforward repairし、新commit、rerun、branch updateで回復します。force pushやhistory rewriteは使用しません。修復がreview済みのcode、behavior、scopeをmaterialに変える場合は、影響するPRをDraftのcomplete setへ戻してPhase 3.2の承認を取り直します。SHAだけのrefreshや等価なconflict解消は再承認理由にしません。
+4.1をpassしたcurrent source PRだけに対して、次を続けます。
 
-### 4.2 source PR merge
+1. GitHubからcurrent PR headを再取得し、4.1で固定したexpected head SHAと一致することをguardする。required checksもそのexact headに対してpassしていなければならない。
+2. 対象PRだけをReady化し、pauseせずrepositoryで利用可能な通常merge methodによるmergeを直ちにrequestする。全PRを一括Ready化しない。
+3. merge API resultをauthoritativeな結果として検証する。GitHubのasynchronousな`mergeable`値を事前条件としてpollしない。
+4. merge requestがbase driftまたはhead/base不一致でrejectされた場合は成功扱いせず、`origin/main`とPR stateを再取得して4.1のrefresh loopへ戻る。
+5. merge APIが成功した場合も、GitHub PR stateがmergedであること、merge commitまたはsquash resultがlatest mainへ反映されたこと、expected source headの変更がPRへ含まれることを確認する。
+6. merged PRのbase/headとchanged-file listをin-memoryのdocumentation scopeへ加え、反映確認後にだけ次のPRへ進む。
 
-入力順に1本ずつ、次のatomic stepを繰り返します。
-
-1. 最新main、PR head SHA、checks、mergeabilityを再取得する。
-2. 直前のsource mergeを含む状態で残りPRへの影響を確認する。
-3. 対象PRだけをReady化する。
-4. Ready化後にpauseせず、repositoryで利用可能な通常merge methodで直ちにmergeする。
-5. `git fetch origin main` とGitHub PR stateでmergeを確認する。
-6. merged PRのbase/headとchanged-file listをin-memoryのdocumentation scopeへ加える。
-7. 次のPRへ進む。
-
-predecessor merge後のlatest `origin/main`によってlater source PRの実branchにconflictが発生した場合も、integration worktreeの検証と実branchのrefreshを同一操作とは扱いません。実branchではnormal non-rewriting mergeによるbase refresh、GitHub mergeabilityの再取得、focused checksを必ず行います。そのうえで次の条件をすべて満たす1つのartifactがある場合だけ、同じresolution decisionをreplayできます。
-
-1. PR番号、approved head、input merge orderがartifactと一致し、current conflicted path setがrecorded conflicted pathsと一致する。
-2. current index stage blobまたは`AUTO_MERGE` preimageがrecorded preimageと一致するか、patch contextとの互換性を`git apply --check`で一意に確認できる。patch-context mismatch、候補の曖昧さ、multiple conflicted pathsの一部だけの一致は不一致とする。
-3. resolution-only patchをrecorded conflicted pathsだけへ適用し、適用前後のpath listからapproved scope外を変更していないことを確認する。
-4. conflict解消をstageした後、unmerged index entryとconflict markerが残っておらず、`git diff --check`がpassし、各resolved blob hashがartifactと一致することを確認する。
-5. resulting source treeをvalidated combined tree hashと比較する。hashが一致しない場合は、captured integration baseとcurrent latest mainを使ったpath-level three-way comparisonで、差分がexpected squash/base refreshだけに由来し、review済みbehaviorとapproved scopeを変えないことを完全に説明できる場合だけ同等と扱う。
-6. focused checksと必要なintegration testを再実行し、normal repair commitを作成してforceなしでpushする。その後にcurrent head SHA、checks、mergeabilityを再取得する。
-
-`git apply --check` failure、patch-context mismatch、tree/result mismatch、unexplained diff、scope外変更、marker残存、test failureのいずれかがあればautomatic reuseを破棄します。patch適用後に判明した場合はそのmerge attemptをabortし、latest mainとのmergeをcleanな状態から再実行して、既存のforward repairへfallbackします。fallbackでmaterialなsource変更が必要になればcomplete Draft PR setを再構成してPhase 3.2へ戻ります。artifactの不一致を手作業で都合よく合わせたり、部分適用した結果をcommitしたりしてはなりません。
-
-全PRを一括Ready化しません。merge途中のfailureはbatch失敗としてユーザーへrollback選択を求めず、親がrepair、test、再検証して完遂へ戻します。materialなsource fixが必要なら新しいDraft fix PRを含むcorrected setを構成し、Phase 3.2へ戻ります。
+merge途中のconflict、CI failure、base drift、merge rejectionはbatch失敗としてユーザーへrollback選択を求めず、actual PR branchへのnew commit、push、refresh loopでforward repairします。materialなsource fixが必要ならcomplete corrected Draft PR setを構成してPhase 3.2へ戻ります。
 
 ## Phase 5: 独立した局所documentation同期
 
@@ -360,10 +346,10 @@ batch開始時のdiffをtruthにしません。batch外のPRが先にmergeされ
 
 ### 5.4 documentation PR の自動delivery
 
-1. relevant docs lint、link check、site build、repository testを実行する。
+1. changed documentationにrelevantなdocs lint、link check、site buildだけを実行する。documentation-only updateの後にsource repository testをlocalで再実行しない。
 2. documentation変更だけを直接commitする。
 3. branchをpushし、batch issue/source PR一覧とscopeを記載したDraft documentation PRを直接作成する。
-4. PR diff、base SHA、checks、mergeability、L0非変更を再検証する。
+4. PR diff、base SHA、expected head、required checks、L0非変更を再検証する。
 5. failureは内部で修正し、検証を繰り返す。
 6. pass後、追加のユーザー承認なしでReady化し、直ちにmergeする。
 7. latest mainにdocumentation PR merge結果が含まれることを確認する。
@@ -380,7 +366,7 @@ documentation内容からsourceのmaterialな欠陥が判明した場合は、so
 - latest mainが全merge結果を含む。
 - 関連issueにcompletion resultと全PR URLをcomment済み。
 
-確認後にだけbatch completeを報告します。cleanで不要になったworktreeは通常の`git worktree remove`で片付け、session temp areaのresolution reuse artifactも通常cleanupで削除します。artifactをcross-session resumeに使用しません。dirty、ownership不明、removal failureのworktreeをforce削除せず、manual cleanup対象として報告します。親workspaceに開始前から存在した変更へ触れません。
+確認後にだけbatch completeを報告します。cleanで不要になったworktreeは通常の`git worktree remove`で片付けます。dirty、ownership不明、removal failureのworktreeをforce削除せず、manual cleanup対象として報告します。親workspaceに開始前から存在した変更へ触れません。
 
 最終報告には次を含めます。
 
