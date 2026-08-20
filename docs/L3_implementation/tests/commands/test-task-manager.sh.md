@@ -4,7 +4,7 @@
 
 `commands/task-manager.md` と `skills/task-manager/SKILL.md` の安全上・設計上重要な契約を固定文字列で検証するshell testである。Markdown workflowは直接実行可能なprogramではないため、repository既存のcommand contract test方式を踏襲する。
 
-根拠: `tests/commands/test-task-manager.sh:1-9`, `tests/commands/test-task-manager.sh:49-100`
+根拠: `tests/commands/test-task-manager.sh:1-9`, `tests/commands/test-task-manager.sh:49-103`
 
 ## 動作の概要
 
@@ -14,7 +14,7 @@
 4. `assert_absent` で既存workflowへのdelegate表現がないことを確認する。
 5. failure数を集計し、1件以上ならexit 1、すべてpassならexit 0を返す。
 
-根拠: `tests/commands/test-task-manager.sh:5-47`, `tests/commands/test-task-manager.sh:102-107`
+根拠: `tests/commands/test-task-manager.sh:5-47`, `tests/commands/test-task-manager.sh:125-130`
 
 ## 主要な検証契約
 
@@ -26,11 +26,11 @@
 - self-contained worker payload、structured handoff、direct Draft PR作成
 - source PR titleの `#<issue-number> <English title>` 形式
 - complete Draft PR setのreview loop
-- approved head SHA固定、入力順逐次merge、対象PRだけのReady化
-- integration conflictのsession-local artifact、multiple path、`AUTO_MERGE` preimage、resolved blob、validated tree hash
-- equivalent conflict replayのpath/scope制限、`git apply --check`、`git diff --check`、normal repair commit
-- patch-context mismatchとtree/result mismatchのforward-repair fallback
-- no-conflict batchの既存挙動維持とtemporary artifact cleanup
+- approved head SHA固定、入力順逐次merge、最初のPRを含むactual branch refresh、対象PRだけのReady化
+- latest mainのnormal merge、actual branch上で一度だけのconflict解消、focused test
+- clean refreshでのlocal test非反復、CI coverage不足時のlocal fallback、missing validation拒否
+- exact expected headとrequired checks、main drift retry、authoritative merge result、main反映確認
+- synthetic integration worktree、resolution artifact、preimage、patch replayが存在しないこと
 - merged batch changed-file unionとlatest mainによるlocalized documentation sync
 - 第3の承認なしでdocumentation PRをmergeすること
 - partial completionをsuccessにしないこと
@@ -38,7 +38,7 @@
 - 既存workflow commandへのruntime依存禁止
 - `task-worker`を公開command/skillにしないこと
 
-根拠: `tests/commands/test-task-manager.sh:52-117`
+根拠: `tests/commands/test-task-manager.sh:52-123`
 
 ## 重要な設計判断
 
@@ -46,7 +46,7 @@ agent runtimeやGitHubへ実際のbranch/PR/mergeを作るend-to-end testでは�
 
 禁止対象workflow名そのものは独立性説明に必要なため、単純な名称不在ではなく、delegateを意味する具体的表現の不在を検証する。
 
-根拠: `tests/commands/test-task-manager.sh:82-100`
+根拠: `tests/commands/test-task-manager.sh:73-114`
 
 ## 統合ポイント
 
@@ -61,10 +61,11 @@ agent runtimeやGitHubへ実際のbranch/PR/mergeを作るend-to-end testでは�
 - 意味を保った文言変更でもassertion更新が必要になる場合がある。
 - literal Markdown backtickとinstalled `~` pathに対するShellCheck warningは、理由付きで限定的に抑制する。
 
-根拠: `tests/commands/test-task-manager.sh:1-3`, `tests/commands/test-task-manager.sh:94-95`
+根拠: `tests/commands/test-task-manager.sh:1-3`, `tests/commands/test-task-manager.sh:93-98`, `tests/commands/test-task-manager.sh:116-123`
 
 ## 変更履歴（git log より自動生成）
 
-- a634701 fix(#381): align task manager source PR titles
+- 07dc279 feat(#384): simplify task manager source integration
+- 823f676 #381 Align task-manager source PR titles with work (#382)
 - 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)
