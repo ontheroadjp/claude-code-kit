@@ -122,12 +122,8 @@ Phase 3: 最終報告
 #### Step 3: 実行
 3.1 作業プランに従って実装を行う
 
-作業ブランチを新規作成または既存ブランチへ切り替えた直後、現在のブランチ名を Git から取得し、Claude Code では以下を実行して会話スレッド名を `/rename <作業ブランチ名>` と同じ結果になるよう更新する。Codex CLI ではこの操作をスキップする。ブランチ名を推測・手入力してはならない。スレッド名の更新に失敗しても、Git のブランチ切替や以降の実装を中断してはならない。
-
-```bash
-branch_name="$(git branch --show-current)"
-bash ~/.claude/scripts/rename-thread.sh "$branch_name" || true
-```
+- 実装作業前に、
+    - Claude Code の場合: `/rename <作業ブランチ名>` を実行しスレッドタイトルを付与する。
 
 3.2 実装完了後:
     - 作業内容をユーザーに報告

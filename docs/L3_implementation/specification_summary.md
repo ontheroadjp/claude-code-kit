@@ -24,6 +24,16 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 根拠: `commands/work-multi.md:1-76`, `install.sh:12-13,24-25,77-83`, issue #374
 
+### `/task-manager` (`commands/task-manager.md`)
+
+1〜3件のimplementation issueを1つのbatchとして扱う、既存implementation/documentation workflowから独立した入口。4件以上、重複、不正形式はrepository変更前に拒否する。親agentが全issueを調査してissue-specific planとbatch integration planを一括提示し、承認後にissueごとのisolated worktree・branchと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、approved scopeの実装・test・direct commit/push・Draft source PR・structured handoffまでを担当するが、documentation、Ready化、merge、独自のユーザー確認は行わない。
+
+親はcomplete Draft source PR setだけを提示し、そのbatch-wide承認後にapproved headをlatest mainへ入力順に重ねてintegration検証する。source PRは対象1本だけをReady化して直ちにmergeし、反映確認後に次へ進む。全source merge後、merged batch source PRのchanged-file unionをscope、finalization時のlatest mainをtruthとして独立したlocalized documentation syncを1回行い、documentation-only PRを追加承認なしで検証・Ready化・mergeする。全source PRとdocumentation PRのmerge確認後だけbatch成功を報告する。
+
+初期実装は1repository 1sessionの運用disciplineに依存し、worker queue、model設定、永続batch state、cross-session resume、distributed lock、GitHub Actions state manager、PM schedulerを持たない。`task-worker` protocolは親command内にあり、単独command/skillとして公開しない。
+
+根拠: `commands/task-manager.md:1-46`, `commands/task-manager.md:48-139`, `commands/task-manager.md:141-294`, `commands/task-manager.md:296-401`, issue #377
+
 ### `/mtg` (`commands/mtg.md`)
 
 `agenda` label の issue を人間と AI が非線形に検討する workflow。開始時には issue 本文と全コメントを読み、必要に応じて Facts、Assessment、Opinions、Proposals を使うが、方向性・実装境界・close は人間だけが決定する。今回の mtg の終了をユーザーが明示した場合は、日付・開始時刻・終了時刻を含む議事録を issue に投稿する。この投稿は issue close と独立しており、`/new-issue` はユーザーの明示指示でのみ実行する。
@@ -142,9 +152,9 @@ PR 番号を受け取り、PR ブランチに checkout し、事前に `git diff
 
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`mtg` skill は `/new-issue` と close をユーザー明示指示に限定する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`mtg` skill は `/new-issue` と close をユーザー明示指示に限定する。`task-manager` skillは実 `task-worker` sub-agentをissueごとに最大3つ使い、model overrideを省略して親modelを継承し、workerを単独command/skillとして公開しない契約を固定する。
 
-根拠: `skills/init-docs/SKILL.md:1-14`, `skills/mtg/SKILL.md`, `skills/` 実体一覧
+根拠: `skills/init-docs/SKILL.md:1-14`, `skills/mtg/SKILL.md`, `skills/task-manager/SKILL.md:1-25`, `skills/` 実体一覧
 
 ## Hooks
 
@@ -251,6 +261,10 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 `tests/commands/test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`ORIGINAL_WORKDIR` を lazy linker 初期化に限定して以後の操作を隔離 worktree に留めること、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、lazy linker と shared status helper の契約を静的検証する。`tests/scripts/test-worktree-status.sh` は manifest 記録済み symlink を除外し、実際の変更と単体 `/work` 相当の通常 status を保持することを functional に検証する。
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
+
+`tests/commands/test-task-manager.sh` は `/task-manager` の1〜3件入力境界、4件以上・重複拒否、最大3つの実sub-agentと親model継承、plan/Draft set gate、入力順source merge、changed-file unionとlatest mainによるlocalized documentation sync、追加承認なしのdocumentation PR merge、永続state/resume/lockの非導入、既存workflowからのruntime独立性を固定文字列で検証する。
+
+根拠: `tests/commands/test-task-manager.sh:1-107`
 
 `tests/scripts/test-link-worktree-untracked.sh` は lazy linker の functional test である。`prepare` が source と空 manifest だけを記録し、`link` が指定された untracked/ignored path だけを作成・manifest へ一度だけ記録することを確認する。tracked path、unsafe path、unavailable path は拒否する。
 
