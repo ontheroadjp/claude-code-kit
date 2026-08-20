@@ -26,6 +26,10 @@
 - self-contained worker payload、structured handoff、direct Draft PR作成
 - complete Draft PR setのreview loop
 - approved head SHA固定、入力順逐次merge、対象PRだけのReady化
+- integration conflictのsession-local artifact、multiple path、`AUTO_MERGE` preimage、resolved blob、validated tree hash
+- equivalent conflict replayのpath/scope制限、`git apply --check`、`git diff --check`、normal repair commit
+- patch-context mismatchとtree/result mismatchのforward-repair fallback
+- no-conflict batchの既存挙動維持とtemporary artifact cleanup
 - merged batch changed-file unionとlatest mainによるlocalized documentation sync
 - 第3の承認なしでdocumentation PRをmergeすること
 - partial completionをsuccessにしないこと
@@ -33,7 +37,7 @@
 - 既存workflow commandへのruntime依存禁止
 - `task-worker`を公開command/skillにしないこと
 
-根拠: `tests/commands/test-task-manager.sh:52-100`
+根拠: `tests/commands/test-task-manager.sh:52-116`
 
 ## 重要な設計判断
 

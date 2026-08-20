@@ -277,6 +277,16 @@ worker失敗時、親は同じworkerへfailure evidenceと修復指示を返し�
 5. worker handoffのtest unionと、overlapに必要なintegration testを実行する。
 6. batch外でmainへ到達した変更との競合・behavior影響を確認する。
 
+combined resultの構築中にconflictが発生した場合は、手動で解消する前にconflict eventごとのsession-localな`resolution reuse artifact`を作ります。
+
+1. latest integration base SHA、入力順のsource PR番号とapproved head SHA、現在までのmerge order、全conflicted pathを記録する。multiple conflicted pathsは1つのeventとして同じartifactへ保持する。
+2. 各conflicted pathのindex stage 1/2/3 blobと、Gitが提供する場合は`AUTO_MERGE` treeをconflict preimageとして記録する。`AUTO_MERGE`がない場合は同等のpre-resolution working-tree snapshotを使う。
+3. conflict解消後、記録したpreimageとresolved working treeの差分から、recorded conflicted pathsだけを対象にbinary-safeなresolution-only patchを生成する。
+4. resolved blob hashをpathごとに記録し、通常のintegration構築を続ける。全integration testがpassした時点のvalidated combined tree hashをartifactへ追記する。
+5. artifactはcurrent session temp areaまたはfresh integration worktree内だけに置き、repository、GitHub、cross-session stateへ保存しない。repository-globalまたはundeclared persistent Git configの`rerere`を有効化しない。
+
+no-conflict batchではartifactを作らず、従来のintegrationと逐次mergeをそのまま行います。artifactはapproved headとinput merge orderに結び付け、別の順序、別のhead、approved scope外へ流用しません。
+
 conflict、CI failure、base driftは内部でforward repairし、新commit、rerun、branch updateで回復します。force pushやhistory rewriteは使用しません。修復がreview済みのcode、behavior、scopeをmaterialに変える場合は、影響するPRをDraftのcomplete setへ戻してPhase 3.2の承認を取り直します。SHAだけのrefreshや等価なconflict解消は再承認理由にしません。
 
 ### 4.2 source PR merge
@@ -290,6 +300,17 @@ conflict、CI failure、base driftは内部でforward repairし、新commit、re
 5. `git fetch origin main` とGitHub PR stateでmergeを確認する。
 6. merged PRのbase/headとchanged-file listをin-memoryのdocumentation scopeへ加える。
 7. 次のPRへ進む。
+
+predecessor merge後のlatest `origin/main`によってlater source PRの実branchにconflictが発生した場合も、integration worktreeの検証と実branchのrefreshを同一操作とは扱いません。実branchではnormal non-rewriting mergeによるbase refresh、GitHub mergeabilityの再取得、focused checksを必ず行います。そのうえで次の条件をすべて満たす1つのartifactがある場合だけ、同じresolution decisionをreplayできます。
+
+1. PR番号、approved head、input merge orderがartifactと一致し、current conflicted path setがrecorded conflicted pathsと一致する。
+2. current index stage blobまたは`AUTO_MERGE` preimageがrecorded preimageと一致するか、patch contextとの互換性を`git apply --check`で一意に確認できる。patch-context mismatch、候補の曖昧さ、multiple conflicted pathsの一部だけの一致は不一致とする。
+3. resolution-only patchをrecorded conflicted pathsだけへ適用し、適用前後のpath listからapproved scope外を変更していないことを確認する。
+4. conflict解消をstageした後、unmerged index entryとconflict markerが残っておらず、`git diff --check`がpassし、各resolved blob hashがartifactと一致することを確認する。
+5. resulting source treeをvalidated combined tree hashと比較する。hashが一致しない場合は、captured integration baseとcurrent latest mainを使ったpath-level three-way comparisonで、差分がexpected squash/base refreshだけに由来し、review済みbehaviorとapproved scopeを変えないことを完全に説明できる場合だけ同等と扱う。
+6. focused checksと必要なintegration testを再実行し、normal repair commitを作成してforceなしでpushする。その後にcurrent head SHA、checks、mergeabilityを再取得する。
+
+`git apply --check` failure、patch-context mismatch、tree/result mismatch、unexplained diff、scope外変更、marker残存、test failureのいずれかがあればautomatic reuseを破棄します。patch適用後に判明した場合はそのmerge attemptをabortし、latest mainとのmergeをcleanな状態から再実行して、既存のforward repairへfallbackします。fallbackでmaterialなsource変更が必要になればcomplete Draft PR setを再構成してPhase 3.2へ戻ります。artifactの不一致を手作業で都合よく合わせたり、部分適用した結果をcommitしたりしてはなりません。
 
 全PRを一括Ready化しません。merge途中のfailureはbatch失敗としてユーザーへrollback選択を求めず、親がrepair、test、再検証して完遂へ戻します。materialなsource fixが必要なら新しいDraft fix PRを含むcorrected setを構成し、Phase 3.2へ戻ります。
 
@@ -359,7 +380,7 @@ documentation内容からsourceのmaterialな欠陥が判明した場合は、so
 - latest mainが全merge結果を含む。
 - 関連issueにcompletion resultと全PR URLをcomment済み。
 
-確認後にだけbatch completeを報告します。cleanで不要になったworktreeは通常の`git worktree remove`で片付けます。dirty、ownership不明、removal failureのworktreeをforce削除せず、manual cleanup対象として報告します。親workspaceに開始前から存在した変更へ触れません。
+確認後にだけbatch completeを報告します。cleanで不要になったworktreeは通常の`git worktree remove`で片付け、session temp areaのresolution reuse artifactも通常cleanupで削除します。artifactをcross-session resumeに使用しません。dirty、ownership不明、removal failureのworktreeをforce削除せず、manual cleanup対象として報告します。親workspaceに開始前から存在した変更へ触れません。
 
 最終報告には次を含めます。
 
