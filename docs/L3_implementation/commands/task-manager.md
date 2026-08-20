@@ -111,4 +111,5 @@ source PRにdocumentationを混ぜず、全source merge後に1回だけ独立し
 
 ## 変更履歴（git log より自動生成）
 
+- 0a06664 feat(#379): reuse task manager conflict resolutions
 - 9ef8e99 feat(#377): add independent task manager workflow
