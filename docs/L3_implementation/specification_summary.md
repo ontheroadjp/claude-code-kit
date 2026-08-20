@@ -26,7 +26,7 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/task-manager` (`commands/task-manager.md`)
 
-1〜3件のimplementation issueを1つのbatchとして扱う、既存implementation/documentation workflowから独立した入口。4件以上、重複、不正形式はrepository変更前に拒否する。親agentが全issueを調査してissue-specific planとbatch integration planを一括提示し、承認後にissueごとのisolated worktree・branchと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、approved scopeの実装・test・direct commit/push・Draft source PR・structured handoffまでを担当するが、documentation、Ready化、merge、独自のユーザー確認は行わない。
+1〜3件のimplementation issueを1つのbatchとして扱う、既存implementation/documentation workflowから独立した入口。4件以上、重複、不正形式はrepository変更前に拒否する。親agentが全issueを調査してissue-specific planとbatch integration planを一括提示し、承認後にissueごとのisolated worktree・branchと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、approved scopeの実装・test・direct commit/push・`#<issue-number> <English title>` 形式のDraft source PR・structured handoffまでを担当するが、documentation、Ready化、merge、独自のユーザー確認は行わない。
 
 親はcomplete Draft source PR setだけを提示し、そのbatch-wide承認後にapproved headをlatest mainへ入力順に重ねてintegration検証する。integration conflictの解消結果はpreimage、resolution-only patch、resolved blob、validated treeを含むsession-local artifactとして保持し、後続PRの実branchをlatest mainへ通常mergeした際にpath、context、order、scope、tree resultの同等性を証明できる場合だけreplayする。replay後もfocused checks、normal repair commit、push、mergeability再取得を行い、不一致時はcleanなmergeから通常forward repairへ戻る。source PRは対象1本だけをReady化して直ちにmergeし、反映確認後に次へ進む。全source merge後、merged batch source PRのchanged-file unionをscope、finalization時のlatest mainをtruthとして独立したlocalized documentation syncを1回行い、documentation-only PRを追加承認なしで検証・Ready化・mergeする。全source PRとdocumentation PRのmerge確認後だけbatch成功を報告する。
 
