@@ -1,6 +1,6 @@
 # /task-manager
 
-`/task-manager` は、1〜3件の implementation issue を1つの batch として扱い、issue ごとの source 実装を `task-worker` sub-agent に委譲し、全 source PR と1本の documentation PR の merge まで完遂する独立 workflow です。
+`/task-manager` は、ユーザーから渡された1〜3件の implementation issueを入力順に実行するbatch executorです。issueごとのsource実装を `task-worker` sub-agentへ委譲し、complete Draft source PR setの承認後は各PRのdeliveryを `/git-pr-merge` へ順次委譲し、最後に1本のdocumentation PRを作成・mergeします。
 
 ```text
 /task-manager #123
@@ -13,11 +13,11 @@
 1. 全 issue の作業プラン承認
 2. Draft source PR 一式に対する「これでよいですか？」への batch-wide 承認
 
-2回目の承認は、承認済み source PR の入力順 squash merge、最新 `main` からの局所 documentation 同期、documentation PR の作成・検証・merge、batch 完了報告までを一括して認可します。routine な base refresh と機械的な conflict repair はこの承認に含まれ、material な source の変更が必要になった場合だけ Draft source PR 一式の承認へ戻ります。
+2回目の承認は、表示した各source PRのhead SHA、scope、observable behavior、final validation planを固定し、入力順のdelivery、最新 `main` からの局所documentation同期、documentation PRの作成・検証・merge、batch完了報告までを認可します。各PRのdelivery中にunknown commitやmaterial changeを検出した場合は、そのPRだけを再レビュー対象とします。
 
 ## 独立性と禁止事項
 
-この workflow は scratch implementation とし、既存 workflow の control flow を利用しません。
+この workflow はsource preparationとdocumentation finalizationを自己完結させ、source PR deliveryだけを専用の `/git-pr-merge` へ委譲します。
 
 - `/work`
 - `/work-multi`
@@ -28,7 +28,7 @@
 - `/git-commit`
 - `/git-pr`
 
-上記の command・skill を実行、委譲、source、wrap、runtime Read してはなりません。既存ファイルを変更したり、既存 workflow を共通 component へ refactor したりしてもなりません。coding skill、Git/GitHub CLI、repository profile、documentation、template、hook などの共有基盤は、既存 workflow の挙動を変えない範囲で直接利用できます。
+上記のcommand・skillを実行、委譲、source、wrap、runtime Readしてはなりません。例外として `commands/git-pr-merge.md` を完全にReadし、Phase 4で承認済みsource PRごとに委譲します。coding skill、Git/GitHub CLI、repository profile、documentation、template、hookなどの共有基盤は直接利用できます。
 
 ## 不変条件
 
@@ -41,7 +41,7 @@
 - source PR は1本ずつ Ready 化し、直ちに merge する。全件を先に Ready 化しない。
 - source PR はすべて明示的に squash merge し、`1 issue = 1 source PR = 1 main commit` の linear history を保つ。
 - actual source PR branch と latest `main` を source integration の唯一の truth とし、別の combined source result を構築しない。
-- 最初の source PR を delivery validation 後に squash merge してから、各後続 source PR の actual branch に latest `main` を取り込む。
+- 最初を含むすべてのsource PRで、delivery直前にactual branchへlatest `origin/main`を取り込む。
 - parallel phase の lightweight development validation は early feedback とし、source delivery の authoritative validation として扱わない。
 - `/task-manager` は渡された issue と入力順を実行するだけであり、issue 選定、batch compatibility、conflict-risk、merge順最適化、repository全体の進捗管理を行わない。
 - documentation scope は merged batch source PR の changed-file union とする。
@@ -49,6 +49,7 @@
 - documentation PR diff は最新 `main` と fresh documentation branch の差分とする。
 - batch success は全 source PR と documentation PR の merge 確認後にだけ報告する。
 - force push、履歴改変、強制 worktree 削除、破壊的 cleanup を行わない。
+- batchをrollback可能な単一transactionとして扱わない。停止前に完了したsource mergeはauthoritativeである。
 
 ## Phase 0: 入力と実行環境の検証（read-only）
 
@@ -262,46 +263,37 @@ worker失敗時、親は同じworkerへfailure evidenceと修復指示を返し�
 
 ### 3.2 ユーザーへの提示
 
-入力順に全Draft PRをまとめ、issue、PR URL、head SHA、changed files、behavior、test results、known riskを提示して、次の1回だけ確認します。
+入力順に全Draft PRをまとめ、issue、PR URL、head SHA、changed files、behavior、final validation plan、test results、known riskを提示して、次の1回だけ確認します。
 
 > 実装PRが揃いました。全PRをレビューしてください。これでよいですか？
 
 - NGまたは修正要求: 該当workerへfeedbackを返し、実装・test・commit・push・integration確認を更新して、complete Draft PR setを再提示する。
-- OK: 承認された全source PR番号、approved scope、behaviorをin-memoryに保持し、Phase 4以降のroutine completion authorizationとして扱う。head SHAをexpected stateとして追跡しない。
+- OK: PRごとのPR番号、approved head SHA、approved scope/behavior、final validation planをin-memoryに保持し、Phase 4のdelegated approval contextとする。
 
 個別PRだけを先行承認・mergeしません。修正対象が1件でも、毎回complete setを再提示します。
 
-## Phase 4: actual source PR の逐次deliveryとsquash merge
+## Phase 4: `/git-pr-merge` への逐次delivery委譲
 
-2回目の承認後、source PRを入力順に1本ずつ処理します。最初のPRをdeliveryしてから次のPRのlatest-main取り込みを開始します。別のpre-merge integration stateは作らず、各actual PR branchと処理時点のlatest `origin/main`だけをsource integrationのtruthとします。
+2回目の承認後、`commands/git-pr-merge.md`を完全にReadし、source PRを入力順に1本ずつ委譲します。最初を含む各PRの処理時点でlatest main refreshとcurrent-head validationを行う責務は`/git-pr-merge`に一元化し、このcommand内にdelivery state machineを複製しません。
 
-### 4.1 actual PR branch のdelivery preparationとvalidation
+各PRへ次のdelegated contextを渡します。
 
-各source PRについて、次を実行します。
+```text
+pr_number: <approved source PR number>
+approved_head_sha: <Phase 3.2でユーザーが承認したfull head SHA>
+approved_scope_or_behavior: <approved changed files, scope, and observable behavior>
+final_validation_plan: <issue planで承認済みのrequired CI coverage and/or exact local commands>
+approval_source: task-manager complete Draft set approval
+owned_worktree: <そのPRのtask-worker worktree、またはisolated repair worktree作成許可>
+```
 
-1. GitHubからcurrent PR state、base、head branch、diff、required checksを取得し、PRがopenかつDraftで、承認されたissue・branch・scope・behaviorに対応することを確認する。承認後の変更がmaterialならPhase 3.2へ戻る。
-2. 最初のPRではcurrent actual branchをそのままdelivery validation対象とする。2本目以降では、直前のsource PRがrequired validationをpassしてsquash merge済みであることを確認してから、`git fetch origin main`を行い、worker worktreeまたはそのPR専用のisolated repair worktreeでactual PR branchをcheckoutし、latest `origin/main`をnormal non-rewriting mergeで取り込む。rebase、reset、force push、history rewriteは使用しない。
-3. conflictがあれば、そのactual branch上で解消する。解消結果のchanged pathsとapproved scopeを照合し、unmerged index entryとconflict markerがなく、`git diff --check`がpassすることを確認する。別worktreeで同じconflictを事前解消したり、resolutionをreplayするためのartifactを作ったりしない。
-4. mergeまたはconflict resolutionでcommitが必要ならnormal repair commitを作成し、forceなしでpushする。
-5. conflict repairではaffected pathまたはobservable behaviorにfocusedしたlocal testを実行する。conflictがなくても、required GitHub CIがissue-specific planned validationを同等にcoverしない場合は、actual PR branch上でplanned local delivery validationを実行する。parallel workerのinitial local testだけをdelivery passとして再利用しない。
-6. equivalent required GitHub CIがある場合はcurrent actual PR branchに対するchecksの完了を待ち、全required checkがpassしたことを確認する。missing、skipped、対応不明のvalidationをpassとして扱わない。
-7. failureは同じactual branch上のnew repair commitとnon-force pushでforward repairし、Step 5からdelivery validationをやり直す。
-8. 後続PRではReady化の直前に`origin/main`を再fetchし、actual branchがcurrent latest `origin/main`を含むことを確認する。含まなければStep 2へ戻ってlatest mainを取り込み、delivery validationをやり直す。SHAをexpected stateとして記録・比較するretry guardは設けない。
+- delegated contextが欠けたPRはdeliveryせず停止する。
+- `/git-pr-merge`がunknown remote commitを検出した場合、complete set全体ではなくそのPRだけをユーザーへ再提示し、current head、diff、scope/behavior、validation影響の明確な承認を得る。承認後のhead SHAを更新して同じPRの委譲を再開する。
+- conflict repairやvalidation repairがobservable behavior、public contract、security boundary、approved scopeをmaterialに変える場合も、そのPRだけを再レビュー対象とする。
+- `/git-pr-merge`が返すPR URL、approved head、delivered head、squash SHA、latest-main SHA、validation結果、known delivery commitsを記録する。
+- GitHub上のmerged stateとsquash SHAの`origin/main`反映を確認できた後だけ、changed-file listをdocumentation scopeへ追加して次のPRへ進む。
 
-refreshまたはconflict repairがreview済みcode、observable behavior、public contract、security boundary、approved scopeをmaterialに変える場合は、対象PRをDraftのcomplete setへ戻してPhase 3.2の承認を取り直します。latest mainだけを取り込むclean refreshと、同じbehaviorを保つ機械的なconflict解消は再承認理由にしません。
-
-### 4.2 explicit squash merge
-
-4.1をpassしたcurrent source PRだけに対して、次を続けます。
-
-1. GitHubからcurrent PR state、base、head branch、required checksを再取得し、4.1のdelivery条件を満たしていることを確認する。
-2. 対象PRだけをReady化し、pauseせず`gh pr merge --squash`相当の明示的なsquash mergeを直ちにrequestする。全PRを一括Ready化せず、merge commitやrebase mergeを選ばない。
-3. merge API resultをauthoritativeな結果として検証する。GitHubのasynchronousな`mergeable`値を事前条件としてpollしない。
-4. merge requestがbase drift、required check、PR stateなどを理由にrejectされた場合は成功扱いせず、`origin/main`とPR stateを再取得して4.1へ戻り、actual branch上でforward repairする。
-5. merge APIが成功した場合も、GitHub PR stateがmergedであること、squash resultがlatest mainへ反映されたこと、source PRの変更がその1 commitへ含まれることを確認する。
-6. merged PRのbase/headとchanged-file listをin-memoryのdocumentation scopeへ加え、反映確認後にだけ次のPRへ進む。
-
-merge途中のconflict、CI failure、base drift、merge rejectionはbatch失敗としてユーザーへrollback選択を求めず、actual PR branchへのnew commit、push、latest-main取り込み、delivery validationでforward repairします。materialなsource fixが必要ならcomplete corrected Draft PR setを構成してPhase 3.2へ戻ります。
+途中で停止した場合、既にmergedのPRをrollbackしません。completed PRとpending PR、各approved/current head、停止理由、残存worktreeを報告し、manual recovery可能な状態で終了します。batch source deliveryをrollback-capableな単一transactionとして扱いません。
 
 ## Phase 5: 独立した局所documentation同期
 
@@ -333,14 +325,19 @@ batch開始時のdiffをtruthにしません。batch外のPRが先にmergeされ
 
 親 `/task-manager` が次を独立して実行します。必要ならdocumentation専用sub-agentを起動できますが、source用 `task-worker` にdocsを追加させません。
 
-1. changed-file unionをsource、test、config、schema、public surfaceに分類する。
+1. GitHubのmerged PR file statusを使い、changed-file unionをAdded、Modified、Deleted、Renamedに分類し、さらにsource、test、config、schema、public surfaceへ分類する。renameはprevious pathとcurrent pathの両方を保持する。
 2. 各changed source fileのcurrent content、diff、対応L3 per-file docを読む。
 3. task-worker handoffはdesign intentの補助情報として使い、diffとlatest sourceを事実とする。
-4. changed source fileごとのL3 per-file docをcurrent snapshotとして作成・更新する。目的、flow、主要判断、integration point、制限、正しいline citationを含める。
+4. statusごとにL3 per-file docを処理する。
+   - Added source: 対応するL3 per-file docを新規作成する。
+   - Modified source: 対応するL3 per-file docをcurrent snapshotへ更新する。
+   - Deleted source: 対応するL3 per-file docを削除する。historical referenceが必要な明確な理由がある場合だけ、deletedであることを明示したretired documentへ置き換える。
+   - Renamed source: old pathのL3 docをnew pathへ移動し、current sourceに基づいて全citationを再生成する。old pathのstale docを残さない。
+   各L3 docは目的、flow、主要判断、integration point、制限、正しいline citationを含むcurrent snapshotとする。
 5. L3 history sectionは対象fileのactual `git log`から更新する。
 6. repository profileのprimary docsと集約implementation summaryをnarrowed readし、影響するsectionだけを更新する。
-7. public command、setup、usageが変わる場合だけREADMEやproject docsを最小更新する。
-8. test indexなど、追加したartifactを列挙する既存documentを必要時だけ更新する。
+7. relevant aggregate documentation、README、test indexes、configuration、schemas、public surfacesを評価し、影響する箇所だけを最小更新する。
+8. added、deleted、renamed artifactを列挙するcatalogやrepository structureにstale entryが残らないことを確認する。
 9. `docs/L0_concept/` は既存・新規を問わず変更しない。L0相当の判断は `docs/.ai/l0_candidates.md` へcandidateとして追記する。
 10. narrow scopeでは説明不能な場合は、その依存先へread範囲を広げる。無関係なdocumentation cleanupへscopeを広げない。
 11. docs branch diffがdocumentation-onlyであり、batch scopeに説明可能な最小差分であることを確認する。
@@ -359,6 +356,8 @@ batch開始時のdiffをtruthにしません。batch外のPRが先にmergeされ
 
 documentation内容からsourceのmaterialな欠陥が判明した場合は、source fixをDraft PRとして用意し、complete corrected setをPhase 3.2で再承認してからsource mergeとdocumentation finalizationをやり直します。
 
+source deliveryが完了した後にdocumentation worktree、同期、validation、PR作成、mergeのいずれかが完了できない場合、source mergeをrollbackしません。`source complete / documentation incomplete`として、merged source PR URL/SHA、pending documentation scope、失敗箇所を報告し、latest source stateから再構築するstandalone `/init-docs` の実行を案内して終了します。
+
 ## Phase 6: 完了とcleanup
 
 次のすべてを再取得して確認します。
@@ -367,7 +366,9 @@ documentation内容からsourceのmaterialな欠陥が判明した場合は、so
 - documentation PRがmerged。
 - relevant checksがpass。
 - latest mainが全merge結果を含む。
-- 関連issueにcompletion resultと全PR URLをcomment済み。
+- 関連issueにcompletion resultと全PR URLをcomment済み、またはcomment failureがmanual follow-upとして記録済み。
+
+sourceとdocumentationのmerge確認後、各関連issueへcompletion commentを投稿します。commentにはsource PR URLとapproved/delivered/squash SHA、documentation PR URLとSHA、validation結果、documentation scopeを含めます。comment投稿失敗はmerge failureにせず、対象issueと投稿予定内容をmanual follow-upとして報告します。
 
 確認後にだけbatch completeを報告します。cleanで不要になったworktreeは通常の`git worktree remove`で片付けます。dirty、ownership不明、removal failureのworktreeをforce削除せず、manual cleanup対象として報告します。親workspaceに開始前から存在した変更へ触れません。
 
@@ -379,21 +380,18 @@ documentation内容からsourceのmaterialな欠陥が判明した場合は、so
 - documentation scope changed-file union
 - cleanup未完了項目
 - L0 candidateの有無
+- completion commentの投稿結果またはmanual follow-up
 
 ## 内部回復と再承認の境界
 
 ユーザーへrollback方式を選ばせません。active process中の通常failureは親が次の方法で回復します。
 
-- base refresh
-- conflict repair
-- new repair commit
-- failed checkの原因修正とrerun
 - replacement task-worker
-- source PR branch更新
 - documentation再生成
-- PR state、required checks、merge result、latest-main反映の再検証
+- `/git-pr-merge`への同一approved contextでの再委譲
+- PR state、merge result、latest-main反映の再検証
 
-review済みsourceのobservable behavior、public contract、security boundary、approved scopeが変わる場合だけDraft set gateへ戻ります。latest-main取り込みと同等な機械的修正だけでは戻りません。部分完了を成功として報告せず、forward recoveryを優先します。
+source preparation中の変更はcomplete Draft set gateへ戻します。delivery開始後にunknown commitまたはmaterial changeが見つかった場合は、影響したPRだけを再レビュー対象とします。部分完了を成功として報告せず、完了済みmergeをauthoritativeとしてcompleted/pending stateを報告します。
 
 ## 初期実装の運用制約
 

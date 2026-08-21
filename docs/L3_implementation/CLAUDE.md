@@ -11,10 +11,11 @@
 ## 動作の概要
 
 - command routing と repository 操作ルールを定義する
+- review済み単一PRの `/git-pr-merge` とbatch executor `/task-manager` の責務をcommand catalogで示す
 - symlink-only 原則と docs/task workflow の境界を示す
 - local tooling と template installed path を記録する
 
-根拠: `CLAUDE.md:13-109`
+根拠: `CLAUDE.md:14-34`, `CLAUDE.md:36-111`
 
 ## 主要な判定ロジック・フロー
 
@@ -55,6 +56,8 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 - `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`（共に配布先） → `global/CLAUDE.md` symlink（`install.sh` が自動化、issue #367）
 - installer: `install.sh`
 - template source: `templates/*.md`
+- reviewed PR delivery: `commands/git-pr-merge.md`
+- batch executor: `commands/task-manager.md`
 
 ## 注意事項・既知の制限
 
@@ -63,13 +66,13 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 
 ## 変更履歴（git log より自動生成）
 
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- bf1692f feat(#363): add narrowed-read verification principle and track offset/limit usage (#364)
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
+- a46be53 feat(#321): unify operational hazard workflows
+- 8beba5e docs: sync documentation
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
 - 04ddbb4 fix(claude): default to Japanese responses unless instructed otherwise
 - 91067f8 docs: initialize project documentation (init-docs)
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - f330e18 docs: initialize project documentation (init-docs)
-- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
-- 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
-- 27f1861 feat(#76): install templates for claude and codex
-- 5faaf5d docs: initialize project documentation (init-docs)
-- 145876c fix(#185): align pr-review with repository workflow rules

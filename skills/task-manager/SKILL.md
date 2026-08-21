@@ -15,8 +15,9 @@ description: Execute the independent task-manager batch workflow for one to thre
 2. Execute that workflow exactly as written.
 3. Use one real `task-worker` sub-agent per accepted issue, up to the fixed maximum of three.
 4. Omit sub-agent model overrides so every worker inherits the parent model.
-5. Keep the workflow independent from all pre-existing implementation and documentation workflows.
-6. Do not reinterpret, simplify, or merge it with another workflow unless `commands/task-manager.md` explicitly instructs you to do so.
+5. Keep source preparation and documentation finalization independent from the pre-existing implementation and documentation workflows.
+6. Delegate each approved source PR to `commands/git-pr-merge.md` exactly as `commands/task-manager.md` requires.
+7. Do not reinterpret, simplify, or merge it with another workflow unless `commands/task-manager.md` explicitly instructs you to do so.
 
 ## Scope Guard
 

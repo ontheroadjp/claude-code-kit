@@ -19,12 +19,14 @@
 | docs 初期化 | `commands/init-docs.md` | repo 再観測、repo profile 生成、L0-L3 docs 生成（L0 は存在しない場合のみ）、整合性検証、ユーザー確認後の draft PR | `commands/init-docs.md:1-423` |
 | L0 昇格 | `commands/concept-maker.md` | `docs/.ai/l0_candidates.md` の L0 昇格候補をユーザーとの壁打ちと明示的承認を経て `docs/L0_concept/` へ追記する唯一の経路。branch + commit → ユーザーが ff-merge | `commands/concept-maker.md:1-92` |
 | review 対応 | `commands/review-resolve.md` | PR review コメント取得、対応方針選択、実装/返信/push | `commands/review-resolve.md:1-175` |
+| reviewed PR delivery | `commands/git-pr-merge.md` | approved headを固定し、owned worktreeでlatest-main refresh、current-head validation、explicit squash mergeを行う | `commands/git-pr-merge.md:1-147` |
+| batch executor | `commands/task-manager.md` | 1〜3 issueのsource PRを並行準備し、承認後に `/git-pr-merge`へ入力順で委譲してdocumentationを同期する | `commands/task-manager.md:1-412` |
 | ハザード候補起票 | `commands/analyze-hazard-scan.md` | auto-approve と access のログを分析し、source 固有の診断とハザードチェックリストにより、既知ハザードなしの候補のみユーザー一括承認後に `hazard-candidate` issue を起票するスタンドアロン入口。hook自体は変更しない | `commands/analyze-hazard-scan.md:1-171` |
 | issue トリアージ | `commands/triage-issues.md` | open issue を stale/inconsistent/duplicated/unclear/ready に分類し、ユーザー承認後に各アクションを実行するスタンドアロン入口 | `commands/triage-issues.md:1-178` |
 | ハザード候補レビュー | `commands/triage-issues-for-hazard.md` | `hazard-candidate` label 付き open issue を一覧化し、source 固有のハザード分析を開示、yes/no ゲートを経て yes の場合は `hazard-candidate` → `triage-approved` へ label を swap した上で `/work #N` の実行を案内するスタンドアロン入口。`/work` は自身で呼ばない | `commands/triage-issues-for-hazard.md:1-115` |
 | issue 作成 | `commands/new-issue.md` | 漠然としたアイデアから issue を作成する任意 pre-step | `commands/new-issue.md:1-126` |
 | coding 原則 | `commands/coding-*.md` | general / py / js / ts / sh に React / Next.js framework layerを合成する汎用実装規約 | `commands/coding-general.md:1-52`, `commands/coding-react.md:1-43`, `commands/coding-nextjs.md:1-43` |
-| Codex skills | `skills/*/SKILL.md` | 25個の wrapper が対応する command markdown を Source of Truth として実行する | `skills/*/SKILL.md` 実体一覧 |
+| Codex skills | `skills/*/SKILL.md` | 28個の wrapper が対応する command markdown を Source of Truth として実行する | `skills/*/SKILL.md` 実体一覧 |
 | hooks | `hooks/*.sh` | 自動承認、破壊的操作 guard、ログ、セッション cleanup | `hooks/auto-approve-readonly.sh`, `hooks/guard-destructive-cmd.sh`, `hooks/cleanup-session.sh` |
 | tests | `tests/hooks/*.sh`, `tests/commands/*.sh`, `tests/install/*.sh`, `tests/scripts/*.py` | hook safety、declarative workflow、installer symlink contract を shell で、ログ解析を pytest で検証 | `tests/README.md`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py` |
 | site | `site/` | VitePress による公開ドキュメントサイト | `site/package.json:1-14`, `site/.vitepress/config.mts:1-183` |
@@ -43,6 +45,8 @@
 - agenda issue は `/work #N` から `/mtg` へ委譲される。hazard-candidate issue は `/work #N` が実装ルーティングをせず `/triage-issues-for-hazard` の実行を案内して終了する。根拠: `commands/work.md:83-96`, `commands/mtg.md:1-77`
 - `/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、作成後の自律 review は行わない。根拠: `commands/git-pr.md:62-65`, `CLAUDE.md:15`
 - PR review コメント対応は `/review-resolve #N`。根拠: `commands/review-resolve.md:1-6`
+- review済みPRのdeliveryは `/git-pr-merge #N`。standaloneではcurrent headの明示承認を求め、`/task-manager`はcomplete delegated approval contextを渡す。根拠: `commands/git-pr-merge.md:1-37`, `commands/task-manager.md:247-296`
+- 1〜3 issueのbatch実装は `/task-manager`。issue選定やmerge順最適化をせず、user-provided orderを実行する。根拠: `commands/task-manager.md:1-51`, `commands/task-manager.md:396-412`
 - idea から issue を作る任意入口は `/new-issue`。根拠: `commands/new-issue.md:1-9`
 - open issue を整理する任意入口は `/triage-issues`。根拠: `commands/triage-issues.md:1-9`
 - auto-approve と access のログから source 固有のハザード候補を洗い出し、ユーザー一括承認後に `hazard-candidate` issue を起票する任意入口は `/analyze-hazard-scan`。hook自体は変更しない。根拠: `commands/analyze-hazard-scan.md:1-171`

@@ -25,6 +25,8 @@
 - **new-issue.md**: 漠然としたアイデアから 1 件または複数件の整形された issue を生成する任意の pre-`/work` エントリポイント。issue 作成のみで実装は行わない。
 - **triage-issues.md**: open issue を現状 docs と照合し、stale / inconsistent / duplicated / unclear / ready に分類するスタンドアロン入口。issue 操作はユーザー承認後のみ行う。
 - **codex-review.md**: Codex CLI で PR をレビューし、`CODEX_REVIEW_TOKEN` がある場合に approve/request-changes を投稿する。変更要求時は `/review-resolve` へ引き継ぐ。
+- **git-pr-merge.md**: ユーザーがレビュー承認した単一PRをapproved head SHAで固定し、owned worktree上でlatest main取り込み・current-head検証・明示的squash mergeを行う。`/task-manager`からもPR単位で委譲される。
+- **task-manager.md**: ユーザー指定の1〜3 issueを入力順に実行するbatch executor。実装PRを並行作成し、complete Draft set承認後は各PRを `/git-pr-merge` へ逐次委譲する。
 - **task.md**: ドキュメント変更を伴う実装に特化。issue 自動生成〜実装〜ドラフト PR 作成まで。docs/* は変更しない。
 - **patch.md**: ドキュメント変更を伴わない軽微な修正に特化。issue/PR 不要。branch + commit → ユーザーが main へマージ。スコープが広がった場合は /task へエスカレーション。
 - **docs-sync.md**: git diff を事実として docs を最小更新し、ドラフト PR を公開する。HARD STOP 時は /init-docs を要求して終了する。L0（`docs/L0_concept/`）には書き込まず、L0 相当の記述を検知した場合は候補を `docs/.ai/l0_candidates.md` に積んで /concept-maker の実行を案内するに留める。
@@ -110,7 +112,7 @@ L3 per-file doc の `根拠: <file>:<line-range>` citation を使った対象読
 
 ## Local Tooling Environment
 
-Observed by /init-docs on 2026-08-10:
+Observed by /init-docs on 2026-08-21:
 - gh: 2.97.0
 - gh auth: logged in to github.com; active account available for repository operations
 - node: v24.16.0

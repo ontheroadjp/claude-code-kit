@@ -2,43 +2,37 @@
 
 ## 目的・役割
 
-Codexがユーザーから `/task-manager` を要求されたときに、独立batch workflowのsource of truthである `commands/task-manager.md` を読み、その仕様を省略せず実行するためのskill entry pointである。
+Codexが `/task-manager` を要求されたとき、`commands/task-manager.md`を完全に読み、real `task-worker`と `/git-pr-merge` delegationを含むbatch executor workflowを実行するskill entry pointである。
 
-根拠: `skills/task-manager/SKILL.md:1-10`
+根拠: `skills/task-manager/SKILL.md:1-19`
 
 ## 動作の概要
 
-1. `commands/task-manager.md` を完全に読む。
-2. accepted issueごとに1つの実 `task-worker` sub-agentを使用する。
-3. worker数は最大3とする。
-4. sub-agent model overrideを指定せず親modelを継承する。
-5. 既存implementation/documentation workflowから独立させる。
-6. source of truthを独自解釈、簡略化、他workflowと統合しない。
+1. command sourceを完全に読む。
+2. accepted issueごとに最大3つのreal `task-worker`を使う。
+3. model overrideを省略して親modelを継承する。
+4. source preparation/documentation finalizationは既存workflowから独立させる。
+5. approved source PR deliveryだけを `commands/git-pr-merge.md`へ委譲する。
 
-根拠: `skills/task-manager/SKILL.md:12-19`
+根拠: `skills/task-manager/SKILL.md:12-20`
 
 ## 重要な設計判断
 
-`task-worker`を独立commandやskillとして公開せず、親commandが起動payloadで役割を注入する。これにより、approved plan、worktree、branch、batch位置を持たないworkerの単独誤実行を防ぐ。
-
-modelをskill内で固定しないため、workerは親agentと同じmodelを使い、runtimeごとのmodel availabilityに依存しない。
-
-根拠: `skills/task-manager/SKILL.md:16-18`, `skills/task-manager/SKILL.md:21-25`
+internal task-workerをuser-facing commandにせず、single-PR deliveryだけを公開された再利用可能componentへ分離する。skill自体にはworkflow logicを複製しない。
 
 ## 統合ポイント
 
 - source of truth: `commands/task-manager.md`
-- installer: `install.sh` が `skills/*/` を自動列挙し、skill directoryをsymlinkする
+- delivery dependency: `commands/git-pr-merge.md`
+- installer: `install.sh`
 - test: `tests/commands/test-task-manager.sh`
 
 ## 注意事項・既知の制限
 
-- command sourceがmissingまたはunreadableならworkflowを実行しない。
-- skill自体からcommand sourceを編集しない。
-- `task-worker`はuser-facing entry pointではない。
-
-根拠: `skills/task-manager/SKILL.md:21-25`
+- task-workerをstandalone command/skillとして公開しない。
+- command sourceがmissing/unreadableなら実行しない。
 
 ## 変更履歴（git log より自動生成）
 
-- 9ef8e99 feat(#377): add independent task manager workflow
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- 5f1d984 #377 Add independent task-manager batch workflow (#378)

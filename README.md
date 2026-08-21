@@ -8,7 +8,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 |---|---|
 | `/work` | Main implementation entry point. Routes agenda-labeled issues to `/mtg`, tells the user to run `/triage-issues-for-hazard` first for hazard-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
 | `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Records the original working tree and links only explicitly needed untracked/ignored paths; its self-created links are automatically excluded from status checks. |
-| `/task-manager` | Independent batch workflow for one to three implementation issues. After one combined plan approval, real `task-worker` sub-agents create isolated Draft source PRs; one approval of the complete Draft set authorizes input-ordered squash merges and one automatically merged localized documentation PR. The first PR is delivery-validated directly, while each later actual PR branch incorporates latest `main` before authoritative required-CI or local-fallback validation. |
+| `/task-manager` | Batch executor for one to three user-provided implementation issues. After combined plan and complete Draft-set approvals, it delegates each approved source PR and head SHA to `/git-pr-merge` in input order, then performs one localized documentation pass. |
 | `/mtg` | Facilitates a human-led, non-linear discussion for an agenda-labeled issue; implementation issues are created only when the user explicitly runs `/new-issue`. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
@@ -24,6 +24,7 @@ A structured AI-driven development workflow toolkit for Claude Code and Codex CL
 | `/docs-sync` | Syncs `docs/*` and README from `git diff`; on HARD STOP, automatically delegates comprehensive regeneration to `/init-docs` in documentation-only mode, then resumes and writes Docs Sync Result for `/git-pr`. |
 | `/git-commit` | Normalizes WIP commits when needed, checks staged changes, and creates a Conventional Commit. |
 | `/git-pr` | Reads PR title/body/docs-sync-result from session temp and creates a ready PR. This is the end of the `/work`/`/task` flow — further review and merge are manual. |
+| `/git-pr-merge` | Delivers one explicitly reviewed Draft or Ready PR: pins the approved head SHA, refreshes the actual PR branch with latest main in an owned worktree, validates the current head, and squash-merges it. Also serves as `/task-manager`'s sequential source-delivery component. |
 | `/init-docs` | Re-observes the repository and reconstructs project design docs. Defaults to standalone mode with its own draft PR; explicit documentation-only mode preserves the current branch and skips commit, push, and PR creation. Creates L0 only when absent. |
 | `/concept-maker` | Standalone entry point that processes L0 promotion candidates queued in `docs/.ai/l0_candidates.md` by `/docs-sync`, iterating on wording with the user until explicit approval, then appends to `docs/L0_concept/`. The only AI-facing write path to L0 besides `/init-docs`'s first-time creation. |
 | `/coding-general` | Language-independent coding principles. |
@@ -101,12 +102,15 @@ Codex omits status items whose current values are unavailable. Restart the relev
 /review-resolve #N
   PR review comments -> address/reply/skip interactively -> commit/push/reply as needed
 
+/git-pr-merge #N
+  reviewed PR + approved head SHA -> latest-main refresh -> current-head validation -> squash merge
+
 /work-multi (opt-in, for deliberate concurrent sessions)
   EnterWorktree -> new isolated worktree -> lazily link needed untracked files -> runs /work unchanged
 
 /task-manager #x [#y] [#z] (independent batch workflow; maximum three issues)
   investigate all issues -> approve all plans -> one task-worker per issue -> Draft source PR set
-  approve complete Draft set -> validate/squash first PR -> refresh, validate, and squash later PRs in input order
+  approve complete Draft set with head SHAs -> delegate every PR to /git-pr-merge in input order
   latest main + merged changed-file union -> localized docs PR -> automatic validation and merge
 ```
 
@@ -131,6 +135,7 @@ bash tests/commands/test-mtg.sh
 bash tests/commands/test-coding-guidelines.sh
 bash tests/commands/test-work-multi.sh
 bash tests/commands/test-task-manager.sh
+bash tests/commands/test-git-pr-merge.sh
 bash tests/install/test-install.sh
 bash tests/install/test-setup-statusline-for-codex.sh
 bash tests/scripts/test-link-worktree-untracked.sh
@@ -144,7 +149,8 @@ shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_mod
 - `git diff` is truth for docs sync; PR text is supplemental.
 - `/task` creates and updates L3 per-file docs (`docs/L3_implementation/<source-path>.md`) as part of implementation; `/docs-sync` handles all other docs updates and auto-inserts `git log --oneline -10` output into the `## 変更履歴（git log より自動生成）` section of existing L3 per-file docs.
 - `/docs-sync` makes minimal updates and, when the structure can no longer be explained locally, runs `/init-docs` in documentation-only mode before resuming its normal commit/result flow.
-- `/task-manager` is independent from the existing implementation and documentation workflows: source work is isolated per issue, the first approved PR is delivery-validated and squash-merged, each later actual PR branch incorporates latest `main` before authoritative validation and squash merge, and documentation is synchronized once after the approved source PR set is merged.
+- `/task-manager` is an executor for the user-provided issue order: source work is isolated per issue, the complete Draft set fixes each approved head SHA, each source PR is delegated in order to `/git-pr-merge`, and documentation is synchronized once after source delivery.
+- `/git-pr-merge` never uses a local `main` workspace for delivery or conflict repair; every Draft and Ready PR is refreshed and validated on its actual head branch before explicit squash merge.
 - `/init-docs` defaults to standalone mode; documentation-only mode is used only when explicitly instructed and never creates a branch, commit, push, or PR.
 - `~/.claude/` and `~/.codex/` are symlink-only; this repository remains the source of truth.
 - Workspace cleanup uses stash; destructive git operations require explicit human control.
