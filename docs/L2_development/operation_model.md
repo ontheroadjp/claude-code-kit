@@ -121,13 +121,21 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 | `python3 scripts/analyze_access.py --all` | access logs の全期間集計 | `commands/analyze-access.md:27-35` |
 | `python3 scripts/analyze_auto_approve.py --all` | auto-approve logs の全期間集計 | `commands/analyze-auto-approve.md:28-36` |
 | `python3 scripts/analyze_token_usage.py --all` | token-usage logs の全期間集計 | `commands/analyze-token-usage.md:27-35` |
+| `shellcheck -x $(find ...)` | CI と同じ除外条件で全 shell script を lint | `.github/workflows/shellcheck.yml:8-18` |
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
+| `bash tests/hooks/test-session-paths.sh` | session path resolution contract | `tests/hooks/test-session-paths.sh` |
 | `bash tests/commands/test-mtg.sh` | agenda / mtg workflow contract | `tests/commands/test-mtg.sh` |
 | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition and portability contract | `tests/commands/test-coding-guidelines.sh` |
+| `bash tests/commands/test-workflow-contracts.sh` | docs/workflow responsibility boundary contract | `tests/commands/test-workflow-contracts.sh` |
+| `bash tests/commands/test-work-multi.sh` | isolated worktree workflow contract | `tests/commands/test-work-multi.sh` |
 | `bash tests/commands/test-task-manager.sh` | task-manager batch orchestration contract | `tests/commands/test-task-manager.sh` |
 | `bash tests/commands/test-git-pr-merge.sh` | reviewed PR delivery safety contract | `tests/commands/test-git-pr-merge.sh` |
+| `bash tests/commands/test-hazard-workflows.sh` | hazard scan / triage / work routing contract | `tests/commands/test-hazard-workflows.sh` |
 | `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract | `tests/install/test-install.sh` |
 | `bash tests/install/test-setup-statusline-for-codex.sh` | Codex config の追加・置換・設定維持・冪等性 contract | `tests/install/test-setup-statusline-for-codex.sh` |
+| `bash tests/scripts/test-link-worktree-untracked.sh` | worktree lazy linker contract | `tests/scripts/test-link-worktree-untracked.sh` |
+| `bash tests/scripts/test-rename-thread.sh` | Claude transcript title update contract | `tests/scripts/test-rename-thread.sh` |
+| `bash tests/scripts/test-worktree-status.sh` | linked path filtering contract | `tests/scripts/test-worktree-status.sh` |
 | `python3 -m pytest tests/scripts/` | log analysis scripts の parse / aggregate / CLI contract | `tests/scripts/` |
 
 ## CI/CD

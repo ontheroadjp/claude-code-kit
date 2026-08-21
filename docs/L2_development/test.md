@@ -4,7 +4,7 @@
 
 このリポジトリには Bash で直接実行する shell tests が14本、pytest で実行する Python tests が `tests/scripts/` にある。`tests/hooks/test-approval-hooks.sh` と全shell scriptへのShellCheckはCI実行されるが、command contract tests・installer tests・pytestは現状ローカル検証のみである。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-mtg.sh`, `tests/commands/test-coding-guidelines.sh`, `tests/commands/test-workflow-contracts.sh`, `tests/commands/test-work-multi.sh`, `tests/install/test-install.sh`, `tests/scripts/test-link-worktree-untracked.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
+根拠: `tests/commands/*.sh`（7本）, `tests/hooks/*.sh`（2本）, `tests/install/*.sh`（2本）, `tests/scripts/*.sh`（3本）, `tests/scripts/test_*.py`（3本）, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
 
 ## Hook safety test
 
@@ -14,7 +14,15 @@
 bash tests/hooks/test-approval-hooks.sh
 ```
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-1163`, `tests/README.md`, `.github/workflows/test.yml:1-18`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1385`, `tests/README.md`, `.github/workflows/test.yml:1-18`
+
+`tests/hooks/test-session-paths.sh` は session-approved / session temp path の既定値、環境変数 override、symlink 経由の helper 解決、不正引数の拒否を検証する。
+
+```bash
+bash tests/hooks/test-session-paths.sh
+```
+
+根拠: `tests/hooks/test-session-paths.sh:1-87`
 
 ## Command workflow contract tests
 
@@ -42,7 +50,7 @@ bash tests/commands/test-workflow-contracts.sh
 
 `test-workflow-contracts.sh` は `docs-sync.md`・`init-docs.md`・`task.md`・`git-pr.md` 間の契約（HARD STOP からの自動委譲、standalone mode のデフォルト、`/task` が docs-sync の内部エスカレーションを意識しないこと、PR 作成責務が `/git-pr` にあること等）を静的検証する。
 
-根拠: `tests/commands/test-workflow-contracts.sh:1-47`
+根拠: `tests/commands/test-workflow-contracts.sh:1-56`
 
 ```bash
 bash tests/commands/test-work-multi.sh
@@ -55,11 +63,12 @@ bash tests/commands/test-work-multi.sh
 ```bash
 bash tests/commands/test-task-manager.sh
 bash tests/commands/test-git-pr-merge.sh
+bash tests/commands/test-hazard-workflows.sh
 ```
 
-`test-task-manager.sh` はcomplete Draft setのapproved-head context、input-order delivery delegation、partial completion、documentation A/M/D/R、completion commentsを検証する。`test-git-pr-merge.sh` はstandalone/delegated approval、unknown commit、latest-main refresh、current-head CI/local validation、actual-branch conflict repair、local main prohibition、explicit squash deliveryを検証する。
+`test-task-manager.sh` はcomplete Draft setのapproved-head context、input-order delivery delegation、partial completion、documentation A/M/D/R、completion commentsを検証する。`test-git-pr-merge.sh` はstandalone/delegated approval、unknown commit、latest-main refresh、current-head CI/local validation、actual-branch conflict repair、local main prohibition、explicit squash deliveryを検証する。`test-hazard-workflows.sh` は auto-approve/access の source 固有分析、legacy 名の排除、hazard-candidate から triage-approved への gate を検証する。
 
-根拠: `tests/commands/test-task-manager.sh:1-132`, `tests/commands/test-git-pr-merge.sh:1-81`
+根拠: `tests/commands/test-task-manager.sh:1-139`, `tests/commands/test-git-pr-merge.sh:1-81`, `tests/commands/test-hazard-workflows.sh:1-39`
 
 ## Installer contract test
 
@@ -77,17 +86,19 @@ bash tests/install/test-setup-statusline-for-codex.sh
 
 根拠: `tests/install/test-install.sh:1-176`, `tests/install/test-setup-statusline-for-codex.sh:1-122`
 
-## Worktree untracked-file link test
+## Shell script functional tests
 
 `tests/scripts/test-link-worktree-untracked.sh` は `scripts/link-worktree-untracked.sh` の symlink 挙動を、一時 git リポジトリを使った functional test で検証する（issue #296）。
 
 ```bash
 bash tests/scripts/test-link-worktree-untracked.sh
+bash tests/scripts/test-worktree-status.sh
+bash tests/scripts/test-rename-thread.sh
 ```
 
-トップレベル untracked ファイル/ディレクトリの symlink、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性、および `hooks/lib/session-paths.sh` が解決可能な場合の manifest（`worktree-untracked-symlinks.txt`）書き出しを確認する（issue #318）。
+トップレベル untracked ファイル/ディレクトリの symlink、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性、および `hooks/lib/session-paths.sh` が解決可能な場合の manifest（`worktree-untracked-symlinks.txt`）書き出しを確認する（issue #318）。`test-worktree-status.sh` は manifest 記録済み symlink のみを status から除外し、実変更を残すことを検証する。`test-rename-thread.sh` は session transcript への custom title 追記、session ID 不在時の no-op、空 title の拒否を検証する。
 
-根拠: `tests/scripts/test-link-worktree-untracked.sh:1-126`
+根拠: `tests/scripts/test-link-worktree-untracked.sh:1-208`, `tests/scripts/test-worktree-status.sh:1-95`, `tests/scripts/test-rename-thread.sh:1-48`
 
 ## Log analysis script tests
 
@@ -117,5 +128,6 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-mtg.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-task-manager.sh`, `test-git-pr-merge.sh`, installer/worktree tests）と pytest は CI に登録されていない。ただし全shell testsはShellCheck対象である。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の13本の shell tests と pytest は CI に登録されていない。ただし全shell testsはShellCheck対象である。
+- 2026-08-21 の `/init-docs` 実行では `tests/commands/test-workflow-contracts.sh` の2 assertion が失敗した。`commands/task.md` から `/rename` 手順を削除した実装（commit `4f0953a`）に対し、同 test が `/rename` と installed helper の呼び出しを引き続き要求しているためである。確認・修正対象: `tests/commands/test-workflow-contracts.sh:43-46`, `commands/task.md`。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。

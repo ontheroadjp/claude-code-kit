@@ -244,7 +244,7 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 `tests/hooks/test-approval-hooks.sh` は PreToolUse hook の shell verification である。破壊的 Bash block、session-approved があっても破壊的操作を block すること、read-only approval、session-approved approval、session temp boundary、working repo dynamic defense、quoted heredoc と nested subshell の走査、`guard-destructive-cmd.sh` の JSON block output を検証する。`rm [-f] <literal-path>` は repo 内 path を positive case、repo root・`.git`・変数・glob・session-approved 自身を negative case として固定する。さらに issue #261 の回帰防止として、absent な session-approved への初回実承認 write は通り、exists-empty から実内容への拡張は block される Write-handler state transition を固定する。
 
-根拠: `tests/hooks/test-approval-hooks.sh:1-1340`
+根拠: `tests/hooks/test-approval-hooks.sh:1-1385`
 
 `tests/commands/test-mtg.sh` は exact agenda label routing、非線形の検討、明示指示だけでの `/new-issue`、ユーザー主導の close、command/skill contract を静的検証する。
 
@@ -257,6 +257,10 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 `tests/commands/test-workflow-contracts.sh` は `/docs-sync`・`/init-docs`・`/task`・`/patch`・`/git-pr` の責務境界を静的検証する。`/docs-sync` が実装と承認済みプランから一意に定まる文書化を再確認せず、未解決の文書化判断だけを確認対象にする契約も固定する（issue #354）。
 
 根拠: `tests/commands/test-workflow-contracts.sh:26-31`
+
+`tests/commands/test-hazard-workflows.sh` は `/analyze-hazard-scan`・`/triage-issues-for-hazard`・`/work` の source 固有診断と label gate を静的検証し、旧 auto-approve 専用名称が戻らないことも確認する。
+
+根拠: `tests/commands/test-hazard-workflows.sh:1-39`
 
 `tests/install/test-install.sh` は isolated fixture HOME に installer を2回実行し、symlink、hook migration、Codex native status line 登録の統合契約と冪等性を検証する。`tests/install/test-setup-statusline-for-codex.sh` は fresh config、`[tui]` 不在、既存 status line 置換、他設定の維持、再実行を個別に検証する。
 
@@ -272,11 +276,15 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 `tests/commands/test-task-manager.sh` はinput boundary、real task-worker、complete Draft setのapproved-head context、input-order `/git-pr-merge` delegation、embedded delivery mechanicsのabsence、partial completion、A/M/D/R documentation handling、completion commentを検証する。`tests/commands/test-git-pr-merge.sh` はstandalone/delegated approval、head drift、known/unknown commit、latest-main refresh、CI/local fallback、actual-branch conflict repair、Draft/Ready、local main prohibition、explicit squash verificationを検証する。
 
-根拠: `tests/commands/test-task-manager.sh:1-132`, `tests/commands/test-git-pr-merge.sh:1-81`
+根拠: `tests/commands/test-task-manager.sh:1-139`, `tests/commands/test-git-pr-merge.sh:1-81`
 
 `tests/scripts/test-link-worktree-untracked.sh` は lazy linker の functional test である。`prepare` が source と空 manifest だけを記録し、`link` が指定された untracked/ignored path だけを作成・manifest へ一度だけ記録することを確認する。tracked path、unsafe path、unavailable path は拒否する。
 
-根拠: `tests/scripts/test-link-worktree-untracked.sh:1-126`
+根拠: `tests/scripts/test-link-worktree-untracked.sh:1-208`
+
+`tests/scripts/test-rename-thread.sh` は Claude transcript への custom title 追記、session ID 不在時の no-op、空 title の拒否を検証する。`tests/scripts/test-worktree-status.sh` は manifest 記録済み symlink を除外しつつ、実際の untracked/modified path と通常 worktree の status を保持する。
+
+根拠: `tests/scripts/test-rename-thread.sh:1-48`, `tests/scripts/test-worktree-status.sh:1-95`
 
 ## Install and Status Line
 

@@ -34,13 +34,21 @@ Repo Profile の commands はすべて実体に対応する。
 | analyze | `python3 scripts/analyze_access.py --all` | access log aggregator |
 | analyze | `python3 scripts/analyze_auto_approve.py --all` | auto-approve log aggregator |
 | analyze | `python3 scripts/analyze_token_usage.py --all` | token-usage log aggregator |
+| shell lint | `shellcheck -x $(find ...)` | all shell scripts with CI exclusions |
 | shell test | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
+| shell test | `bash tests/hooks/test-session-paths.sh` | session path resolution contract |
 | shell test | `bash tests/commands/test-mtg.sh` | agenda / mtg contract |
 | shell test | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition, routing, portability contract |
+| shell test | `bash tests/commands/test-workflow-contracts.sh` | workflow responsibility boundary contract |
+| shell test | `bash tests/commands/test-work-multi.sh` | isolated worktree contract |
 | shell test | `bash tests/commands/test-task-manager.sh` | batch orchestration and delegated delivery contract |
 | shell test | `bash tests/commands/test-git-pr-merge.sh` | approved-head and PR delivery safety contract |
+| shell test | `bash tests/commands/test-hazard-workflows.sh` | hazard workflow routing contract |
 | shell test | `bash tests/install/test-install.sh` | installer contract |
 | shell test | `bash tests/install/test-setup-statusline-for-codex.sh` | Codex status line config contract |
+| shell test | `bash tests/scripts/test-link-worktree-untracked.sh` | worktree lazy linker contract |
+| shell test | `bash tests/scripts/test-rename-thread.sh` | transcript title update contract |
+| shell test | `bash tests/scripts/test-worktree-status.sh` | worktree status filtering contract |
 | Python test | `python3 -m pytest tests/scripts/` | analysis-script contract |
 
 根拠: `docs/.ai/repo.profile.json:commands`, `site/package.json:4-8`, `.github/workflows/deploy.yml:31-37`, `commands/analyze-access.md:27-35`, `commands/analyze-auto-approve.md:28-36`, `commands/analyze-token-usage.md:27-35`, `tests/` 実体一覧
@@ -49,14 +57,14 @@ Repo Profile の commands はすべて実体に対応する。
 
 - `doc_roots` の4 directory は実在し、L0、L1、L2、L3 の生成済み構造と一致する。
 - `primary_docs.investigation` と `primary_docs.structure` は実在する。
-- `commands` の全18項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
+- `commands` の全26項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
 - `active_commands` 28件、`skills` 28件、`hooks` 9件は実体一覧と一致する。
 
 根拠: `docs/.ai/repo.profile.json`, `docs/L2_development/operation_model.md`, `docs/L2_development/test.md`, `docs/L2_development/cicd.md`
 
 ## CI 定義との整合性
 
-CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest（`tests/scripts/`）は依然として CI job に含まれない。
+CI 定義は `.github/workflows/` に3件存在する。shell tests 14本のうち CI job が直接実行するのは `tests/hooks/test-approval-hooks.sh` のみで、他13本と pytest（`tests/scripts/`）は CI job に含まれない。全 shell tests は ShellCheck の対象である。
 
 根拠: `.github/workflows/deploy.yml:1-53`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/test.yml:1-18`, `README.md:80-98`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
 
@@ -74,16 +82,21 @@ CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg
 ## 未確認事項
 
 - coverage collection / threshold は定義されていない。確認先: `tests/`、`.github/workflows/`。
-- `tests/hooks/test-approval-hooks.sh` は CI（`test.yml`）で実行されるが、`tests/commands/test-mtg.sh`・`tests/commands/test-coding-guidelines.sh`・`tests/install/test-install.sh`・pytest は引き続き CI で実行されない。確認先: `.github/workflows/test.yml`。
+- `tests/hooks/test-approval-hooks.sh` は CI（`test.yml`）で実行されるが、他13本の shell tests と pytest は引き続き CI で実行されない。確認先: `.github/workflows/test.yml`。
 - Python / pytest の version pin と dependency manifest は存在しない。確認先: repository root の package・runtime 定義（現時点では未検出）。ローカル観測値は Python 3.12.3、pytest 9.1.1。
+
+## 検出した不整合
+
+`tests/commands/test-workflow-contracts.sh` は `commands/task.md` に `/rename` と installed helper 呼び出しが存在することを要求するが、commit `4f0953a` で task の同手順は削除されている。2026-08-21 の実行では該当2 assertion が失敗した。どちらを正とするかは実装変更の判断を伴うため `/init-docs` では修正せず、`tests/commands/test-workflow-contracts.sh:43-46` と `commands/task.md` を次の確認先とする。
 
 ## Done Criteria
 
 | 条件 | 判定 | 理由 |
 |---|---|---|
 | docs の事実が実体と矛盾しない | yes | path、command、workflow、dependency、entry point を再観測した |
-| Repo Profile と docs が相互に説明可能 | yes | 18 commands、28 command/skill、9 hooks を双方向に突合した |
+| Repo Profile と docs が相互に説明可能 | yes | 26 commands、28 command/skill、9 hooks を双方向に突合した |
 | CI と docs が一致する | yes | Node.js 24 と site npm build/deploy を CI から採用した |
 | 未確認事項が分離されている | yes | coverage、CI test 非登録、Python dependency pin 不在を明記した |
+| repository-local contract tests が実装と一致する | no | workflow contract test の task `/rename` assertion が2件失敗した |
 
-判定: 完了。
+判定: 部分完了。生成・更新した docs、Repo Profile、CI の相互説明は成立するが、repository-local contract test と `commands/task.md` の不整合が残るため、リポジトリ全体の整合性は保証しない。

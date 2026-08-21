@@ -133,12 +133,15 @@ bash tests/hooks/test-approval-hooks.sh
 bash tests/hooks/test-session-paths.sh
 bash tests/commands/test-mtg.sh
 bash tests/commands/test-coding-guidelines.sh
+bash tests/commands/test-workflow-contracts.sh
 bash tests/commands/test-work-multi.sh
 bash tests/commands/test-task-manager.sh
 bash tests/commands/test-git-pr-merge.sh
+bash tests/commands/test-hazard-workflows.sh
 bash tests/install/test-install.sh
 bash tests/install/test-setup-statusline-for-codex.sh
 bash tests/scripts/test-link-worktree-untracked.sh
+bash tests/scripts/test-rename-thread.sh
 bash tests/scripts/test-worktree-status.sh
 python3 -m pytest tests/scripts/
 shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_modules/*" -not -path "./.git/*" -iname "*.sh")
