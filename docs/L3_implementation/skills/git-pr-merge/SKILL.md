@@ -29,3 +29,7 @@ deliveryロジックをskillへ複製せずcommand specificationへ一元化す�
 ## 注意事項・既知の制限
 
 command sourceがmissing/unreadableならworkflowを実行しない。
+
+## 変更履歴（git log より自動生成）
+
+- 57dce6c feat(#389): add reviewed PR delivery workflow

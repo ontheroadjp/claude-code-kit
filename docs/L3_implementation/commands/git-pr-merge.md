@@ -47,3 +47,7 @@ CIがvalidation planを完全coverするときだけCI単独をauthoritativeに�
 - active invocationのknown-commit stateは永続化しない。
 - dirty/unavailable/unowned worktreeを自動cleanupまたはmain workspace fallbackしない。
 - stopping後のbranch/worktree recoveryはcallerが行う。
+
+## 変更履歴（git log より自動生成）
+
+- 57dce6c feat(#389): add reviewed PR delivery workflow

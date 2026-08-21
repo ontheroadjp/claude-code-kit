@@ -27,6 +27,10 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
+- a46be53 feat(#321): unify operational hazard workflows
+- 91067f8 docs: initialize project documentation (init-docs)
 - d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - c25b25a docs(#126): add pr-review to catalogs

@@ -29,3 +29,16 @@ repositoryの公開入口として、利用可能なcommand、installation、usa
 ## 注意事項・既知の制限
 
 READMEは概要であり、実行時の完全な安全条件は各command specificationをsource of truthとする。
+
+## 変更履歴（git log より自動生成）
+
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- 6dc29d5 #387 Simplify task-manager source delivery (#388)
+- b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
+- 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
+- 5f1d984 #377 Add independent task-manager batch workflow (#378)
+- 0bfdaf3 #372 Move status line setup scripts into scripts directory (#373)
+- 3fa2055 #370 Add idempotent Codex status line setup (#371)
+- 396533d #367 Automate CLAUDE.md/AGENTS.md global symlinks in install.sh (#368)
+- c1f6d5e #365 Split distributed CLAUDE.md from this repo's project-local CLAUDE.md (#366)
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)

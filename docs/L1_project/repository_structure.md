@@ -28,9 +28,9 @@ core-toolkit-for-claude/
 
 ### `commands/`
 
-Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が実装の通常入口で、agenda issue は `mtg.md` へ、hazard-candidate issue は `/triage-issues-for-hazard` の実行案内で終了し、それ以外の実装は `task.md` または `patch.md` に委譲する。`mtg.md` はユーザー主導の対話であり、`/new-issue` を自動実行しない。`git-pr.md` の ready PR 作成で `/work`/`/task` フローは完結する。`work-multi.md` は `work.md` と同一ワークフローを `EnterWorktree` 隔離下で実行する明示的 opt-in 入口である。
+Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常実装入口で、`git-pr.md` のready PR作成で `/work` と `/task` は完結する。review後の単一PR deliveryは `git-pr-merge.md` がapproved head・owned worktree・current-head validation・squash mergeを管理する。`task-manager.md` は複数source PRを準備し、complete Draft set承認後に同delivery workflowへ入力順で委譲する。
 
-根拠: `commands/work.md:1-163`, `commands/mtg.md:1-77`, `commands/work-multi.md:1-50`, `commands/git-pr.md:62-65`, `commands/README.md`
+根拠: `commands/work.md:1-187`, `commands/git-pr.md:62-65`, `commands/git-pr-merge.md:1-147`, `commands/task-manager.md:1-412`, `commands/README.md`
 
 ### `skills/`
 
@@ -46,9 +46,9 @@ Claude Code / Codex hook scripts と共有 helper を置く。現在存在する
 
 ### `tests/`
 
-shell 検証 scripts と Python の pytest suite を置く。`tests/hooks/test-approval-hooks.sh` は hook safety、`tests/commands/test-mtg.sh` は agenda routing とユーザー主導の対話境界、`tests/commands/test-coding-guidelines.sh` は coding layerの合成・routing・repository非依存性、`tests/commands/test-workflow-contracts.sh` は docs-sync/init-docs/task/git-pr 間の契約、`tests/commands/test-work-multi.sh` は work-multi 関連ファイルの契約（issue #296）、`tests/install/test-install.sh` は fixture HOME に対する installer の統合契約、`tests/install/test-setup-statusline-for-codex.sh` は Codex config 更新と冪等性、`tests/scripts/test-link-worktree-untracked.sh` は untracked symlink の functional test（issue #296）、`tests/scripts/test_analyze_*.py` はログ解析 scripts の parse・aggregate・CLI output を検証する。
+shell 検証 scripts と Python の pytest suite を置く。command testsにはagenda/coding/workflow/worktree契約に加え、`test-task-manager.sh`のbatch orchestration契約と`test-git-pr-merge.sh`のreviewed PR delivery契約がある。installer、hook safety、worktree linker、analysis scriptsのtestsも配置する。
 
-根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-mtg.sh`, `tests/commands/test-coding-guidelines.sh:1-53`, `tests/commands/test-workflow-contracts.sh:1-47`, `tests/commands/test-work-multi.sh:1-83`, `tests/install/test-install.sh:1-71`, `tests/scripts/test-link-worktree-untracked.sh:1-126`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`
+根拠: `tests/README.md:1-88`, `tests/commands/test-task-manager.sh:1-132`, `tests/commands/test-git-pr-merge.sh:1-81`, `tests/hooks/test-approval-hooks.sh`, `tests/install/test-install.sh`, `tests/scripts/`
 
 ### `templates/`
 

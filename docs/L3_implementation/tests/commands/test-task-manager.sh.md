@@ -42,3 +42,12 @@ single-PR deliveryの詳細は `test-git-pr-merge.sh`へ移し、このtestはta
 ## 注意事項・既知の制限
 
 sub-agent schedulingやGitHub mergeを実行するend-to-end testではなく、static workflow contract testである。
+
+## 変更履歴（git log より自動生成）
+
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- 6dc29d5 #387 Simplify task-manager source delivery (#388)
+- b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
+- 823f676 #381 Align task-manager source PR titles with work (#382)
+- 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
+- 5f1d984 #377 Add independent task-manager batch workflow (#378)

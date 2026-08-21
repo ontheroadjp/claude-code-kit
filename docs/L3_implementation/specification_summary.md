@@ -26,13 +26,13 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/task-manager` (`commands/task-manager.md`)
 
-1〜3件のimplementation issueを1つのbatchとして扱う、既存implementation/documentation workflowから独立した入口。4件以上、重複、不正形式はrepository変更前に拒否する。親agentが全issueを調査してissue-specific planとbatch integration planを一括提示し、承認後にissueごとのisolated worktree・branchと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、approved scopeの実装・test・direct commit/push・`#<issue-number> <English title>` 形式のDraft source PR・structured handoffまでを担当するが、documentation、Ready化、merge、独自のユーザー確認は行わない。
+ユーザー指定の1〜3 implementation issueを入力順に実行するbatch executor。4件以上、重複、不正形式、closed/blocked/management issue、既存作業はmutation前に拒否するが、issue選定、batch compatibility、conflict-risk、merge順最適化は行わない。親agentが全issue planを一括提示し、承認後にissueごとのisolated worktreeと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、source/test実装、validation、commit/push、Draft PR、structured handoffまでを担当する。
 
-親はcomplete Draft source PR setだけを提示し、そのbatch-wide承認後にsource PRを入力順に処理する。parallel workerのvalidationはearly feedbackとし、最初のPRはcurrent actual branchでdelivery validation後に明示的にsquash mergeする。各後続actual PR branchにはlatest mainをnormal mergeし、conflictをforward repairしたうえで、equivalent required CIまたはplanned local fallbackによるauthoritative delivery validationを行う。expected-head SHA transactionは持たず、PR state、required checks、latest-main包含、merge API result、main反映を確認してから次へ進む。routine refreshと機械的repairはbatch承認に含み、material changeだけcomplete set gateへ戻す。全source merge後、merged batch source PRのchanged-file unionをscope、finalization時のlatest mainをtruthとして独立したlocalized documentation syncを1回行い、documentation-only PRを追加承認なしで検証・Ready化・mergeする。全source PRとdocumentation PRのmerge確認後だけbatch成功を報告する。
+親はcomplete Draft source PR setだけを提示し、PRごとのfull head SHA、scope/behavior、final validation planをbatch-wide approvalで固定する。source deliveryは入力順に `/git-pr-merge`へ完全なdelegated contextを渡し、latest-main refresh、current-head validation、conflict repair、Ready transition、squash mergeのstate machineをtask-manager内へ複製しない。unknown commitやmaterial changeは対象PRだけを再承認する。途中停止時は完了済みmergeをrollbackせず、completed/pending stateを報告する。
 
-初期実装は1repository 1sessionの運用disciplineに依存し、worker queue、model設定、永続batch state、cross-session resume、distributed lock、GitHub Actions state manager、PM schedulerを持たない。issue選定、batch compatibility、conflict-risk評価、merge順最適化、repository全体の進捗管理も行わない。`task-worker` protocolは親command内にあり、単独command/skillとして公開しない。
+全source delivery後はmerged changed-file unionをAdded/Modified/Deleted/Renamedへ分類し、latest mainをtruthとしてL3 per-file docs、aggregate docs、README、test index、config、schema、public surfaceを同期する。documentation failureは `source complete / documentation incomplete` としてstandalone `/init-docs` recoveryを案内する。全merge確認後にissue completion commentを投稿し、comment failureはmanual follow-upとする。
 
-根拠: `commands/task-manager.md:1-51`, `commands/task-manager.md:53-144`, `commands/task-manager.md:146-304`, `commands/task-manager.md:306-412`, issue #377, issue #384, issue #387
+根拠: `commands/task-manager.md:1-145`, `commands/task-manager.md:147-296`, `commands/task-manager.md:298-412`, issue #389
 
 ### `/mtg` (`commands/mtg.md`)
 
@@ -150,11 +150,19 @@ PR 番号を受け取り、PR ブランチに checkout し、事前に `git diff
 
 根拠: `commands/git-pr.md:1-66`
 
+### `/git-pr-merge` (`commands/git-pr-merge.md`)
+
+review済みの単一Draft/Ready PRをapproved head SHAで固定し、owned PR worktree上でlatest `origin/main`をnormal mergeし、current post-refresh headをCIまたはapproved local commandsで検証してexplicit squash mergeするworkflow。standaloneは表示したPR/headへの明示承認を求め、delegated invocationはPR番号、approved head、scope/behavior、validation plan、approval source、owned worktreeを必須とする。
+
+active invocation自身がSHA・parent・目的・changed pathsを記録したlatest-main merge/approved repairだけをknown commitとし、それ以外のhead driftは対象PRだけを再承認する。local `main` workspaceはcheckout、edit、repair、commit、pushに使わず、worktreeがdirty/unavailable/ownership不明ならfallbackせず停止する。merge後はPR state、squash OID、latest-main包含、1-commit resultを再取得して検証する。cleanupはcaller責務である。
+
+根拠: `commands/git-pr-merge.md:1-48`, `commands/git-pr-merge.md:50-111`, `commands/git-pr-merge.md:113-147`, issue #389
+
 ## Skills
 
-`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`mtg` skill は `/new-issue` と close をユーザー明示指示に限定する。`task-manager` skillは実 `task-worker` sub-agentをissueごとに最大3つ使い、model overrideを省略して親modelを継承し、workerを単独command/skillとして公開しない契約を固定する。
+`skills/*/SKILL.md` は Codex 用の wrapper で、対応する `commands/*.md` を Source of Truth として読む。`mtg` skill は `/new-issue` と close をユーザー明示指示に限定する。`task-manager` skillは実 `task-worker`、親model継承、`git-pr-merge` delegationを固定する。`git-pr-merge` skillはstandalone/delegated approvalの区別、approved head必須、local main fallback禁止、caller-owned cleanupを固定する。
 
-根拠: `skills/init-docs/SKILL.md:1-14`, `skills/mtg/SKILL.md`, `skills/task-manager/SKILL.md:1-25`, `skills/` 実体一覧
+根拠: `skills/init-docs/SKILL.md:1-14`, `skills/mtg/SKILL.md`, `skills/task-manager/SKILL.md:1-29`, `skills/git-pr-merge/SKILL.md:1-25`, `skills/` 実体一覧
 
 ## Hooks
 
@@ -262,9 +270,9 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
 
-`tests/commands/test-task-manager.sh` は `/task-manager` の1〜3件入力境界、4件以上・重複拒否、最大3つの実sub-agentと親model継承、plan/Draft set gate、入力順source delivery、最初のPR後の後続actual branch latest-main refresh、forward conflict repair、parallel validationのearly-feedback限定、required CIまたはlocal delivery fallback、expected-head SHA transactionの不在、明示的squash merge、required-check・authoritative merge result・main反映確認、Product Manager責務の非導入、synthetic integration artifactの不在、localized documentation sync、永続state/resume/lockの非導入、既存workflowからのruntime独立性を固定文字列で検証する。
+`tests/commands/test-task-manager.sh` はinput boundary、real task-worker、complete Draft setのapproved-head context、input-order `/git-pr-merge` delegation、embedded delivery mechanicsのabsence、partial completion、A/M/D/R documentation handling、completion commentを検証する。`tests/commands/test-git-pr-merge.sh` はstandalone/delegated approval、head drift、known/unknown commit、latest-main refresh、CI/local fallback、actual-branch conflict repair、Draft/Ready、local main prohibition、explicit squash verificationを検証する。
 
-根拠: `tests/commands/test-task-manager.sh:1-139`
+根拠: `tests/commands/test-task-manager.sh:1-132`, `tests/commands/test-git-pr-merge.sh:1-81`
 
 `tests/scripts/test-link-worktree-untracked.sh` は lazy linker の functional test である。`prepare` が source と空 manifest だけを記録し、`link` が指定された untracked/ignored path だけを作成・manifest へ一度だけ記録することを確認する。tracked path、unsafe path、unavailable path は拒否する。
 

@@ -66,13 +66,13 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 
 ## 変更履歴（git log より自動生成）
 
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- bf1692f feat(#363): add narrowed-read verification principle and track offset/limit usage (#364)
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
+- a46be53 feat(#321): unify operational hazard workflows
+- 8beba5e docs: sync documentation
 - bc4ae7b feat(#296): add /work-multi worktree-isolated entry point
 - 04ddbb4 fix(claude): default to Japanese responses unless instructed otherwise
 - 91067f8 docs: initialize project documentation (init-docs)
 - e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
 - f330e18 docs: initialize project documentation (init-docs)
-- ade5abd feat(#248): add literal-path rm auto-approval and resolve-then-embed convention
-- 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
-- 27f1861 feat(#76): install templates for claude and codex
-- 5faaf5d docs: initialize project documentation (init-docs)
-- 145876c fix(#185): align pr-review with repository workflow rules

@@ -112,7 +112,7 @@ L3 per-file doc の `根拠: <file>:<line-range>` citation を使った対象読
 
 ## Local Tooling Environment
 
-Observed by /init-docs on 2026-08-10:
+Observed by /init-docs on 2026-08-21:
 - gh: 2.97.0
 - gh auth: logged in to github.com; active account available for repository operations
 - node: v24.16.0

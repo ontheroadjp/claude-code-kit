@@ -28,4 +28,9 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
+- 8beba5e docs: sync documentation
+- 91067f8 docs: initialize project documentation (init-docs)
+- 27f1861 feat(#76): install templates for claude and codex
 - 3656e6e docs(#175): add README.md to each module directory

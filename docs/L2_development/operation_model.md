@@ -65,6 +65,18 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 根拠: `commands/review-resolve.md:1-175`
 
+## git-pr-merge flow
+
+`git-pr-merge.md` はreview済み単一PRをdeliveryする。standalone invocationは表示したPRとcurrent head SHAへの明示承認を得る。delegated invocationはPR番号、approved head、scope/behavior、final validation plan、approval source、owned worktreeを必須とする。unknown head driftは対象PRだけを再承認し、actual PR branchへlatest `origin/main`をnormal mergeしてcurrent headをCI/local commandsで検証後、DraftだけReady化してexplicit squash mergeする。local `main` workspaceは一切writeに使わない。
+
+根拠: `commands/git-pr-merge.md:1-147`
+
+## task-manager flow
+
+`task-manager.md` はuser-provided 1〜3 issueをinput orderで実行する。combined plan approval後にreal task-workerがDraft source PRを並行作成し、complete set approvalでPRごとのhead SHAを固定する。その後は各PRを `/git-pr-merge`へ順次委譲し、全source delivery後にA/M/D/R-aware documentation syncとissue completion commentsを行う。partial mergeはrollbackせずcompleted/pending stateとして回復する。
+
+根拠: `commands/task-manager.md:1-412`
+
 ## codex-review flow
 
 `codex-review.md` は PR 番号を受け取り、PR branch へ checkout して `codex review --base origin/<baseRefName>` を実行する。レビュー結果を一時ファイルに保存し、`CODEX_REVIEW_TOKEN` が設定されている場合だけ `gh pr review --approve` または `--request-changes` を提出する。問題ありの場合は `/review-resolve #<PR番号>` を続けて実行する。
@@ -112,6 +124,8 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
 | `bash tests/commands/test-mtg.sh` | agenda / mtg workflow contract | `tests/commands/test-mtg.sh` |
 | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition and portability contract | `tests/commands/test-coding-guidelines.sh` |
+| `bash tests/commands/test-task-manager.sh` | task-manager batch orchestration contract | `tests/commands/test-task-manager.sh` |
+| `bash tests/commands/test-git-pr-merge.sh` | reviewed PR delivery safety contract | `tests/commands/test-git-pr-merge.sh` |
 | `bash tests/install/test-install.sh` | Claude/Codex template symlink と installer idempotency contract | `tests/install/test-install.sh` |
 | `bash tests/install/test-setup-statusline-for-codex.sh` | Codex config の追加・置換・設定維持・冪等性 contract | `tests/install/test-setup-statusline-for-codex.sh` |
 | `python3 -m pytest tests/scripts/` | log analysis scripts の parse / aggregate / CLI contract | `tests/scripts/` |
@@ -126,4 +140,4 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 ## 未確認事項
 
-shell tests は存在するが CI workflow からは実行されない。CI 上の自動検証は VitePress build のみである。根拠: `tests/` 実体一覧、`.github/workflows/deploy.yml:17-52`
+command contract testsはlocal verificationであり、CIはVitePress build、全shell scriptへのShellCheck、approval-hooks testを実行する。根拠: `.github/workflows/deploy.yml`, `.github/workflows/shellcheck.yml`, `.github/workflows/test.yml`

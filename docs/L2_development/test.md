@@ -2,7 +2,7 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が7本、pytest で実行する Python tests が `tests/scripts/` にある。`tests/hooks/test-approval-hooks.sh` は CI 実行されるが、`tests/commands/test-mtg.sh`・他の command contract tests・installer test・pytest は現状ローカル検証のみである。
+このリポジトリには Bash で直接実行する shell tests が14本、pytest で実行する Python tests が `tests/scripts/` にある。`tests/hooks/test-approval-hooks.sh` と全shell scriptへのShellCheckはCI実行されるが、command contract tests・installer tests・pytestは現状ローカル検証のみである。
 
 根拠: `tests/hooks/test-approval-hooks.sh`, `tests/commands/test-mtg.sh`, `tests/commands/test-coding-guidelines.sh`, `tests/commands/test-workflow-contracts.sh`, `tests/commands/test-work-multi.sh`, `tests/install/test-install.sh`, `tests/scripts/test-link-worktree-untracked.sh`, `tests/scripts/`, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
 
@@ -51,6 +51,15 @@ bash tests/commands/test-work-multi.sh
 `test-work-multi.sh` は `commands/work-multi.md` が `EnterWorktree` 呼び出しと `commands/work.md` への委譲のみで構成されゲート定義を重複していないこと、`skills/work-multi/SKILL.md` の scope guard、`commands/work.md` の worktree パスガードと `worktree-` prefix ベースのブランチ分類、`scripts/link-worktree-untracked.sh` の実行権限と `.git`/`.claude` 除外を確認する（issue #296、PR #304）。
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
+
+```bash
+bash tests/commands/test-task-manager.sh
+bash tests/commands/test-git-pr-merge.sh
+```
+
+`test-task-manager.sh` はcomplete Draft setのapproved-head context、input-order delivery delegation、partial completion、documentation A/M/D/R、completion commentsを検証する。`test-git-pr-merge.sh` はstandalone/delegated approval、unknown commit、latest-main refresh、current-head CI/local validation、actual-branch conflict repair、local main prohibition、explicit squash deliveryを検証する。
+
+根拠: `tests/commands/test-task-manager.sh:1-132`, `tests/commands/test-git-pr-merge.sh:1-81`
 
 ## Installer contract test
 
@@ -108,5 +117,5 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-mtg.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-install.sh`, `test-setup-statusline-for-codex.sh`, `test-link-worktree-untracked.sh`）と pytest は CI に登録されていない。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の shell tests（`test-mtg.sh`, `test-coding-guidelines.sh`, `test-workflow-contracts.sh`, `test-work-multi.sh`, `test-task-manager.sh`, `test-git-pr-merge.sh`, installer/worktree tests）と pytest は CI に登録されていない。ただし全shell testsはShellCheck対象である。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。

@@ -1,14 +1,14 @@
 # Consistency Checks
 
-最終実行: 2026-08-15
+最終実行: 2026-08-21
 
 ## docs → 実体
 
 ### Command / skill paths
 
-- `commands/` には README を除いて26個の command specification が存在する。
-- `skills/` には26個の `SKILL.md` が存在し、command basename と1:1で対応する。
-- `docs/.ai/repo.profile.json` の `active_commands` と `skills` は、この26件を漏れなく列挙する。
+- `commands/` には README を除いて28個の command specification が存在する。
+- `skills/` には28個の `SKILL.md` が存在し、command basename と1:1で対応する。
+- `docs/.ai/repo.profile.json` の `active_commands` と `skills` は、この28件を漏れなく列挙する。
 
 根拠: `commands/` 実体一覧、`skills/` 実体一覧、`docs/.ai/repo.profile.json:active_commands`、`docs/.ai/repo.profile.json:skills`
 
@@ -37,6 +37,8 @@ Repo Profile の commands はすべて実体に対応する。
 | shell test | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
 | shell test | `bash tests/commands/test-mtg.sh` | agenda / mtg contract |
 | shell test | `bash tests/commands/test-coding-guidelines.sh` | coding guideline composition, routing, portability contract |
+| shell test | `bash tests/commands/test-task-manager.sh` | batch orchestration and delegated delivery contract |
+| shell test | `bash tests/commands/test-git-pr-merge.sh` | approved-head and PR delivery safety contract |
 | shell test | `bash tests/install/test-install.sh` | installer contract |
 | shell test | `bash tests/install/test-setup-statusline-for-codex.sh` | Codex status line config contract |
 | Python test | `python3 -m pytest tests/scripts/` | analysis-script contract |
@@ -47,8 +49,8 @@ Repo Profile の commands はすべて実体に対応する。
 
 - `doc_roots` の4 directory は実在し、L0、L1、L2、L3 の生成済み構造と一致する。
 - `primary_docs.investigation` と `primary_docs.structure` は実在する。
-- `commands` の全16項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
-- `active_commands` 26件、`skills` 26件、`hooks` 9件は実体一覧と一致する。
+- `commands` の全18項目は `operation_model.md`、`test.md`、`cicd.md` のいずれかで説明される。
+- `active_commands` 28件、`skills` 28件、`hooks` 9件は実体一覧と一致する。
 
 根拠: `docs/.ai/repo.profile.json`, `docs/L2_development/operation_model.md`, `docs/L2_development/test.md`, `docs/L2_development/cicd.md`
 
@@ -61,7 +63,7 @@ CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg
 ## README / AGENTS / CLAUDE
 
 - README は template が要求する Features、Installation、Usage、Design Principles を持つ。
-- README の Features は26 command のうち内部委譲用を含む全 command を列挙する。
+- README の Features は28 command のうち内部委譲用を含む全 command を列挙する。
 - repository root に license file は存在しないため、根拠のない license 名は README に記載しない。
 - `AGENTS.md` は `CLAUDE.md`（project-local）への symlink であり、このリポジトリで作業する両 agent は project-local な AI 運用情報を参照する。
 - 配布用ファイルは `global/CLAUDE.md` に分離されており、`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` の両方がこれへ `install.sh` により自動 symlink される（issue #365 以前は `CLAUDE.md`（project-local）自身が配布物を兼ねていた。issue #367 で手動symlinkから自動化に変更）。
@@ -80,7 +82,7 @@ CI 定義は `.github/workflows/` に3件存在する。`tests/commands/test-mtg
 | 条件 | 判定 | 理由 |
 |---|---|---|
 | docs の事実が実体と矛盾しない | yes | path、command、workflow、dependency、entry point を再観測した |
-| Repo Profile と docs が相互に説明可能 | yes | 16 commands、26 command/skill、9 hooks を双方向に突合した |
+| Repo Profile と docs が相互に説明可能 | yes | 18 commands、28 command/skill、9 hooks を双方向に突合した |
 | CI と docs が一致する | yes | Node.js 24 と site npm build/deploy を CI から採用した |
 | 未確認事項が分離されている | yes | coverage、CI test 非登録、Python dependency pin 不在を明記した |
 

@@ -40,4 +40,5 @@ command catalogには、review済み単一PRをowned worktreeでdeliveryする `
 
 ## 変更履歴（git log より自動生成）
 
+- 57dce6c feat(#389): add reviewed PR delivery workflow
 - c4b0aeb chore(#365): split distributed CLAUDE.md from this repo's project-local CLAUDE.md

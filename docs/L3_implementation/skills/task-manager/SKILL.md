@@ -31,3 +31,8 @@ internal task-workerをuser-facing commandにせず、single-PR deliveryだけ�
 
 - task-workerをstandalone command/skillとして公開しない。
 - command sourceがmissing/unreadableなら実行しない。
+
+## 変更履歴（git log より自動生成）
+
+- 57dce6c feat(#389): add reviewed PR delivery workflow
+- 5f1d984 #377 Add independent task-manager batch workflow (#378)

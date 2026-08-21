@@ -1,0 +1,2 @@
+- docs/L3_implementation/commands/git-pr-merge.md:31-34 — Reviewed PR delivery must use an owned PR worktree and fail closed instead of writing through local main or rewriting history (issue #389)
+- docs/L3_implementation/commands/task-manager.md:60-64 — Batch execution treats completed source merges as authoritative and reports completed/pending recovery state instead of assuming rollback (issue #389)

@@ -25,3 +25,7 @@ Markdown workflowは直接実行可能なprogramではないため、repository�
 ## 注意事項・既知の制限
 
 GitHub上で実PRを作成・mergeするend-to-end testではなく、static workflow contract testである。
+
+## 変更履歴（git log より自動生成）
+
+- 57dce6c feat(#389): add reviewed PR delivery workflow
