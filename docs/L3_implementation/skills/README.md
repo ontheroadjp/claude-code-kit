@@ -10,6 +10,7 @@
 - ディレクトリ構造（`<name>/SKILL.md` と `<name>/work` サブディレクトリ）を図示
 - skill 一覧と対応コマンドの対照表を提示
 - `mtg/` を `commands/mtg.md` の人間主導の対話 wrapper として掲載
+- `git-pr-merge/` をreview済みPR deliveryのwrapperとして掲載
 
 ## 重要な設計判断
 
@@ -22,7 +23,7 @@
 - 参照元: Codex CLI ユーザー、`install.sh`（symlink 作成）
 - 関連: `skills/*/SKILL.md`（各 skill の実体）、`commands/*.md`
 
-根拠: `skills/README.md:1-60`, `skills/work/SKILL.md:1-22`, `skills/mtg/SKILL.md:1-25`
+根拠: `skills/README.md:1-64`, `skills/work/SKILL.md:1-22`, `skills/git-pr-merge/SKILL.md:1-25`
 
 ## 変更履歴（git log より自動生成）
 

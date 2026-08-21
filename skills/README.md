@@ -42,6 +42,7 @@ skills/
 | `codex-review/` | `commands/codex-review.md` | Codex による PR レビュー |
 | `git-commit/` | `commands/git-commit.md` | コミット作成 |
 | `git-pr/` | `commands/git-pr.md` | push と PR 作成 |
+| `git-pr-merge/` | `commands/git-pr-merge.md` | 承認済みPRのlatest-main refresh・検証・squash delivery |
 | `coding-general/` | `commands/coding-general.md` | 言語非依存コーディング原則 |
 | `coding-py/` | `commands/coding-py.md` | Python コーディングルール |
 | `coding-js/` | `commands/coding-js.md` | JavaScript コーディングルール |

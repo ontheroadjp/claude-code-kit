@@ -15,6 +15,10 @@
 
 根拠: issue #365
 
+command catalogには、review済み単一PRをowned worktreeでdeliveryする `/git-pr-merge` と、approved source PRを同workflowへ逐次委譲する `/task-manager` を掲載する。
+
+根拠: `global/CLAUDE.md:14-34`
+
 ## 主要な判定ロジック・フロー
 
 内容は分離元の `CLAUDE.md`（project-local）と同一のため、個別の判定ロジックは `docs/L3_implementation/CLAUDE.md` を参照。

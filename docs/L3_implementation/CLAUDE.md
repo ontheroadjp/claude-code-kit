@@ -11,10 +11,11 @@
 ## 動作の概要
 
 - command routing と repository 操作ルールを定義する
+- review済み単一PRの `/git-pr-merge` とbatch executor `/task-manager` の責務をcommand catalogで示す
 - symlink-only 原則と docs/task workflow の境界を示す
 - local tooling と template installed path を記録する
 
-根拠: `CLAUDE.md:13-109`
+根拠: `CLAUDE.md:14-34`, `CLAUDE.md:36-111`
 
 ## 主要な判定ロジック・フロー
 
@@ -55,6 +56,8 @@ resolve-then-embed 規約は `commands/coding-general.md`（ソースコード�
 - `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`（共に配布先） → `global/CLAUDE.md` symlink（`install.sh` が自動化、issue #367）
 - installer: `install.sh`
 - template source: `templates/*.md`
+- reviewed PR delivery: `commands/git-pr-merge.md`
+- batch executor: `commands/task-manager.md`
 
 ## 注意事項・既知の制限
 
