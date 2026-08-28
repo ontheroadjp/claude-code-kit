@@ -120,6 +120,7 @@ citation の検証方法と stale citation 時の共通フォールバックは 
 
 ## 変更履歴（git log より自動生成）
 
+- 102bae9 refactor(#362): reuse shared narrowed-read verification principle
 - 2a361fe fix(#354): avoid redundant docs-sync confirmation
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 58cded5 fix: validate specification_summary.md citations before reuse, fall back on stale ones
@@ -129,6 +130,3 @@ citation の検証方法と stale citation 時の共通フォールバックは 
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
-- 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
-- 5c9d8f2 feat(#165): extend docs-sync to auto-insert git log into L3 per-file docs
-- e07fe3b fix: enforce independent README.md check in docs-sync Phase 2
