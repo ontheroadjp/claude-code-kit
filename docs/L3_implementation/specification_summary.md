@@ -84,9 +84,9 @@ PR branch 上で `git diff main...HEAD` を事実として docs と README を�
 
 Phase 3 では docs・README.md 更新に加え、L3 per-file doc の変更履歴セクションを自動更新する。`git diff --name-only` で取得したソースファイル（`docs/` 配下を除く）に対応する `docs/L3_implementation/<path>.md` が存在する場合、`git log --oneline -10 -- <file>` を実行し `## 変更履歴（git log より自動生成）` セクションを更新または末尾追加する。L3 doc が存在しないファイルはスキップ（L3 doc 新規作成は `/task` が担う）。
 
-Phase 1 Step 2 で pr-body.md の `Specific docs sections to update` から specification_summary.md の citation を取得済みの場合、Phase 2 でその行範囲を `offset`/`limit` で対象読みして再利用し、独自の再特定を行わない（citation がない場合は既存どおり独自探索する。issue #307）。
+Phase 1 Step 2 で pr-body.md の `Specific docs sections to update` から specification_summary.md の citation を取得済みの場合、Phase 2 では `CLAUDE.md` の「絞り込み読み（citation-based narrowed read）の検証」原則に従って対象読みする。検証成功時は citation を再利用し、検証失敗時または citation がない場合は独自探索する。共有検証手順は command 内へ重複記述しない（issue #307, #362）。
 
-根拠: `commands/docs-sync.md:1-228`, `commands/docs-sync.md:48`, `commands/docs-sync.md:99-100`, issue #307
+根拠: `commands/docs-sync.md:1-228`, `commands/docs-sync.md:48`, `commands/docs-sync.md:95-102`, issue #307, issue #362
 
 ### `/init-docs` (`commands/init-docs.md`)
 

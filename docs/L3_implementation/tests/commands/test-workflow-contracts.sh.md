@@ -4,13 +4,13 @@
 
 `tests/commands/test-workflow-contracts.sh` は `/docs-sync`、`/init-docs`、`/task`、`/git-pr` 間の責務境界と HARD STOP 復旧契約を静的に検証する。
 
-根拠: `tests/commands/test-workflow-contracts.sh:1-49`
+根拠: `tests/commands/test-workflow-contracts.sh:1-74`
 
 ## 動作の概要
 
 Markdown command source of truth に必須の固定文字列が存在することを `rg --fixed-strings` で確認する。失敗件数を集計し、1件以上なら終了コード1、すべて成功なら終了コード0を返す。
 
-根拠: `tests/commands/test-workflow-contracts.sh:12-49`
+根拠: `tests/commands/test-workflow-contracts.sh:12-74`
 
 ## 主要な検証契約
 
@@ -22,8 +22,9 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 - `/task` は `/docs-sync` 完了後に従来どおり `/git-pr` を実行し、`/git-pr` が PR 作成責務を保持する
 - `/task` の PR title は issue-scoped Conventional Commit 形式で、primary implementation commit と type を揃え、commit 数に依存しない
 - `/docs-sync` は、実装と承認済みプランから一意に定まる文書化を再確認せず、未解決の文書化判断だけを確認対象にする
+- `/docs-sync` は citation 検証手順をインラインで重複せず、`CLAUDE.md` の共有された絞り込み読み検証原則を参照する（issue #362）
 
-根拠: `tests/commands/test-workflow-contracts.sh:26-52`
+根拠: `tests/commands/test-workflow-contracts.sh:40-67`
 
 ## 重要な設計判断
 
@@ -37,12 +38,13 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 
 ## 注意事項
 
-固定文字列による契約テストであり、実際の GitHub PR 作成や branch 切り替えは行わない。
+固定文字列の存在・非存在による契約テストであり、実際の GitHub PR 作成や branch 切り替えは行わない。
 
 ## 変更履歴（git log より自動生成）
 
-- a4cc791 fix(#369): generate conventional task PR titles
-- 2a361fe fix(#354): avoid redundant docs-sync confirmation
+- 102bae9 refactor(#362): reuse shared narrowed-read verification principle
+- a9fbb5f fix(#369): generate conventional task PR titles (#395)
+- ed9fa91 #354 Avoid redundant docs-sync confirmation (#355)
 - 0bc7683 #344 Add a thread-renaming helper (#346)
 - f32ec17 #336 Rename thread on work branch switch (#337)
 - 5815389 refactor(#300): delegate init-docs commit to the shared commit workflow
