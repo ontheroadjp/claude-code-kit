@@ -35,5 +35,6 @@ skillはworkflow logicを複製せず、worker continuity、non-blocking approva
 
 ## 変更履歴（git log より自動生成）
 
-- 57dce6c feat(#389): add reviewed PR delivery workflow
+- f3be053 feat(#398): stream task-manager issue pipelines
+- a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)
