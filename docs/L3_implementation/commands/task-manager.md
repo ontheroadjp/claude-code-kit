@@ -2,81 +2,77 @@
 
 ## 目的・役割
 
-ユーザーから入力された1〜3件のimplementation issueを入力順に実行するbatch executorである。issue readinessとplan gateを親agentが管理し、source preparationはissueごとのreal `task-worker`へ、review済みsource PRのdeliveryは `/git-pr-merge` へ委譲する。全source delivery後にlocalized documentation PRを1本作成・mergeする。
+ユーザー指定の1〜3件のimplementation issueを、issueごとに独立したwork-equivalent pipelineとして進めるbatch executorである。調査・plan承認・実装・PR承認は独立して進め、source deliveryだけを入力順に直列化する。
 
-根拠: `commands/task-manager.md:1-31`
+根拠: `commands/task-manager.md:1-21`
 
 ## 動作の概要
 
-1. issue token、repository、GitHub auth、open state、labels、blockers、management sub-issues、existing workをread-only検証する。
-2. 親agentがissue-specific planを作り、全planへのcombined approvalを得る。
-3. issueごとのisolated worktreeとbranchを作成し、最大3つのreal `task-worker`を並行起動する。
-4. workerはsource/testの実装、validation、issue-scoped Conventional Commit、同じ type・目的に揃えた Conventional Commit 形式の Draft PR title、push、Draft PR、structured handoffまでを担当する。PR title の形式は commit 数に依存しない。
-5. complete Draft PR setを一括提示し、PRごとのhead SHA、scope/behavior、final validation planを承認状態として固定する。
-6. input orderで各PRを `/git-pr-merge` へdelegated context付きで渡し、merged stateとsquash SHA反映後だけ次へ進む。
-7. merged changed-file unionをA/M/D/R分類し、latest mainをtruthとしてdocumentationを同期・mergeする。
-8. source/documentation resultを各issueへcommentし、batch resultとmanual follow-upを報告する。
+1. input、repository、GitHub auth、issue readiness、既存作業をmutation前に検証する。
+2. 親が `/work` 相当の調査を行い、読んだ範囲、facts、候補file、影響、unknown、stale citationをstructured handoffにする。
+3. issueごとのreal `task-worker`を起動し、workerは補完調査後すぐissue-specific planを返す。
+4. 親はplanを到着順に提示し、承認されたissueだけ同じworkerで実装へ進める。
+5. workerはsource、test、L3、aggregate docs、READMEを同じDraft PRに含め、PR単位の承認を待つ。
+6. 承認済みPRはdelivery eligibleとなるが、`/git-pr-merge`への委譲は固定入力順で行う。
+7. delivery直前にlatest mainとcurrent documentation truthを取り込み、issue-local diffとcurrent-head validationを確認してsquash mergeする。
+8. issueごとにcompletion commentを投稿し、全issue完了時だけbatch completeを報告する。
 
-根拠: `commands/task-manager.md:54-145`, `commands/task-manager.md:147-273`, `commands/task-manager.md:275-394`
+根拠: `commands/task-manager.md:27-226`
 
 ## 主要な判定ロジック
 
-### issue readinessとexecutor boundary
+### 独立state machine
 
-入力は `^#[1-9][0-9]*$` の1〜3件に限定する。closed、agenda、未審査hazard、open blocker、未完了sub-issueを持つmanagement issue、既存PR/branch/worktreeがあるissueを含むbatchは開始しない。issue selection、batch compatibility、conflict-risk、merge-order optimizationは行わない。
+各issueは `investigating`、`awaiting_plan_approval`、`implementing`、`awaiting_pr_approval`、`delivery_eligible`、`delivering`、`completed`、`failed` を持つ。approval wait、repair、failureは対象issueに局所化し、unrelated workerの調査・実装・PR準備を止めない。
 
-根拠: `commands/task-manager.md:58-91`, `commands/task-manager.md:396-412`
+根拠: `commands/task-manager.md:11-20`, `commands/task-manager.md:119-176`
 
-### plan gateとtask-worker
+### investigation handoff
 
-repository mutation前に全issue planの明示承認を得る。worker数はaccepted issue数と一致し最大3、model overrideなしで親modelを継承する。worker payloadはapproved paths、worktree、branch、base、plan、禁止事項をself-containedに渡し、documentation、Ready化、mergeを禁止する。
+親の調査結果はfile/line ranges、facts、current behavior、candidate files、tests/config、impact、unknown、stale citationを含む。workerの再読はmissing evidence、stale evidence、base driftを具体的に記録した場合だけ許可される。replacement workerにもevidence、補完調査、approved plan、current state、failure evidenceを渡す。
 
-根拠: `commands/task-manager.md:93-145`, `commands/task-manager.md:147-245`
+根拠: `commands/task-manager.md:47-68`, `commands/task-manager.md:88-117`
 
-### Draft set approvalとdelivery delegation
+### work-equivalent PR
 
-complete Draft setだけを提示し、PR番号、full head SHA、approved scope/behavior、final validation planを固定する。Phase 4は `commands/git-pr-merge.md`を完全に読み、同contextとowned worktreeを各PRへ入力順に渡す。latest-main merge、conflict repair、CI/local validation、Ready transition、squash mergeのstate machineはtask-managerへ複製しない。
+同じworkerがplan承認後にsource、tests、L3 per-file docs、aggregate docs、READMEを実装し、validation、commit、push、Draft PR作成まで担当する。sourceとdocumentationを別PRへ分けず、final batch documentation PRも作らない。
 
-unknown commitまたはmaterial delivery changeはcomplete set全体ではなく対象PRだけを再レビューする。途中停止時は完了済みmergeをauthoritativeとしてcompleted/pending stateを報告し、rollback-capableなbatch transactionを仮定しない。
+根拠: `commands/task-manager.md:136-165`
 
-根拠: `commands/task-manager.md:247-296`
+### fixed-order delivery
 
-### status-aware documentation finalization
+後続PRは先に承認されてもdelivery eligibilityを保持して待機し、先行issueがcompletedになったときだけdeliveryへ進む。actual PR branchへlatest mainとcurrent documentation truthを取り込み、current mainとの差分がそのissueだけに限定されることを確認して `/git-pr-merge`へ委譲する。
 
-scopeはmerged source PR changed-file union、truthはfinalization時のlatest main、PR diffはfresh docs branchとlatest mainの差分である。AddedはL3作成、Modifiedは更新、Deletedは削除または明示retire、RenamedはL3移動とcitation再生成を行い、aggregate docs、README、test index、config、schema、public surfaceも評価する。
+根拠: `commands/task-manager.md:178-201`
 
-source delivery後にdocsが完了しなければsourceをrollbackせず、`source complete / documentation incomplete`と報告してstandalone `/init-docs` recoveryを案内する。
+### 再承認境界
 
-根拠: `commands/task-manager.md:298-359`
+latest-main merge、citation/history/catalog/aggregate docsの機械的refresh、behaviorを変えないrepairは再承認しない。source behavior、public contract、design decision、security boundary、approved scope、unknown remote diffが変わる場合だけ対象PRを再承認状態へ戻す。
 
-### completion comments
-
-全merge確認後、各issueへsource PR URLとapproved/delivered/squash SHA、documentation PR URL/SHA、validation、documentation scopeをcommentする。comment failureはmerge failureではなくmanual follow-upとする。
-
-根拠: `commands/task-manager.md:361-383`
+根拠: `commands/task-manager.md:203-218`
 
 ## 重要な設計判断
 
-- task-managerはbatch planningとsource preparationを担うが、単一PR delivery transactionは再利用可能な `/git-pr-merge`へ一元化する。
-- batch approvalはreviewed head SHAを固定し、外部pushをPR単位で再承認させる。
-- merged PRをrollbackせず、部分完了をcompleted/pending stateとしてmanual recovery可能にする。
-- documentationをsource PRから分離し、A/M/D/R statusを失わず1回だけ同期する。
-- issue選定やmerge順最適化を行わず、user-provided orderのexecutorに限定する。
+- approval barrierをbatch単位からissue単位へ変え、human wait中も独立作業を進める。
+- investigation ownershipを親とworkerで分け、structured evidenceによって重複readを抑える。
+- PRをwork-equivalentな自己完結単位とし、別documentation transactionを廃止する。
+- parallel preparationとsequential deliveryを分離し、速度とdeterministic merge orderを両立する。
+- mechanical refreshとmaterial changeを分け、不要な再承認を避けつつhuman controlを維持する。
 
 ## 統合ポイント
 
 - Codex wrapper: `skills/task-manager/SKILL.md`
-- source delivery: `commands/git-pr-merge.md`
-- worker protocol: command内のinternal `task-worker`
+- delivery: `commands/git-pr-merge.md`
+- internal worker: payloadで定義する `task-worker`
 - contract test: `tests/commands/test-task-manager.sh`
-- documentation truth: repository profile、primary docs、latest main
+- investigation truth: repository profile、primary docs、current implementation
 
 ## 注意事項・既知の制限
 
-- batch state、cross-session resume、distributed lock、background monitorを持たない。
-- 同一repositoryでは同時に1つのtask-manager sessionという運用disciplineに依存する。
+- batch stateはprocess memoryだけに保持し、cross-session resumeやdistributed lockを持たない。
+- 同一repositoryでは同時に1つのtask-manager sessionという運用規律に依存する。
+- worker concurrencyは最大3で、4件目のqueueやissue自動選定は行わない。
 - process停止後のworktree、branch、Draft PR、partial mergeはmanual recovery対象である。
-- completion comment failureは別途手動投稿が必要である。
 
 ## 変更履歴（git log より自動生成）
 

@@ -1,6 +1,6 @@
 ---
 name: task-manager
-description: Execute the independent task-manager batch workflow for one to three implementation issues by loading and following commands/task-manager.md exactly. Use when the user requests /task-manager behavior.
+description: Execute the streaming task-manager workflow for one to three implementation issues by loading and following commands/task-manager.md exactly. Use when the user requests /task-manager behavior.
 ---
 
 # Task Manager Skill
@@ -15,9 +15,11 @@ description: Execute the independent task-manager batch workflow for one to thre
 2. Execute that workflow exactly as written.
 3. Use one real `task-worker` sub-agent per accepted issue, up to the fixed maximum of three.
 4. Omit sub-agent model overrides so every worker inherits the parent model.
-5. Keep source preparation and documentation finalization independent from the pre-existing implementation and documentation workflows.
-6. Delegate each approved source PR to `commands/git-pr-merge.md` exactly as `commands/task-manager.md` requires.
-7. Do not reinterpret, simplify, or merge it with another workflow unless `commands/task-manager.md` explicitly instructs you to do so.
+5. Pass each worker the complete structured parent investigation handoff and preserve the same worker across supplemental investigation, plan approval, implementation, documentation, and Draft PR creation when possible.
+6. Keep every issue's plan and PR approval state independent; an approval wait must not stop unrelated workers.
+7. Keep delivery sequential in the user-provided issue order and delegate each approved PR to `commands/git-pr-merge.md` exactly as `commands/task-manager.md` requires.
+8. Include issue-required documentation in each issue PR and never create a final batch documentation PR.
+9. Do not reinterpret, simplify, or merge the workflow with another workflow unless `commands/task-manager.md` explicitly instructs you to do so.
 
 ## Scope Guard
 
