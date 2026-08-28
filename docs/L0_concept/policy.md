@@ -1,43 +1,47 @@
 # Policy
 
-## 技術選定ポリシー
+## 1. Repository を workflow の authority とする
 
-- コマンド仕様は Markdown で管理する。AI が `commands/*.md` を読んで実行するため、別 DSL は置かない。根拠: `commands/work.md:1-4`, `commands/task.md:1-9`
-- Codex skill は `skills/*/SKILL.md` に置き、対応する `commands/*.md` を Source of Truth として読む薄いラッパーにする。根拠: `skills/init-docs/SKILL.md:1-14`
-- Claude Code hooks と補助ツールは Bash で実装する。根拠: `hooks/*.sh`, `scripts/*.sh`, `install.sh:1-3`
-- 公開サイトは `site/` 配下の VitePress と npm で管理する。根拠: `site/package.json:1-14`, `.github/workflows/deploy.yml:24-37`
+workflow の構造、必須 gate、工程順序、required artifact、approval point は repository に記録し、agent の一時的な conversation context や都度判断だけに依存させない。
 
-## セキュリティ方針
+agent は workflow definition を独自に省略、置換、統合しない。workflow 内部の具体的な problem solving は agent が担う。
 
-- 破壊的 Bash 操作は `hooks/lib/approval-safety.sh` の共有判定を `auto-approve-readonly.sh` と `guard-destructive-cmd.sh` から利用して block する。根拠: `hooks/lib/approval-safety.sh:1-119`, `hooks/guard-destructive-cmd.sh:1-24`
-- 読み取り専用操作とセッション承認済み操作を `hooks/auto-approve-readonly.sh` が自動承認し、repo 内 write には WIP commit による動的防御を適用する。根拠: `hooks/auto-approve-readonly.sh:375-590`
-- セッション承認は Stop hook で削除し、次ターンへ持ち越さない。根拠: `hooks/cleanup-session.sh:15-24`
-- コミット前に個人情報、IP アドレス、ドメイン名、絶対パスを staged diff から確認する。根拠: `commands/git-commit.md:47-61`
-- `session-approved` による既存リソースへの書き込み権限は、セッション全体への包括的な許可ではなく、issue・PR 番号など具体的な対象リソースにスコープする。対象が一致しない、またはスコープが不正な場合は fail closed とし、通常の許可フローへ戻す。作成前で識別番号が存在しない操作は、リソース種別と操作を限定した権限として扱う。これにより、prompt injection が成功した場合も無関係なリソースへ書き込める範囲を抑制する。根拠: `docs/L3_implementation/hooks/auto_approve_readonly.md:298-306`, issue #297
-- `/report-review` はファイル、Git state、GitHub issue / PR を変更せず、評価を標準出力だけに提示する。根拠: `commands/report-review.md:5-14`, `commands/report-review.md:63-91`
-- Bash 自動承認の allowlist は、危険なフラグを列挙する denylist ではなく、安全な形（単一引数・フラグなしなど）だけを許可する allowlist 型で設計する。オプション名の表記ゆれ（ハイフン/アンダースコア等）や新規フラグの追加に対し、denylist は網羅性を保証できない。根拠: issue #196
-- allowlist の拡張は `logs/auto-approve/*.log` の実使用ログから摩擦点を特定した上で行う。推測でルールを追加しない。根拠: `logs/auto-approve/`
-- allowlist 判定は pure assignment された変数の未引用展開（例: `ARGS='...'; cmd $ARGS`）で bypass され得るため、新しい allowlist ルールを追加する際はこの弱点（未解決）を考慮する。根拠: issue #196
+## 2. Work contract を実装の基本単位とする
 
-## 運用・性能方針
+継続開発における実装作業は、目的、背景、constraint、scope、done criteria が人間と AI の間で合意された work contract を基本単位とする。
 
-- hooks は Claude Code の通常操作を過度に妨げない。ログ書き込み失敗時も処理を継続する実装がある。根拠: `hooks/auto-approve-readonly.sh:15-22`, `hooks/log-access-stop.sh`, `hooks/log-token-usage.sh`
-- VitePress サイトは CI で `site/` を working directory として `npm ci` と `npm run docs:build` を実行し、GitHub Pages へデプロイする。根拠: `.github/workflows/deploy.yml:31-52`
-- `scripts/statusline.sh` は `jq` と `bc` を使って context 使用率を表示する。根拠: `scripts/statusline.sh:10-31`
+要求が未解決の場合は実装と分離して検討し、agent が未合意事項を推測で確定しない。新しい unresolved concern が見つかった場合、実装を継続するか検討へ戻すかは人間が決定する。
 
-## 禁止事項
+## 3. Direction と Approval を人間が保持する
 
-| 禁止事項 | 理由 | 根拠 |
-|---|---|---|
-| `~/.claude/` または `~/.codex/` へ実体ファイルを置く | symlink-only 原則と single source of truth を壊す | `README.md:26-45`, `CLAUDE.md:34-47` |
-| `/task` で一般 docs を直接更新する | 一般 docs 同期は `/docs-sync` の責務。L3 per-file doc のみ task が管理する | `commands/task.md:5-9`, `commands/task.md:113-137` |
-| `/report-review` で実装・永続化・GitHub 投稿を行う | report issue は評価であり変更要求ではない | `commands/report-review.md:5-14` |
-| `/docs-sync` で L0 を通常更新する | L0 は意思決定記録であり git diff 追従対象ではない | `commands/docs-sync.md:86-88` |
-| `git add -A` / `git add .` を使う | 意図しないファイルをコミットしやすい | `commands/init-docs.md:374-376` |
-| AI が `git push --force` など不可逆な git 操作を自動実行する | 共有履歴・未追跡変更を破壊する可能性がある | `CLAUDE.md:55-61`, `hooks/lib/approval-safety.sh:71-112` |
+人間は、要求の方向性、priority、scope、実装単位、plan approval、result acceptance、および重要な state change を決定する。
 
-## 整合性方針
+agent は facts、assessment、options、risks、proposal を提示できるが、それらを人間の決定として扱わない。
 
-`install.sh` が settings に登録する hook は、現在の `hooks/` 配下に存在する script のみとする。存在しない hook を設定に登録しない。
+## 4. Guardrail と Judgment を分離する
 
-根拠: `install.sh:80-87`, `hooks/` 実体一覧
+安全性、一貫性、traceability に関わる guardrail は agent の自由判断から分離する。agent は guardrail の内部で、調査、設計、実装、test、rollback、exception handling の具体策を判断する。
+
+Agentic Fallback を利用する場合も、mandatory gate、work contract、approval boundary を迂回しない。
+
+## 5. Effectful Operation を保守的に扱う
+
+read-only investigation と state-changing operation を明確に区別する。effectful operation は対象、前提、影響、recoverability を確認して実行する。
+
+不可逆な操作、既存作業を失う可能性がある操作、shared state に影響する操作は、人間の明示的な control の下で扱う。
+
+## 6. Documentation と Implementation の整合を維持する
+
+implementation と diff を現在の事実とし、documentation はその事実と design intent を根拠付きで説明する。
+
+正規化済み documentation は調査の起点として再利用するが、stale citation や implementation drift の可能性を考慮し、対象箇所が期待する内容を含むことを確認する。
+
+## 7. Evidence に基づいて workflow を改善する
+
+workflow rule の追加、維持、緩和は execution evidence に基づいて判断する。固定手順が rework、risk、variance を防ぐ場合は維持し、継続的に waste を生む場合は簡素化または agent delegation を検討する。
+
+現在機能している procedure は、明確な改善根拠なしに変更しない。agent の能力向上によって固定手順より良い判断が可能になった場合は、guardrail を維持しながら段階的に判断を戻す。
+
+## 8. L0 の変更を人間が管理する
+
+L0 は project の目的、価値判断、authority boundary を記録する。implementation diff への機械的な追従対象とはせず、追加・変更は人間の明示的な検討と承認を必要とする。

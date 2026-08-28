@@ -10,6 +10,8 @@ Codex CLI 向けの skill wrapper を置くディレクトリ。
 `SKILL.md` は対応する `commands/*.md` を **Source of Truth** として Read するよう指示するだけの薄い wrapper。
 コマンドのロジックは全て `commands/` 側に集約されており、skill 側にビジネスロジックは書かない。
 
+workflow の開始権限は command/skill のファイル形式とは別に扱う。user-controlled workflow の wrapper はユーザーの明示的な開始意図を必要とし、internal workflow / stage と supporting capability は active workflow の定義に従って利用される。wrapper が workflow を自発的に開始・再解釈することはない。
+
 ## ディレクトリ構造
 
 ```
@@ -29,6 +31,8 @@ skills/
 | skill ディレクトリ | 対応コマンド | 役割 |
 |---|---|---|
 | `work/` | `commands/work.md` | 全作業の通常入口 |
+| `work-multi/` | `commands/work-multi.md` | 隔離 worktree 内で `/work` を実行する入口 |
+| `task-manager/` | `commands/task-manager.md` | 1〜3 issue の独立 batch workflow |
 | `mtg/` | `commands/mtg.md` | agenda issue の人間主導の対話と意思決定 |
 | `task/` | `commands/task.md` | docs 変更を伴う実装フロー |
 | `patch/` | `commands/patch.md` | docs 変更不要の軽微修正 |
@@ -40,9 +44,13 @@ skills/
 | `analyze-hazard-scan/` | `commands/analyze-hazard-scan.md` | auto-approve と access のハザード候補を分析 |
 | `triage-issues-for-hazard/` | `commands/triage-issues-for-hazard.md` | hazard-candidate issue の人間審査 |
 | `codex-review/` | `commands/codex-review.md` | Codex による PR レビュー |
+| `analyze-access/` | `commands/analyze-access.md` | access log の evidence-driven analysis |
+| `analyze-auto-approve/` | `commands/analyze-auto-approve.md` | auto-approve log の evidence-driven analysis |
+| `analyze-token-usage/` | `commands/analyze-token-usage.md` | token-usage log の evidence-driven analysis |
 | `git-commit/` | `commands/git-commit.md` | コミット作成 |
 | `git-pr/` | `commands/git-pr.md` | push と PR 作成 |
 | `git-pr-merge/` | `commands/git-pr-merge.md` | 承認済みPRのlatest-main refresh・検証・squash delivery |
+| `concept-maker/` | `commands/concept-maker.md` | ユーザー承認済み L0 candidate の処理 |
 | `coding-general/` | `commands/coding-general.md` | 言語非依存コーディング原則 |
 | `coding-py/` | `commands/coding-py.md` | Python コーディングルール |
 | `coding-js/` | `commands/coding-js.md` | JavaScript コーディングルール |

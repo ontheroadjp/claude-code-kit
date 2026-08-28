@@ -7,14 +7,16 @@
 ## 動作の概要
 
 - skill が `commands/*.md` を Source of Truth として Read するだけの薄い wrapper であることを説明
+- user-controlled workflow の wrapper は明示的な user request で開始し、internal workflow / stage や supporting capability と同じ権限で自発的に開始しないことを説明
 - ディレクトリ構造（`<name>/SKILL.md` と `<name>/work` サブディレクトリ）を図示
 - skill 一覧と対応コマンドの対照表を提示
 - `mtg/` を `commands/mtg.md` の人間主導の対話 wrapper として掲載
 - `git-pr-merge/` をreview済みPR deliveryのwrapperとして掲載
+- 現行28 skillと対応commandのcatalogを掲載
 
 ## 重要な設計判断
 
-- skill 側にはロジックを書かず、全て commands/ 側に集約するアーキテクチャを明示
+- skill 側にはロジックを書かず、全て commands/ 側に集約する。wrapper は workflow の開始権限や手順を再解釈しない adapter であることを明示
 - 新しいコマンドを追加した際の skill 追加手順を案内
 - `install.sh` が `skills/*/` を自動検出するため、installer への個別追記は不要と明記
 
@@ -23,11 +25,12 @@
 - 参照元: Codex CLI ユーザー、`install.sh`（symlink 作成）
 - 関連: `skills/*/SKILL.md`（各 skill の実体）、`commands/*.md`
 
-根拠: `skills/README.md:1-64`, `skills/work/SKILL.md:1-22`, `skills/git-pr-merge/SKILL.md:1-25`
+根拠: `skills/README.md:1-76`, `skills/work/SKILL.md:1-22`, `skills/git-pr-merge/SKILL.md:1-25`
 
 ## 変更履歴（git log より自動生成）
 
-- 57dce6c feat(#389): add reviewed PR delivery workflow
+- c9e5dff docs(#393): clarify project design philosophy
+- a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
 - a46be53 feat(#321): unify operational hazard workflows
 - 91067f8 docs: initialize project documentation (init-docs)

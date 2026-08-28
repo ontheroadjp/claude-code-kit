@@ -2,22 +2,25 @@
 
 ## 目的・役割
 
-repositoryの公開入口として、利用可能なcommand、installation、usage、local verification、設計原則、構造を一覧化する。
+repositoryの公開入口として、project philosophy、利用可能なcommand、installation、usage、local verification、設計原則、構造を一覧化する。
 
 根拠: `README.md:1-167`
 
 ## 動作の概要
 
+- Core DesignでRepository Normalization、Issue-driven Development、Deterministic Workflow、Agentic Judgmentの組み合わせを説明する。
+- documentation structure、implementation work contract、implementation workflowを主要な固定点とし、solution設計をagent、direction/approvalを人間へ割り当てる。
+- Deterministic Fast Path、Agentic Fallback、Observability-driven Improvementの関係を初見ユーザー向けに要約する。
 - Features tableで `/task-manager` をuser-provided batch executor、`/git-pr-merge` をreviewed PR delivery workflowとして公開する。
 - Usageでstandalone PR deliveryとtask-managerからの逐次委譲を説明する。
 - local verificationに両workflowのcontract testを掲載する。
 - Design Principlesでapproved head SHA、owned PR worktree、current-head validation、explicit squash mergeの境界を固定する。
 
-根拠: `README.md:5-35`, `README.md:88-116`, `README.md:120-145`, `README.md:147-157`
+根拠: `README.md:1-53`, `README.md:55-85`, `README.md:138-218`
 
 ## 重要な設計判断
 
-`/work`と`/task`はready PR作成で完了し、mergeは自動化しない。review後のdeliveryはユーザーが明示的に `/git-pr-merge` を起動する別責務とする。`/task-manager`だけはcomplete Draft set approvalをdelegated approval contextとして同workflowを利用する。
+READMEはL0のplatform-independentな思想を短く提示した後、現行commandとoperationへ接続する。`/work`と`/task`はready PR作成で完了し、mergeは自動化しない。review後のdeliveryはユーザーが明示的に `/git-pr-merge` を起動する別責務とする。`/task-manager`だけはcomplete Draft set approvalをdelegated approval contextとして同workflowを利用する。
 
 ## 統合ポイント
 
@@ -32,7 +35,9 @@ READMEは概要であり、実行時の完全な安全条件は各command specif
 
 ## 変更履歴（git log より自動生成）
 
-- 57dce6c feat(#389): add reviewed PR delivery workflow
+- c9e5dff docs(#393): clarify project design philosophy
+- 149bedd docs: initialize project documentation (init-docs) (#392)
+- a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 6dc29d5 #387 Simplify task-manager source delivery (#388)
 - b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
 - 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
@@ -40,5 +45,3 @@ READMEは概要であり、実行時の完全な安全条件は各command specif
 - 0bfdaf3 #372 Move status line setup scripts into scripts directory (#373)
 - 3fa2055 #370 Add idempotent Codex status line setup (#371)
 - 396533d #367 Automate CLAUDE.md/AGENTS.md global symlinks in install.sh (#368)
-- c1f6d5e #365 Split distributed CLAUDE.md from this repo's project-local CLAUDE.md (#366)
-- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
