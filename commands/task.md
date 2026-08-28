@@ -170,9 +170,12 @@ mkdir -p "<上記で得た絶対パス>"
 
 - `${TEMPLATES_DIR}/pr.md` をもとに PR 本文を作成する
 - **PR のタイトル・本文は英語で記述する**
+- PR タイトルの Conventional Commit type は PR 全体の主目的に基づき `feat` / `fix` / `refactor` / `chore` / `style` / `test` / `docs` から選び、primary implementation commit と同じ type にする
+- PR タイトルの description は PR 全体の目的を英語で簡潔に表し、primary implementation commit の目的と整合させる
+- PR に含まれる commit が 1 件か複数かにかかわらず、同じ PR タイトル形式を使用する
 - `Specific docs sections to update` フィールドには、Phase 1 Step 1 の投資調査で `docs/L3_implementation/specification_summary.md` を読んだ際に確認済みのセクション見出し（`###`）の行範囲を `docs/L3_implementation/specification_summary.md:<line-range>` の citation 形式で書く（再度 Read して探し直さない）。対象箇所が複数ある場合は複数行に列挙する。投資調査でこの specification_summary.md セクションを特定していない場合のみ、ファイル名や説明文で代替する
 - 以下のファイルを SESSION_TMP_DIR に書き出す:
-    - `${SESSION_TMP_DIR}/pr-title.txt`: PR タイトル（形式: `#<issue番号> <英語タイトル>`）
+    - `${SESSION_TMP_DIR}/pr-title.txt`: PR タイトル（形式: `<type>(#<issue番号>): <英語 description>`）
     - `${SESSION_TMP_DIR}/pr-body.md`: PR 本文（テンプレートを実際の値で埋めたもの）
 
 ユーザーに確認する:

@@ -84,7 +84,7 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 ガード: main 以外のブランチ、コミットが 1 件以上存在、ワークスペースがクリーンであること。worktree 隔離セッションの場合、`commands/work.md` G-2 と同じ manifest 突き合わせ（`hooks/lib/session-paths.sh session-tmp-dir` で解決した `worktree-untracked-symlinks.txt` と `git status` を比較し、完全一致またはその親ディレクトリのエントリを除外）をクリーン判定の前に行う（issue #318）。
 
-実行 agent に応じた `${TEMPLATES_DIR}/pr.md`（Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`）を使って英語で PR 本文・タイトルを作成し、session temp directory に `pr-title.txt` と `pr-body.md` を書き出す。この時点では push も PR 作成も行わない。
+実行 agent に応じた `${TEMPLATES_DIR}/pr.md`（Claude Code は `~/.claude/templates`、Codex CLI は `~/.codex/templates`）を使って英語で PR 本文・タイトルを作成し、session temp directory に `pr-title.txt` と `pr-body.md` を書き出す。この時点では push も PR 作成も行わない。PR タイトルは `<type>(#<issue-number>): <description>` 形式とし、PR 全体の主目的から許可済み Conventional Commit type を選んで primary implementation commit と揃える。description も PR 全体の目的と primary implementation commit に整合させ、commit 数にかかわらず同じ形式を使う。
 
 `Specific docs sections to update` フィールドには、Phase 1 Step 1 の投資調査で `docs/L3_implementation/specification_summary.md` を読んだ際に確認済みのセクション見出しの行範囲を `docs/L3_implementation/specification_summary.md:<line-range>` の citation 形式で書く（再度 Read して探し直さない）。`/docs-sync` Phase 1 Step 2 がこの citation を解析し、Phase 2 で該当箇所を対象読みして再利用する（issue #307）。特定していない場合はファイル名・説明文で代替する。
 
@@ -92,7 +92,7 @@ session-approved はこの Step で 1 度だけ書き込む。スコープ変更
 
 `/git-pr` による ready PR 作成が task フローのゴールである。作成後の review・merge は自動実行しない（人間、または `/review-resolve`・`/codex-review` を手動起動するユーザーが行う）。
 
-根拠: `commands/task.md:139-163`, `commands/task.md:178-186`
+根拠: `commands/task.md:149-190`
 
 ## 設計上の決断
 
@@ -145,6 +145,7 @@ session-approved への追記を hook が block するため、全スコープ�
 
 ## 変更履歴（git log より自動生成）
 
+- a4cc791 fix(#369): generate conventional task PR titles
 - ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
 - 0331e9e feat(#336): rename thread on work branch switch
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest

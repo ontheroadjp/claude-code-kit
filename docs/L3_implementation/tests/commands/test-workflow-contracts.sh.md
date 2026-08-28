@@ -20,9 +20,10 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 - `/init-docs` standalone mode の Phase 7-3 が直接 commit せず `/git-commit` を `fixed_message` で呼び出す（issue #300）
 - `/task` と `/patch` は、Git が返すブランチ名を Claude Code の installed `rename-thread.sh` に渡してスレッド名を更新する
 - `/task` は `/docs-sync` 完了後に従来どおり `/git-pr` を実行し、`/git-pr` が PR 作成責務を保持する
+- `/task` の PR title は issue-scoped Conventional Commit 形式で、primary implementation commit と type を揃え、commit 数に依存しない
 - `/docs-sync` は、実装と承認済みプランから一意に定まる文書化を再確認せず、未解決の文書化判断だけを確認対象にする
 
-根拠: `tests/commands/test-workflow-contracts.sh:26-42`
+根拠: `tests/commands/test-workflow-contracts.sh:26-52`
 
 ## 重要な設計判断
 
@@ -40,6 +41,7 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 
 ## 変更履歴（git log より自動生成）
 
+- a4cc791 fix(#369): generate conventional task PR titles
 - 2a361fe fix(#354): avoid redundant docs-sync confirmation
 - 0bc7683 #344 Add a thread-renaming helper (#346)
 - f32ec17 #336 Rename thread on work branch switch (#337)

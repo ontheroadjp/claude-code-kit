@@ -16,7 +16,7 @@
 
 - 1〜3 issue、重複・4件以上・不正形式拒否
 - plan approval前のmutation禁止
-- real task-worker、最大3、親model継承、Draft source PR
+- real task-worker、最大3、親model継承、primary implementation commit と type・目的を揃えた Conventional Commit 形式の Draft source PR title（commit 数非依存）
 - complete Draft setでhead SHA、scope/behavior、validation planを固定
 - source PRをinput orderで `/git-pr-merge`へ委譲
 - embedded latest-main/conflict/merge mechanicsのabsence
@@ -45,6 +45,7 @@ sub-agent schedulingやGitHub mergeを実行するend-to-end testではなく、
 
 ## 変更履歴（git log より自動生成）
 
+- a4cc791 fix(#369): generate conventional task PR titles
 - 57dce6c feat(#389): add reviewed PR delivery workflow
 - 6dc29d5 #387 Simplify task-manager source delivery (#388)
 - b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
