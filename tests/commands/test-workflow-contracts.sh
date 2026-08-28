@@ -24,12 +24,27 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  local file=$1
+  local pattern=$2
+  local description=$3
+
+  if rg -q --fixed-strings -- "$pattern" "$file"; then
+    printf 'FAIL: %s\n' "$description"
+    failures=$((failures + 1))
+  else
+    printf 'PASS: %s\n' "$description"
+  fi
+}
+
 assert_contains "$DOCS_SYNC" '/init-docs` を **documentation-only mode** で自動実行する' 'docs-sync automatically delegates HARD STOP recovery'
 assert_contains "$DOCS_SYNC" 'Phase 3 Step 3 へ進み' 'docs-sync rejoins its commit and result-writing phase'
 assert_contains "$DOCS_SYNC" '呼び出し元には通常の `/docs-sync` 完了として制御を返す' 'docs-sync hides internal escalation from its caller'
 assert_contains "$DOCS_SYNC" 'push・PR 作成を行わない' 'docs-sync preserves the PR responsibility boundary'
 assert_contains "$DOCS_SYNC" '確認不要（既決の内容の文章化）' 'docs-sync does not reconfirm documentation uniquely determined by implementation and an approved plan'
 assert_contains "$DOCS_SYNC" '実装済みの挙動や承認済みプランを言い換えるだけの確認は行わない' 'docs-sync limits confirmation to unresolved documentation choices'
+assert_contains "$DOCS_SYNC" 'CLAUDE.md の「絞り込み読み（citation-based narrowed read）の検証」原則に従って' 'docs-sync reuses the shared narrowed-read verification principle'
+assert_not_contains "$DOCS_SYNC" '読み取った内容が対象ファイル（`Specific docs sections to update` フィールドが言及するファイル）に対応する `###` 見出しを含んでいるか検証する' 'docs-sync does not duplicate the narrowed-read verification procedure'
 
 assert_contains "$INIT_DOCS" '**standalone mode（デフォルト）**' 'init-docs keeps standalone mode as the default'
 assert_contains "$INIT_DOCS" '**documentation-only mode**' 'init-docs exposes documentation-only regeneration'
