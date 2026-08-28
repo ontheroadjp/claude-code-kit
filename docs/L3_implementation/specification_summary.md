@@ -6,6 +6,14 @@
 
 根拠: `rg --files -uu -g '!.git/**'`, `docs/.ai/repo.profile.json`
 
+## Workflow adapter model
+
+`commands/*.md` が workflow の Source of Truth であり、`skills/*/SKILL.md` は Codex が同じ workflow を利用するための薄い adapter である。各 wrapper は対応 command を完全に Read してその定義に従うこと、独自の再解釈・簡略化・他 workflow との統合を行わないことを要求する。user-controlled workflow の wrapper は explicit user request による開始を示し、internal workflow / stage や `coding-*` capability の呼び出し権限と区別する。
+
+この構成は command directory を全面移行するための暫定互換層ではなく、Claude Code と Codex の公開機構を分けながら workflow definition を一元化する実装である。
+
+根拠: `commands/README.md:1-61`, `skills/README.md:1-65`, `skills/work/SKILL.md:1-22`, `skills/task-manager/SKILL.md:1-29`
+
 ## Command Specifications
 
 ### `/work` (`commands/work.md`)

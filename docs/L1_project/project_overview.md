@@ -55,6 +55,20 @@
 - VitePress site の CI entry は `.github/workflows/deploy.yml` の `npm run docs:build`。根拠: `.github/workflows/deploy.yml:31-37`
 - アプリケーション runtime の `main.*` / `server.*` / `app.*` は存在しない。実行入口は Markdown commands、shell installers/tests、VitePress npm scripts、GitHub Actions である。根拠: `rg --files -uu -g '!.git/**'`、`site/package.json:4-8`、`.github/workflows/deploy.yml:17-52`
 
+## Workflow authority と責務分担
+
+この repository は、workflow の開始権限と内部処理の責務を区別する。これは command か skill かという UI の違いではなく、誰がいつ workflow を開始できるかを明確にするための architecture である。
+
+| 分類 | 役割 | 現行の例 |
+|---|---|---|
+| user-controlled workflow | ユーザーの明示意図で開始し、方向性・承認を伴う入口 | `/work`, `/work-multi`, `/task-manager`, `/mtg`, `/new-issue`, `/review-resolve`, issue triage / analysis workflows |
+| internal workflow / stage | 上位 workflow が定めた順序で委譲する処理 | `/task`, `/patch`, `/docs-sync`, `/git-commit`, `/git-pr` |
+| supporting capability / policy | active workflow が対象技術や状況に応じて適用する知識・規約 | `coding-*` commands と skills、hooks、templates |
+
+Codex では各 workflow を skill wrapper で公開するが、workflow definition は対応する `commands/*.md` に一元化している。wrapper は現行 workflow を再解釈せず読み込む adapter であり、user-controlled workflow の開始権限を agent の自発的選択へ移すものではない。
+
+根拠: `commands/README.md`, `skills/README.md`, `skills/work/SKILL.md:1-22`, `skills/task-manager/SKILL.md:1-29`
+
 ## 依存関係
 
 `site/package.json` は本番依存として `@fortawesome/fontawesome-free`、開発依存として `vitepress` を宣言する。lock file から `@fortawesome/fontawesome-free` は 6.7.2、`vitepress` は 1.6.4 が解決されている。

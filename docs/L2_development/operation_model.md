@@ -1,5 +1,13 @@
 # Operation Model
 
+## Invocation authority
+
+workflow の開始権限は user-controlled workflow、internal workflow / stage、supporting capability の三種類で扱う。前者はユーザーの明示的な開始意図を必要とし、後二者は active workflow の定義に従ってのみ用いる。Codex skill はこの区別を変えない。対応する command specification を Source of Truth として読み、その workflow を再解釈せず実行する adapter である。
+
+この区別により、agent は固定された workflow の内部で十分に判断できる一方、方向性の決定、未承認の実装開始、required gate の省略を自律的に行わない。
+
+根拠: `skills/work/SKILL.md:1-22`, `skills/task/SKILL.md:1-22`, `skills/mtg/SKILL.md:1-25`, `commands/work.md:60-63`, `commands/mtg.md:7-13`
+
 ## 通常作業フロー
 
 `/review-resolve` は PR review 専用、`/mtg` は agenda の対話専用である。実装は `/work` から開始する。`/work` は issue に `agenda` label があれば実装調査より先に `/mtg` へ委譲し、`hazard-candidate` label があれば審査を案内し、それ以外を task または patch へ進める。
@@ -76,6 +84,14 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 `task-manager.md` はuser-provided 1〜3 issueをinput orderで実行する。combined plan approval後にreal task-workerがDraft source PRを並行作成し、complete set approvalでPRごとのhead SHAを固定する。その後は各PRを `/git-pr-merge`へ順次委譲し、全source delivery後にA/M/D/R-aware documentation syncとissue completion commentsを行う。partial mergeはrollbackせずcompleted/pending stateとして回復する。
 
 根拠: `commands/task-manager.md:1-412`
+
+## State continuity の現状
+
+branch、Issue、commit、PR、L3 per-file documentation、session temp artifacts は、作業状態を後続の人間または agent が確認するための durable artifacts である。ただし、これらを束ねる checkpoint format、cross-session resume protocol、自動 restart、background monitor は現行 workflow に存在しない。特に `/task-manager` は batch state の永続化や cross-session resume を明示的に対象外としている。
+
+したがって、既存 artifact は再開時の調査材料として扱うが、正式な checkpoint/resume 機能であるとは扱わない。
+
+根拠: `commands/work.md:160-175`, `commands/git-commit.md:25-52`, `commands/git-pr.md:18-44`, `commands/task-manager.md:396-408`
 
 ## codex-review flow
 

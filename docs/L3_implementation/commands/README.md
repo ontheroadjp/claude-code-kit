@@ -7,12 +7,15 @@
 ## 動作の概要
 
 - コマンド一覧を表形式で提示し、各コマンドの役割を1行で説明
+- commandsをworkflow definitionのSource of Truth、Codex skillsをそのadapterとして説明
+- user-controlled workflow、internal workflow / stage、supporting capabilityのinvocation authorityをL1/L2へ接続
 - `/work` を頂点としたルーティング構造（mtg/task/patch への委譲）を図示
 - インストール手順と呼び出し例を記載
 
 ## 重要な設計判断
 
 - ルーティング図は ASCII art で記述し、Markdown レンダラーに依存しない
+- invocation authorityはcommandの配置やUI mechanismではなくworkflow responsibilityとして扱う
 - `commands/` 内の各ファイルへの詳細説明は `specification_summary.md` に委ねており、README では役割の一覧にとどめる
 
 ## 統合ポイント
@@ -26,7 +29,7 @@
 
 agenda label の issue は人間主導の `/mtg` へ、それ以外は issue と docs 変更要否に基づいて task/patch へ進む。`/mtg` は `/new-issue` を自動実行しない。
 
-根拠: `commands/README.md:1-61`
+根拠: `commands/README.md:1-79`
 
 ## 変更履歴（git log より自動生成）
 

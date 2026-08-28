@@ -2,6 +2,56 @@
 
 A structured AI-driven development workflow toolkit for Claude Code and Codex CLI. It packages slash-command specifications, Codex skills, Claude/Codex hook scripts, shared templates, and a VitePress documentation site.
 
+It is not a collection of prompts alone. The toolkit normalizes heterogeneous repositories into a common Repository Model, uses agreed work contracts and implementation-ready Issues as durable units of development, fixes repeatable workflow boundaries, and leaves contextual problem solving to the agent.
+
+Its core design is:
+
+**Repository Normalization + Issue-driven Development + Deterministic Workflow + Agentic Judgment**
+
+## What this toolkit does
+
+Repositories differ in structure, documentation, tooling, test commands, architecture, and conventions. Rediscovering all of that for every task wastes tokens and time, introduces execution variance, and makes important context easier to miss.
+
+The toolkit builds an AI-oriented information model containing repository structure, development and verification methods, design intent, implementation references, and evidence-backed investigation paths. It then keeps that model aligned with implementation changes.
+
+The toolkit does not aim to maximize agent autonomy. It deliberately fixes the structures, gates, artifacts, and approval points that make continuous development reproducible, while leaving investigation, planning, implementation choices, trade-offs, test design, and exceptional handling to the agent where contextual reasoning adds value.
+
+## Core Design
+
+### Three things are deliberately fixed
+
+The workflow is built around three stable control points:
+
+1. **Documentation structure** — repository knowledge is normalized into a common model and kept aligned with implementation.
+2. **Implementation work contracts** — purpose, constraints, scope, and completion conditions are agreed and normally represented by implementation-ready Issues.
+3. **Implementation workflow** — required gates, procedure order, artifacts, and human approval points are defined by the repository rather than left to per-session discretion.
+
+Within those structures, the agent retains authority to investigate, identify change targets, formulate plans, compare approaches, evaluate trade-offs, implement, select verification methods, and handle exceptional situations.
+
+In short: **the repository defines the workflow; the agent designs the solution; humans retain direction and approval.**
+
+### Repository Normalization
+
+Generated documentation is both human-facing documentation and an AI working substrate. It reduces repeated discovery and provides short, evidence-backed paths into implementation. Stored documentation remains an investigation starting point rather than unquestioned truth; current implementation and diff remain authoritative.
+
+### Issue-driven Development
+
+Implementation does not begin from an unstructured conversation alone. Continuous development is organized around an agreed work contract whose standard representation is an implementation-ready Issue. Unresolved requirements can remain in a human-led discussion until direction, constraints, scope, and completion conditions are clear.
+
+Requirement refinement is not a one-way state machine. If a later adjustment exposes a new unresolved concern, the human can stop implementation and return the topic to discussion.
+
+### Deterministic Fast Path + Agentic Fallback
+
+Repeatable operations remain deterministic when that improves safety, correctness, reproducibility, or token efficiency. Exceptional or insufficiently modeled cases may use agentic fallback, but fallback does not bypass mandatory gates, work contracts, guardrails, or human approval boundaries.
+
+Agent autonomy is therefore not the objective. The objective is to place autonomy where reasoning adds value while fixing workflow elements whose variability creates rework, inconsistency, or risk.
+
+### Observability-driven Improvement
+
+Workflow rules are evaluated from execution evidence rather than a preference for procedural or agentic design. A fixed step that consistently prevents rework remains fixed; a step that repeatedly creates waste or fails to handle contextual variation is a candidate for simplification or delegation back to the agent.
+
+The platform-independent philosophy is defined in `docs/L0_concept/`. Its system responsibilities, operational policies, and implementation are described in `docs/L1_project/` through `docs/L3_implementation/`.
+
 ## Features
 
 | Command | Purpose |
@@ -149,6 +199,14 @@ shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_mod
 
 ## Design Principles
 
+- The repository defines workflow structure; the agent designs contextual solutions; humans retain direction and approval.
+- Normalize repository knowledge and reuse evidence-backed investigation paths instead of rediscovering everything for every task.
+- Treat agreed work contracts, normally represented by implementation-ready Issues, as the basic units of continuous development.
+- Keep requirement refinement flexible, but do not let the agent silently decide unresolved direction or scope.
+- Do not allow the agent to skip mandatory gates, procedure order, required artifacts, or approval points.
+- Use deterministic procedures where they improve safety, correctness, reproducibility, or token efficiency.
+- Use agentic fallback for exceptional cases without bypassing guardrails or approval boundaries.
+- Improve workflow rules from observed execution evidence rather than preference for autonomy or procedure.
 - `git diff` is truth for docs sync; PR text is supplemental.
 - `/task` creates and updates L3 per-file docs (`docs/L3_implementation/<source-path>.md`) as part of implementation; `/docs-sync` handles all other docs updates and auto-inserts `git log --oneline -10` output into the `## 変更履歴（git log より自動生成）` section of existing L3 per-file docs.
 - `/docs-sync` makes minimal updates and, when the structure can no longer be explained locally, runs `/init-docs` in documentation-only mode before resuming its normal commit/result flow.

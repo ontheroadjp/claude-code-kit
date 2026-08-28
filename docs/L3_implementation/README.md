@@ -2,22 +2,25 @@
 
 ## 目的・役割
 
-repositoryの公開入口として、利用可能なcommand、installation、usage、local verification、設計原則、構造を一覧化する。
+repositoryの公開入口として、project philosophy、利用可能なcommand、installation、usage、local verification、設計原則、構造を一覧化する。
 
 根拠: `README.md:1-167`
 
 ## 動作の概要
 
+- Core DesignでRepository Normalization、Issue-driven Development、Deterministic Workflow、Agentic Judgmentの組み合わせを説明する。
+- documentation structure、implementation work contract、implementation workflowを主要な固定点とし、solution設計をagent、direction/approvalを人間へ割り当てる。
+- Deterministic Fast Path、Agentic Fallback、Observability-driven Improvementの関係を初見ユーザー向けに要約する。
 - Features tableで `/task-manager` をuser-provided batch executor、`/git-pr-merge` をreviewed PR delivery workflowとして公開する。
 - Usageでstandalone PR deliveryとtask-managerからの逐次委譲を説明する。
 - local verificationに両workflowのcontract testを掲載する。
 - Design Principlesでapproved head SHA、owned PR worktree、current-head validation、explicit squash mergeの境界を固定する。
 
-根拠: `README.md:5-35`, `README.md:88-116`, `README.md:120-145`, `README.md:147-157`
+根拠: `README.md:1-53`, `README.md:55-85`, `README.md:138-218`
 
 ## 重要な設計判断
 
-`/work`と`/task`はready PR作成で完了し、mergeは自動化しない。review後のdeliveryはユーザーが明示的に `/git-pr-merge` を起動する別責務とする。`/task-manager`だけはcomplete Draft set approvalをdelegated approval contextとして同workflowを利用する。
+READMEはL0のplatform-independentな思想を短く提示した後、現行commandとoperationへ接続する。`/work`と`/task`はready PR作成で完了し、mergeは自動化しない。review後のdeliveryはユーザーが明示的に `/git-pr-merge` を起動する別責務とする。`/task-manager`だけはcomplete Draft set approvalをdelegated approval contextとして同workflowを利用する。
 
 ## 統合ポイント
 
