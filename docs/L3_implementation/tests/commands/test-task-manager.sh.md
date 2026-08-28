@@ -16,7 +16,7 @@
 
 - 1〜3 issue、重複・4件以上・不正形式拒否
 - plan approval前のmutation禁止
-- real task-worker、最大3、親model継承、Draft source PR
+- real task-worker、最大3、親model継承、primary implementation commit と type・目的を揃えた Conventional Commit 形式の Draft source PR title（commit 数非依存）
 - complete Draft setでhead SHA、scope/behavior、validation planを固定
 - source PRをinput orderで `/git-pr-merge`へ委譲
 - embedded latest-main/conflict/merge mechanicsのabsence

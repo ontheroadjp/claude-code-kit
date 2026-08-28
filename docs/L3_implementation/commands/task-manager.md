@@ -11,7 +11,7 @@
 1. issue token、repository、GitHub auth、open state、labels、blockers、management sub-issues、existing workをread-only検証する。
 2. 親agentがissue-specific planを作り、全planへのcombined approvalを得る。
 3. issueごとのisolated worktreeとbranchを作成し、最大3つのreal `task-worker`を並行起動する。
-4. workerはsource/testの実装、validation、commit、push、Draft PR、structured handoffまでを担当する。
+4. workerはsource/testの実装、validation、issue-scoped Conventional Commit、同じ type・目的に揃えた Conventional Commit 形式の Draft PR title、push、Draft PR、structured handoffまでを担当する。PR title の形式は commit 数に依存しない。
 5. complete Draft PR setを一括提示し、PRごとのhead SHA、scope/behavior、final validation planを承認状態として固定する。
 6. input orderで各PRを `/git-pr-merge` へdelegated context付きで渡し、merged stateとsquash SHA反映後だけ次へ進む。
 7. merged changed-file unionをA/M/D/R分類し、latest mainをtruthとしてdocumentationを同期・mergeする。

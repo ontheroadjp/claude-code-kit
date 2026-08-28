@@ -67,7 +67,9 @@ assert_contains "$TASK_MANAGER" 'sub-agent model overrideを指定せず、親ag
 assert_contains "$TASK_MANAGER" 'Role: task-worker' 'worker launch payload names the role'
 assert_contains "$TASK_MANAGER" 'structured handoff' 'workers return a structured handoff'
 assert_contains "$TASK_MANAGER" 'gh pr create --draft' 'workers create Draft source PRs directly'
-assert_contains "$TASK_MANAGER" '#<issue-number> <English title>' 'source PR titles match the work task flow format'
+assert_contains "$TASK_MANAGER" '<type>(#<issue-number>): <English description>' 'source PR titles match the work task flow Conventional Commit format'
+assert_contains "$TASK_MANAGER" 'primary implementation commitと同じtype' 'source PR titles align with their primary implementation commits'
+assert_contains "$TASK_MANAGER" 'commitが1件か複数かにかかわらず' 'source PR title format is independent of commit count'
 assert_contains "$TASK_MANAGER" 'documentation変更を含まない' 'source PRs exclude documentation'
 
 # Batch review, ordered delegated delivery, and automatic docs delivery.
