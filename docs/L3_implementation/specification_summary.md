@@ -34,13 +34,13 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/task-manager` (`commands/task-manager.md`)
 
-ユーザー指定の1〜3 implementation issueを入力順に実行するbatch executor。4件以上、重複、不正形式、closed/blocked/management issue、既存作業はmutation前に拒否するが、issue選定、batch compatibility、conflict-risk、merge順最適化は行わない。親agentが全issue planを一括提示し、承認後にissueごとのisolated worktreeと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、source/test実装、validation、commit/push、Draft PR、structured handoffまでを担当する。source PR titleはcommit数にかかわらずissue-scoped Conventional Commit形式とし、PR全体の主目的から選んだtypeとdescriptionをprimary implementation commitに揃える。
+ユーザー指定の1〜3 implementation issueを独立したwork-equivalent pipelineとして進めるbatch executor。4件以上、重複、不正形式、closed/blocked/management issue、既存作業はmutation前に拒否する。親agentが `/work` 相当の調査結果をstructured handoffとしてissueごとの実 `task-worker`へ渡し、workerは補完調査後にplanを返す。planとDraft PRはissueごとに到着後すぐ承認を求め、承認待ち・修復・失敗はunrelated workerの調査、実装、validation、PR準備を止めない。同じworkerが通常は補完調査からsource、test、L3、aggregate docs、READMEを含むDraft PR作成まで継続する。
 
-親はcomplete Draft source PR setだけを提示し、PRごとのfull head SHA、scope/behavior、final validation planをbatch-wide approvalで固定する。source deliveryは入力順に `/git-pr-merge`へ完全なdelegated contextを渡し、latest-main refresh、current-head validation、conflict repair、Ready transition、squash mergeのstate machineをtask-manager内へ複製しない。unknown commitやmaterial changeは対象PRだけを再承認する。途中停止時は完了済みmergeをrollbackせず、completed/pending stateを報告する。
+承認済みPRはdelivery eligibilityを保持するが、deliveryは固定入力順で先行issueのcompletedを待つ。各actual PR branchはlatest mainとcurrent documentation truthでrefreshされ、current mainとの差分をissue-localに保ったうえで `/git-pr-merge`へ委譲される。citation/history/aggregate docsなどの機械的refreshは再承認不要とし、source behavior、public contract、design/security boundary、approved scope、unknown remote diffが変わる場合だけaffected PRを再承認する。
 
-全source delivery後はmerged changed-file unionをAdded/Modified/Deleted/Renamedへ分類し、latest mainをtruthとしてL3 per-file docs、aggregate docs、README、test index、config、schema、public surfaceを同期する。documentation failureは `source complete / documentation incomplete` としてstandalone `/init-docs` recoveryを案内する。全merge確認後にissue completion commentを投稿し、comment failureはmanual follow-upとする。
+final batch documentation worktree/PRは作らない。全issueのmerge確認後だけbatch completeを報告し、途中停止時は完了済みmergeをrollbackせずissueごとのstateとmanual recovery情報を報告する。
 
-根拠: `commands/task-manager.md:1-145`, `commands/task-manager.md:147-296`, `commands/task-manager.md:298-412`, issue #389
+根拠: `commands/task-manager.md:1-117`, `commands/task-manager.md:119-218`, `commands/task-manager.md:220-234`, issue #398
 
 ### `/mtg` (`commands/mtg.md`)
 
