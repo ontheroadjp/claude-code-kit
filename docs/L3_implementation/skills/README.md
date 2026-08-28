@@ -29,7 +29,8 @@
 
 ## 変更履歴（git log より自動生成）
 
-- 57dce6c feat(#389): add reviewed PR delivery workflow
+- c9e5dff docs(#393): clarify project design philosophy
+- a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
 - a46be53 feat(#321): unify operational hazard workflows
 - 91067f8 docs: initialize project documentation (init-docs)

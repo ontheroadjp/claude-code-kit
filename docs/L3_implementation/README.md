@@ -35,7 +35,9 @@ READMEは概要であり、実行時の完全な安全条件は各command specif
 
 ## 変更履歴（git log より自動生成）
 
-- 57dce6c feat(#389): add reviewed PR delivery workflow
+- c9e5dff docs(#393): clarify project design philosophy
+- 149bedd docs: initialize project documentation (init-docs) (#392)
+- a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 6dc29d5 #387 Simplify task-manager source delivery (#388)
 - b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
 - 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
@@ -43,5 +45,3 @@ READMEは概要であり、実行時の完全な安全条件は各command specif
 - 0bfdaf3 #372 Move status line setup scripts into scripts directory (#373)
 - 3fa2055 #370 Add idempotent Codex status line setup (#371)
 - 396533d #367 Automate CLAUDE.md/AGENTS.md global symlinks in install.sh (#368)
-- c1f6d5e #365 Split distributed CLAUDE.md from this repo's project-local CLAUDE.md (#366)
-- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
