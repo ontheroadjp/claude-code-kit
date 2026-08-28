@@ -34,7 +34,7 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/task-manager` (`commands/task-manager.md`)
 
-ユーザー指定の1〜3 implementation issueを入力順に実行するbatch executor。4件以上、重複、不正形式、closed/blocked/management issue、既存作業はmutation前に拒否するが、issue選定、batch compatibility、conflict-risk、merge順最適化は行わない。親agentが全issue planを一括提示し、承認後にissueごとのisolated worktreeと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、source/test実装、validation、commit/push、Draft PR、structured handoffまでを担当する。
+ユーザー指定の1〜3 implementation issueを入力順に実行するbatch executor。4件以上、重複、不正形式、closed/blocked/management issue、既存作業はmutation前に拒否するが、issue選定、batch compatibility、conflict-risk、merge順最適化は行わない。親agentが全issue planを一括提示し、承認後にissueごとのisolated worktreeと実 `task-worker` sub-agentを最大3つ作る。workerは親modelを継承し、source/test実装、validation、commit/push、Draft PR、structured handoffまでを担当する。source PR titleはcommit数にかかわらずissue-scoped Conventional Commit形式とし、PR全体の主目的から選んだtypeとdescriptionをprimary implementation commitに揃える。
 
 親はcomplete Draft source PR setだけを提示し、PRごとのfull head SHA、scope/behavior、final validation planをbatch-wide approvalで固定する。source deliveryは入力順に `/git-pr-merge`へ完全なdelegated contextを渡し、latest-main refresh、current-head validation、conflict repair、Ready transition、squash mergeのstate machineをtask-manager内へ複製しない。unknown commitやmaterial changeは対象PRだけを再承認する。途中停止時は完了済みmergeをrollbackせず、completed/pending stateを報告する。
 
@@ -68,9 +68,9 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/task` (`commands/task.md`)
 
-`/work` から呼ばれる docs 変更を伴う実装 flow。issue がなければプラン策定とユーザー許可を先に行い、承認後に `commands/new-issue.md` Step 4-5 を使ってユーザー確認なしで issue を自動作成する（Step 1-3 の対話はスキップし、確定済みプランの内容で各セクションを埋める）。Step 1 では変更対象ファイルが確定した後に対応する L3 per-file doc（`docs/L3_implementation/<source-path>.md`）が存在する場合は必ず Read する。Step 2 では L3 per-file doc のパスを session-approved に含める。作業ブランチを作成または切り替えた直後は、Claude Code でのみ Git が返すブランチ名を `~/.claude/scripts/rename-thread.sh` に渡して会話スレッドを更新し、Codex CLI はこの操作をスキップする。更新に失敗しても実装を中断しない。実装後・`/git-commit` 前に変更した各ソースファイルの L3 per-file doc を作成または更新し（現状スナップショット + 設計意図、changelog ではない）、`/git-commit` で commit する。Phase 2 では PR 本文・タイトルを SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-body.md` / `pr-title.txt` に書き出し、`/docs-sync` → `/git-pr` を順に自動実行する（push・PR 作成は `/git-pr` が担う）。`docs/*` の変更は原則行わないが、L3 per-file doc（`docs/L3_implementation/<source-path>.md`）は実装フローの一部として例外的に task が管理する。PR 本文の `Specific docs sections to update` フィールドには、Phase 1 の投資調査で既に確認済みの specification_summary.md セクションの行範囲を citation として書き込み、`/docs-sync` へ引き継ぐ（issue #307）。
+`/work` から呼ばれる docs 変更を伴う実装 flow。issue がなければプラン策定とユーザー許可を先に行い、承認後に `commands/new-issue.md` Step 4-5 を使ってユーザー確認なしで issue を自動作成する（Step 1-3 の対話はスキップし、確定済みプランの内容で各セクションを埋める）。Step 1 では変更対象ファイルが確定した後に対応する L3 per-file doc（`docs/L3_implementation/<source-path>.md`）が存在する場合は必ず Read する。Step 2 では L3 per-file doc のパスを session-approved に含める。作業ブランチを作成または切り替えた直後は、Claude Code でのみ Git が返すブランチ名を `~/.claude/scripts/rename-thread.sh` に渡して会話スレッドを更新し、Codex CLI はこの操作をスキップする。更新に失敗しても実装を中断しない。実装後・`/git-commit` 前に変更した各ソースファイルの L3 per-file doc を作成または更新し（現状スナップショット + 設計意図、changelog ではない）、`/git-commit` で commit する。Phase 2 ではPR全体の主目的に基づくtypeとdescriptionをprimary implementation commitに揃え、commit数にかかわらず `<type>(#<issue-number>): <description>` 形式のPRタイトルを生成する。PR本文・タイトルを SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-body.md` / `pr-title.txt` に書き出し、`/docs-sync` → `/git-pr` を順に自動実行する（push・PR 作成は `/git-pr` が担う）。`docs/*` の変更は原則行わないが、L3 per-file doc（`docs/L3_implementation/<source-path>.md`）は実装フローの一部として例外的に task が管理する。PR 本文の `Specific docs sections to update` フィールドには、Phase 1 の投資調査で既に確認済みの specification_summary.md セクションの行範囲を citation として書き込み、`/docs-sync` へ引き継ぐ（issue #307）。
 
-根拠: `commands/task.md:1-15`, `commands/task.md:50-66`, `commands/task.md:94-95`, `commands/task.md:139-170`, `commands/task.md:182`, issue #307
+根拠: `commands/task.md:1-15`, `commands/task.md:50-66`, `commands/task.md:94-95`, `commands/task.md:149-190`, issue #307, issue #369
 
 ### `/patch` (`commands/patch.md`)
 

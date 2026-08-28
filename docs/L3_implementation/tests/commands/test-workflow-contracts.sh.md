@@ -41,6 +41,7 @@ Markdown command source of truth に必須の固定文字列が存在するこ�
 
 ## 変更履歴（git log より自動生成）
 
+- a4cc791 fix(#369): generate conventional task PR titles
 - 2a361fe fix(#354): avoid redundant docs-sync confirmation
 - 0bc7683 #344 Add a thread-renaming helper (#346)
 - f32ec17 #336 Rename thread on work branch switch (#337)

@@ -45,6 +45,7 @@ sub-agent schedulingやGitHub mergeを実行するend-to-end testではなく、
 
 ## 変更履歴（git log より自動生成）
 
+- a4cc791 fix(#369): generate conventional task PR titles
 - 57dce6c feat(#389): add reviewed PR delivery workflow
 - 6dc29d5 #387 Simplify task-manager source delivery (#388)
 - b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
