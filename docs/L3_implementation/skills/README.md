@@ -1,5 +1,11 @@
 # skills/README.md — L3 per-file doc
 
+## Unified workflow adapters
+
+`work/` は単一・複数 issue の session owner、`task/` は ordinary/delegated 共通の issue-specific implementation adapter、`task-manager/` は valid `/work` handoff でのみ起動する internal orchestrator adapter として catalog 化される。
+
+根拠: `skills/README.md:29-40`
+
 ## 目的・役割
 
 `skills/` ディレクトリの目的・skill wrapper の仕組み・`commands/` との対応関係を開発者向けに説明するドキュメント。

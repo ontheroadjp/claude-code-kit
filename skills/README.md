@@ -30,11 +30,11 @@ skills/
 
 | skill ディレクトリ | 対応コマンド | 役割 |
 |---|---|---|
-| `work/` | `commands/work.md` | 全作業の通常入口 |
+| `work/` | `commands/work.md` | 単一・複数 issue の統一実装入口と session owner |
 | `work-multi/` | `commands/work-multi.md` | 隔離 worktree 内で `/work` を実行する入口 |
-| `task-manager/` | `commands/task-manager.md` | 1〜3 issue の独立 batch workflow |
+| `task-manager/` | `commands/task-manager.md` | `/work` が委譲する internal multi-issue orchestrator |
 | `mtg/` | `commands/mtg.md` | agenda issue の人間主導の対話と意思決定 |
-| `task/` | `commands/task.md` | docs 変更を伴う実装フロー |
+| `task/` | `commands/task.md` | 通常・delegated worker 共通の issue-specific 実装フロー |
 | `patch/` | `commands/patch.md` | docs 変更不要の軽微修正 |
 | `docs-sync/` | `commands/docs-sync.md` | docs 最小更新 |
 | `init-docs/` | `commands/init-docs.md` | docs 再構築 |

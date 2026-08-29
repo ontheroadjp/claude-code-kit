@@ -56,9 +56,9 @@ The platform-independent philosophy is defined in `docs/L0_concept/`. Its system
 
 | Command | Purpose |
 |---|---|
-| `/work` | Main implementation entry point. Routes agenda-labeled issues to `/mtg`, tells the user to run `/triage-issues-for-hazard` first for hazard-candidate-labeled issues; otherwise gates, investigates, and routes to patch or task flow. |
+| `/work` | Unified implementation entry point for one to three issues. Atomically validates all input before mutation, acquires project context once, routes single work to task/patch and accepted batches to task-manager, and owns final cleanup. |
 | `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Records the original working tree and links only explicitly needed untracked/ignored paths; its self-created links are automatically excluded from status checks. |
-| `/task-manager` | Streams one to three user-provided issues through independent investigation, plan approval, implementation, and PR approval states. Each work-equivalent PR includes its documentation and is delivered through `/git-pr-merge` in fixed input order. |
+| `/task-manager` | Internal multi-issue orchestrator delegated by `/work`. Runs one shared delegated `/task` worker per issue, relays independent plan/Ready PR approvals, and delivers through `/git-pr-merge` in fixed input order. |
 | `/mtg` | Facilitates a human-led, non-linear discussion for an agenda-labeled issue; implementation issues are created only when the user explicitly runs `/new-issue`. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
@@ -141,13 +141,16 @@ Codex omits status items whose current values are unavailable. Restart the relev
 /new-issue (optional)
   rough idea -> issue draft(s) -> user runs /work #N
 
-/work (main entry)
+/work #x [#y] [#z] (only implementation entry)
+  all issues -> atomic read-only preflight -> project context loaded once
   agenda-labeled issue -> /mtg -> human-led discussion and decision making
   hazard-candidate issue -> stops, tells user to run /triage-issues-for-hazard first
-  docs not required -> patch flow: branch -> commit -> user ff-merges
-  docs required     -> task flow: issue -> implement -> /docs-sync -> ready PR
+  one issue, docs not required -> patch flow: branch -> commit -> user ff-merges
+  one issue, docs required     -> task flow: issue -> implement -> /docs-sync -> ready PR
                        HARD STOP -> /docs-sync runs /init-docs documentation-only -> resumes -> ready PR
-                       (end of flow -- review/merge are manual)
+                       (end of single-issue flow -- review/merge are manual)
+  two or three issues -> task-manager -> delegated task workers -> Ready PR approval
+                       -> fixed-order /git-pr-merge -> work cleanup
 
 /review-resolve #N
   PR review comments -> address/reply/skip interactively -> commit/push/reply as needed
@@ -158,10 +161,10 @@ Codex omits status items whose current values are unavailable. Restart the relev
 /work-multi (opt-in, for deliberate concurrent sessions)
   EnterWorktree -> new isolated worktree -> lazily link needed untracked files -> runs /work unchanged
 
-/task-manager #x [#y] [#z] (independent batch workflow; maximum three issues)
-  parent investigation handoff -> one task-worker per issue -> issue-specific plan approval
-  approved issues independently implement source + tests + docs -> issue-specific Draft PR approval
-  eligible PRs -> latest-main documentation refresh + validation -> /git-pr-merge in input order
+/task-manager (internal; invoked by /work for two or three accepted issues)
+  /work handoff -> one delegated /task worker per issue -> issue-specific plan approval
+  approved issues independently implement source + tests + docs -> Ready PR approval
+  eligible PRs -> latest-main validation -> /git-pr-merge in input order -> return cleanup state to /work
 ```
 
 Site commands are under `site/`:
@@ -210,7 +213,8 @@ shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_mod
 - `git diff` is truth for docs sync; PR text is supplemental.
 - `/task` creates and updates L3 per-file docs (`docs/L3_implementation/<source-path>.md`) as part of implementation; `/docs-sync` handles all other docs updates and auto-inserts `git log --oneline -10` output into the `## 変更履歴（git log より自動生成）` section of existing L3 per-file docs.
 - `/docs-sync` makes minimal updates and, when the structure can no longer be explained locally, runs `/init-docs` in documentation-only mode before resuming its normal commit/result flow.
-- `/task-manager` isolates issue preparation and approval states so unrelated workers continue during human waits, while delivery remains sequential in user-provided order. Each PR is work-equivalent, includes its required documentation, and is refreshed and validated against latest main before `/git-pr-merge` delivery.
+- `/work` owns atomic issue preflight, one-time project context, routing, and final workspace/stash cleanup for both single and multiple issue work.
+- `/task-manager` orchestrates shared delegated `/task` workers so unrelated issues continue during approval waits, while delivery remains sequential in user-provided order. It does not duplicate `/work` investigation or `/task` implementation contracts.
 - `/git-pr-merge` never uses a local `main` workspace for delivery or conflict repair; every Draft and Ready PR is refreshed and validated on its actual head branch before explicit squash merge.
 - `/init-docs` defaults to standalone mode; documentation-only mode is used only when explicitly instructed and never creates a branch, commit, push, or PR.
 - `~/.claude/` and `~/.codex/` are symlink-only; this repository remains the source of truth.
