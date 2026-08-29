@@ -32,3 +32,9 @@ static Markdown contract testであり、real workersやGitHub PRを起動しな
 - b3d7d3b feat(#398): stream task-manager issue pipelines (#399)
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
+
+## Work-run coverage
+
+task-managerが親 `work_run_id`、issue-specific approval wait、approved head correlationを保持することを固定文字列で検証する。
+
+根拠: `tests/commands/test-task-manager.sh:80-82`

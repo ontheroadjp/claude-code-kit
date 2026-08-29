@@ -92,3 +92,9 @@ Step 7 の結果報告（PR URL）でこのコマンドの責務は完結する�
 - 27f1861 feat(#76): install templates for claude and codex
 - d94812c feat(#185): add autonomous cross-agent PR review workflow
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
+
+## Work-run observability
+
+work-run contextがある場合、作成済みPRのnumber・URL・full head SHAとissue numberだけを `pr_created` eventとしてbest-effort記録する。PR title/body/diffは含めない。
+
+根拠: `commands/git-pr.md:55-74`

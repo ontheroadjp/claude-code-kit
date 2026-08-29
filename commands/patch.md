@@ -14,6 +14,8 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 
 ## ワークフロー
 
+`/work` が開始した work-run logging context が存在する場合も、`/patch` は独自 schema や lifecycle state を持たない。routing と最終結果は owner である `/work` が emit し、patch は logging failure を理由に実装を停止しない。
+
 ### Phase 1: 実装
 
 #### Step 1: 現状調査の引き継ぎと補完

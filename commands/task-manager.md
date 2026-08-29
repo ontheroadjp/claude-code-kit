@@ -12,6 +12,7 @@ project_context: <complete Phase 1 structured project-wide evidence>
 base_sha: <validated base>
 workspace_owner: /work
 stash_state: <owned by /work>
+work_run_id: <logical /work run id, if logging start succeeded>
 ```
 
 - input validation、issue readiness、project-wide investigation を再実行しない。
@@ -50,6 +51,7 @@ Issue: <complete accepted issue metadata>
 Base SHA: <base SHA>
 Merge order: <position>/<batch size>
 Project-wide context: <complete /work handoff>
+Work run ID: <work_run_id or unavailable>
 
 Required:
 1. Read commands/task.md completely.
@@ -65,6 +67,14 @@ Forbidden:
 - Draft-only delivery, merge, force push, history rewrite, destructive cleanup
 ```
 
+worker は logging が利用可能な場合、編集前に実行 agent 用 installed helper の `attach` を次の literal 値で best-effort 実行する。`worker_registered` の共通 `agent_session_id` が既存 access / approval / token log との join key になる。
+
+```text
+bash <installed-helper> attach <work_run_id> issue_number=<N> worker_id=<stable-worker-id> branch=<branch> worktree=<absolute-worktree> || true
+```
+
+親と worker は、各 issue state 遷移時にそれぞれが所有する遷移だけを `emit issue_state_changed issue_number=<N> state=<state> || true` で記録する。重複した telemetry state machine は持たない。
+
 replacement worker には worktree/branch、project context、supplemental findings、approved plan、current state、failure evidence をすべて渡し、承認済み調査をやり直さない。
 
 ## Phase 2: independent approval relay
@@ -75,6 +85,8 @@ worker message を到着順に処理する。
 
 delegated `/task` が返した issue-specific plan を到着後すぐユーザーへ提示する。承認された issue だけ `implementing` に進め、同じ worker に approval を返す。修正・拒否・approval reset は対象 issue だけに適用する。
 
+待機開始・回答確定時は `approval_wait_started issue_number=<N> approval_kind=plan` と `approval_wait_finished issue_number=<N> approval_kind=plan outcome=<approved|rejected>` を best-effort emit する。
+
 ### PR gate
 
 worker が Ready PR handoff を返したら、remote head、diff scope、documentation completeness、validation を確認してすぐ個別提示する。
@@ -83,6 +95,8 @@ worker が Ready PR handoff を返したら、remote head、diff scope、documen
 
 - NG: 対象 worker だけを再開し、同じ PR を修正・再提示する。
 - OK: full `approved_head_sha`、approved scope/behavior、final validation plan を記録して `delivery_eligible` にする。
+
+PR gate も同様に `approval_kind=pr` の wait events を emit し、承認時は `approved_head_recorded issue_number=<N> pr_number=<PR> head_sha=<full-sha>` を emit する。
 
 他 issue の plan/PR approval 待ちは unrelated worker を止めない。
 

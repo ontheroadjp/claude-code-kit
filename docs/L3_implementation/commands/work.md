@@ -53,3 +53,9 @@
 - e501904 #358 Prohibit web write/download during /work investigation phase (#359)
 - 4ddff6e #356 Prohibit edits during /work investigation phase (#357)
 - f484a2d Route parent issues to their next ready child (#351)
+
+## Work-run observability
+
+invocation開始時に1つの `work_run_id` をbest-effortで作り、gate・routing・cleanup・terminal outcomeだけを共有helperへ渡す。schema・serialization・aggregationはscripts側が所有し、prompt、response、diff、source、tool output、自由記述はeventへ渡さない。logging failureはpreflight・routing・approval・completionを変更しない。
+
+根拠: `commands/work.md`（Work-run observability）, `scripts/work-run-events.sh`

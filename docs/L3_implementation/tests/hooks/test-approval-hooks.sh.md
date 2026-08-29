@@ -59,3 +59,9 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 - 82b21e2 fix(#265): emit valid JSON on Codex fallback path in auto-approve-readonly.sh
 - af81df0 fix(#262): remove G-0's defensive empty-write to session-approved
 - f096447 feat(#258): recognize heredocs nested inside quoted $(...) in _mask_quoted_heredoc_bodies
+
+## Work-run helper coverage
+
+Claude/Codex installed pathとliteral schema tokenをpositive case、alternate path・`--strict`・変数・未知subcommand・空白値・shell injectionをnegative caseとして固定する。
+
+根拠: `tests/hooks/test-approval-hooks.sh`（work-run logger section）

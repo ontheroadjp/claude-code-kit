@@ -77,6 +77,9 @@ assert_contains "$TASK_SKILL" 'Ready PR creation' 'task skill preserves Ready PR
 assert_contains "$TASK_MANAGER_SKILL" 'only when commands/work.md routes' 'task-manager skill is internal'
 assert_contains "$TASK_MANAGER_SKILL" 'Without a valid `/work` handoff' 'direct task-manager invocation stops'
 assert_contains "$TASK_MANAGER_SKILL" 'never own parent workspace cleanup or stash restoration' 'task-manager skill returns cleanup to work'
+assert_contains "$TASK_MANAGER" 'work_run_id: <logical /work run id' 'task-manager receives the parent work run id'
+assert_contains "$TASK_MANAGER" 'approval_wait_started issue_number=<N>' 'task-manager records issue-specific approval waits'
+assert_contains "$TASK_MANAGER" 'approved_head_recorded issue_number=<N>' 'task-manager correlates approved PR heads'
 
 if ((failures > 0)); then
   printf '\n%d unified work contract test(s) failed.\n' "$failures"

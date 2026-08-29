@@ -31,6 +31,12 @@ Claude Code は hook イベント発生時に登録された script を実行し
 | `log-access-tool.sh` | PostToolUse hook。tool アクセスと変更ファイルを記録 |
 | `log-access-stop.sh` | Stop hook。セッション終了を月次ログに記録 |
 | `log-token-usage.sh` | Stop hook。transcript の token 使用量を集計してログに追記 |
+
+## Work-run correlation
+
+`scripts/work-run-events.sh` が `logs/work-runs/<YYYY-MM>/<work_run_id>.jsonl` に privacy-preserving な semantic lifecycle event を記録する。各 event の `agent_session_id` は access、auto-approval、token-usage logs の session ID と同じ resolver に基づく join key であり、既存ログの内容を work-run JSONL へ複製しない。delegated worker は親から渡された `work_run_id` に attach するため、agent session が異なっても同じ logical run に関連付けられる。
+
+work-run event は固定 schema の識別子・状態・結果だけを許可し、full prompt、agent response、source/diff body、tool input/output を拒否する。writer と各 workflow call は fail-open であり、logging failure は implementation workflow を停止・変更しない。
 | `notify-slack.sh` | 任意用途の Slack 通知 helper（hook から呼び出して使う） |
 | `tmux-agent-status.sh` | tmux ウィンドウタイトルに AI エージェントの状態（✅/🔵/🔴）を表示 |
 | `lib/` | hook 間で共有する helper 関数ライブラリ |

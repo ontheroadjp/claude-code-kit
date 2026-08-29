@@ -24,3 +24,9 @@ docs-sync/init-docs/task/git-pr の既存境界に加え、unified `/work` entry
 - 3aca4ca refactor(#362): reuse shared narrowed-read verification principle (#396)
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
 - ed9fa91 #354 Avoid redundant docs-sync confirmation (#355)
+
+## Work-run coverage
+
+work-run start/terminal emit、task issue state、git-pr correlationの固定文字列contractを検証し、workflow owner境界からinstrumentationが脱落する回帰を防ぐ。
+
+根拠: `tests/commands/test-workflow-contracts.sh:68-71`

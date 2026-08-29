@@ -30,3 +30,9 @@ hook を追加した場合は、イベントマッピング表とファイル一
 ## 変更履歴（git log より自動生成）
 
 - 3656e6e docs(#175): add README.md to each module directory
+
+## Work-run correlation
+
+work-run eventの `agent_session_id` はaccess・auto-approval・token-usage logsと同じresolverに基づくjoin keyである。既存log内容はJSONLへ複製せず、固定schemaのidentifier/state/resultだけを記録する。
+
+根拠: `hooks/README.md:35-39`
