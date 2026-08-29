@@ -50,10 +50,15 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 変更履歴（git log より自動生成）
 
-- 5f3aacf feat(#401): add structured work run observability
-- f52dd59 feat(#400): unify work entry point
-- a4cc791 fix(#369): generate conventional task PR titles
-- 0331e9e feat(#336): rename thread on work branch switch
+- 089cf6c feat(#404): reuse SHA-bound full-suite validation
+- 9fc5b9a feat(#401): add structured work run observability (#403)
+- 72a11b5 feat(#400): unify work entry point (#402)
+- a9fbb5f fix(#369): generate conventional task PR titles (#395)
+- 4f0953a docs(task): remove /rename step from Step 3 pre-implementation checklist
+- 5f1d984 #377 Add independent task-manager batch workflow (#378)
+- 0bc7683 #344 Add a thread-renaming helper (#346)
+- f32ec17 #336 Rename thread on work branch switch (#337)
+- ea565ac #326 Automate worktree symlink status filtering (#327)
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 
 ## Work-run observability

@@ -8,7 +8,7 @@
 
 ## 動作の概要
 
-`assert_exists`、`assert_contains`、`assert_absent`を用い、standalone/delegated approval、approved-head drift、known/unknown commit、latest-main refresh、CI/local fallback、conflict repair、Draft/Ready、squash verification、workspace invariantを検証する。
+`assert_exists`、`assert_contains`、`assert_absent`を用い、standalone/delegated approval、approved-head drift、known/unknown commit、latest-main refresh、SHA-bound full-suite evidence reuseと全fallback、required-check preservation、CI/local fallback、conflict repair、Draft/Ready、squash verification、workspace invariantを検証する。
 
 根拠: `tests/commands/test-git-pr-merge.sh:10-79`
 
@@ -28,4 +28,5 @@ GitHub上で実PRを作成・mergeするend-to-end testではなく、static wor
 
 ## 変更履歴（git log より自動生成）
 
-- 57dce6c feat(#389): add reviewed PR delivery workflow
+- 089cf6c feat(#404): reuse SHA-bound full-suite validation
+- a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)

@@ -36,7 +36,7 @@ preflight 通過後だけ main/worktree branch と dirty workspace を扱い、p
 
 親の `work_run_id` をworkerへ伝播し、worker registration、issue state、approval wait、approved headを既存lifecycle ownerからbest-effort記録する。telemetry用の別state machineは持たない。
 
-issue ごとの real worker は delegated `commands/task.md` を完全に実行し、issue-specific plan から tests・docs・Ready PR まで同じ worker で進む。plan/Ready PR approval は到着順に独立して relay し、delivery eligibility は入力順の先行 issue が completed になるまで保持する。delivery は `/git-pr-merge` へ委譲し、completion/failure/head/PR/worktree state を `/work` へ返す。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
+issue ごとの real worker は delegated `commands/task.md` を完全に実行し、issue-specific plan から tests・docs・Ready PR まで同じ worker で進む。plan/Ready PR approval は到着順に独立して relay し、delivery eligibility は入力順の先行 issue が completed になるまで保持する。先頭 worker が返した optional SHA-bound full-suite evidence は補完・推測・reuse 判定をせず `/git-pr-merge` へ転送する。delivery は `/git-pr-merge` へ委譲し、completion/failure/head/PR/worktree state を `/work` へ返す。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
 
 根拠: `commands/task-manager.md:1-131`, issue #400
 
@@ -68,7 +68,7 @@ issue ごとの real worker は delegated `commands/task.md` を完全に実行�
 
 ordinary single issue と delegated worker が共有する docs-aware issue-specific flow。delegated mode は `/work` の complete evidence と prepared worktree/branch を再利用し、具体的な missing/stale/base-drift reason がある場合だけ shortest-path supplemental investigation を行う。plan approval後は同じworkerがsource、tests、L3、`/docs-sync`、`/git-pr`まで進みReady PRを作る。
 
-ordinary modeはユーザーgateを直接扱いReady PRで終了する。delegated modeはplanとReady PR handoffを `/task-manager`へ返し、merge、parent workspace cleanup、stash restorationを行わない。issue creation、session-approved、L3 snapshot、Conventional Commit、PR title/bodyの既存contractは両modeで共有する。
+ordinary modeはユーザーgateを直接扱いReady PRで終了する。delegated modeはplanとReady PR handoffを `/task-manager`へ返し、merge、parent workspace cleanup、stash restorationを行わない。batch 先頭 worker だけは final Ready PR head と validated latest-main base が一致した状態で exact approved full suite が成功した場合に SHA-bound evidence を返し、後続 worker は targeted PR-preparation validation に留める。issue creation、session-approved、L3 snapshot、Conventional Commit、PR title/bodyの既存contractは両modeで共有する。
 
 根拠: `commands/task.md:1-229`, issue #400
 
@@ -160,7 +160,9 @@ PR 番号を受け取り、PR ブランチに checkout し、事前に `git diff
 
 ### `/git-pr-merge` (`commands/git-pr-merge.md`)
 
-review済みの単一Draft/Ready PRをapproved head SHAで固定し、owned PR worktree上でlatest `origin/main`をnormal mergeし、current post-refresh headをCIまたはapproved local commandsで検証してexplicit squash mergeするworkflow。standaloneは表示したPR/headへの明示承認を求め、delegated invocationはPR番号、approved head、scope/behavior、validation plan、approval source、owned worktreeを必須とする。
+review済みの単一Draft/Ready PRをapproved head SHAで固定し、owned PR worktree上でlatest `origin/main`をnormal mergeし、current post-refresh headをCIまたはapproved local commandsで検証してexplicit squash mergeするworkflow。standaloneは表示したPR/headへの明示承認を求め、delegated invocationはPR番号、approved head、scope/behavior、validation plan、approval source、owned worktreeを必須とし、optional full-suite evidence を受け取れる。
+
+successful full scope、exact approved plan、current post-refresh head SHA、current latest-main base SHA がすべて一致する evidence だけを authoritative local result として再利用し、同じ full suite の再実行を省略する。evidence が absent、targeted、failed、incomplete、stale、plan/head/base mismatch、判定不能なら既存 current-head validation にフォールバックする。required checks は evidence で省略しない。
 
 active invocation自身がSHA・parent・目的・changed pathsを記録したlatest-main merge/approved repairだけをknown commitとし、それ以外のhead driftは対象PRだけを再承認する。local `main` workspaceはcheckout、edit、repair、commit、pushに使わず、worktreeがdirty/unavailable/ownership不明ならfallbackせず停止する。merge後はPR state、squash OID、latest-main包含、1-commit resultを再取得して検証する。cleanupはcaller責務である。
 
