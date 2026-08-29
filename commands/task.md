@@ -48,6 +48,7 @@ ordinary mode では親 `/work` と同じ session context を読む。delegated 
 - approval 後は同じ worker が Step 3、tests、L3 per-file docs、Phase 2、`/docs-sync`、`/git-pr` まで継続する。
 - `/git-pr` には Ready PR を作成させる。Draft PR で停止しない。
 - Ready PR handoff を `/task-manager` へ返して `awaiting_pr_approval` で待ち、自分では merge・parent cleanup・stash restoration を行わない。
+- payload の merge position が `1/<batch size>` の worker だけは、Ready PR の final remote head が validated base 上にあり、その base が引き続き latest `origin/main` であることを確認した後、approved final validation plan の full suite を実行できる。成功した場合だけ head/base SHA に束縛した validation evidence を handoff に含める。後続 worker は PR preparation では targeted validation に留める。
 - replacement worker は approved plan と既存 evidence/state を引き継ぐ。
 
 ## ソースコード修正時の注意点
@@ -225,6 +226,19 @@ mkdir -p "<上記で得た絶対パス>"
 Phase 3 へ進む。
 
 delegated worker mode では Ready PR 作成後、issue number、approved plan、branch/worktree、base/head SHA、PR number/URL、changed source/test/docs、observable changes、design decisions、tests、risks/followups を implementation handoff として `/task-manager` へ返し、merge せず待機する。
+
+batch の先頭 worker は handoff 前に remote head と latest `origin/main` を再取得する。remote head がローカルの検証対象 head と一致し、latest `origin/main` が payload の validated base と一致し、その head が base を含む場合に限り、approved final validation plan の exact full-suite commands を Ready PR worktree で実行する。全 command が成功した場合だけ次を handoff に追加する。途中失敗、実行不能、head/base drift、targeted-only validation の場合は evidence を作らず、理由を通常の validation result として返す。
+
+```text
+full_validation_evidence:
+  validated_head_sha: <full Ready PR remote head SHA>
+  validated_base_sha: <full latest origin/main SHA>
+  validation_scope: full
+  validation_plan: <exact approved commands/plan>
+  validation_outcome: success
+```
+
+後続 worker は先行 delivery により base が変わるため、この evidence を作らない。通常モードも自動 delivery handoff を持たないため対象外とする。
 
 ---
 

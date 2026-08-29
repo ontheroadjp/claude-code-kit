@@ -12,7 +12,7 @@
 2. remote headをapproved headと比較し、active invocationがSHA・parent・目的・pathを記録したknown delivery commit以外のdriftをPR単位の再承認へ戻す。
 3. owned PR worktreeまたはisolated repair worktreeでactual head branchへlatest mainをnormal mergeする。
 4. conflictをactual branch上だけで修復し、material changeはcommit/push前に再承認する。
-5. current post-refresh headに対応するCIを待ち、coverage不足分をapproved local validationで補う。
+5. optional full-suite evidence が exact plan・successful full scope・current head SHA・current latest-main base SHA のすべてに一致する場合だけ、同じ local full suite の再実行を省略する。それ以外は current post-refresh headに対応するCIを待ち、coverage不足分をapproved local validationで補う。
 6. DraftだけReady化し、Draft/Readyの双方をexplicit squash mergeする。
 7. merged state、squash OID、latest-main包含、1-commit resultを再取得して検証する。
 
@@ -24,7 +24,9 @@ known commitはactive delivery flow自身がin-memoryに記録したlatest-main 
 
 CIがvalidation planを完全coverするときだけCI単独をauthoritativeに扱う。CIなし・partial coverageではactual PR worktree上のapproved commandsを要求し、missing、pending、skipped、neutral、old-head resultはpassにしない。
 
-根拠: `commands/git-pr-merge.md:60-86`, `commands/git-pr-merge.md:113-123`
+delegated caller から受け取る `full_validation_evidence` は optional である。再利用には `validation_scope=full`、`validation_outcome=success`、approved plan との完全一致、current post-refresh remote head と `validated_head_sha` の完全一致、current latest `origin/main` と `validated_base_sha` の完全一致をすべて要求する。missing、targeted-only、failed、incomplete、stale、plan/head/base mismatch、判定不能は理由を記録して既存 authoritative validation にフォールバックする。required checks は evidence で省略しない。
+
+根拠: `commands/git-pr-merge.md:61-97`, `commands/git-pr-merge.md:126-146`
 
 ## 重要な設計判断
 
@@ -32,6 +34,7 @@ CIがvalidation planを完全coverするときだけCI単独をauthoritativeに�
 - rebase、reset、force push、history rewriteを使わず、actual PR branchへのforward-only commitで回復する。
 - Draft/Ready差はReady transitionだけとし、refreshとvalidationを共通化する。
 - branch/worktree cleanupはcaller責務に残す。
+- evidence reuse は「同一 head を同一 base 上で同一 full plan により検証済み」という狭い最適化に限定し、少しでも state が変われば安全側の再検証に戻す。
 
 根拠: `commands/git-pr-merge.md:39-48`, `commands/git-pr-merge.md:88-111`, `commands/git-pr-merge.md:125-147`
 
@@ -39,6 +42,7 @@ CIがvalidation planを完全coverするときだけCI単独をauthoritativeに�
 
 - user-facing Codex wrapper: `skills/git-pr-merge/SKILL.md`
 - delegated caller: `commands/task-manager.md`
+- evidence producer: `commands/task.md` delegated first-delivery worker
 - contract test: `tests/commands/test-git-pr-merge.sh`
 - Git/GitHub: owned worktree, remote PR head, checks, Ready transition, squash merge
 

@@ -48,6 +48,8 @@ assert_contains "$TASK" '### delegated worker mode' 'task defines delegated work
 assert_contains "$TASK" 'shortest-path supplemental investigation' 'delegated task limits supplemental investigation'
 assert_contains "$TASK" '同じ worker' 'delegated task preserves worker continuity'
 assert_contains "$TASK" 'Ready PR handoff' 'delegated task returns a Ready PR handoff'
+assert_contains "$TASK" 'full_validation_evidence:' 'first delegated task can return SHA-bound full validation evidence'
+assert_contains "$TASK" '後続 worker は先行 delivery により base が変わる' 'later workers do not precompute reusable full validation'
 assert_contains "$TASK" 'parent cleanup・stash restoration' 'delegated task does not own parent cleanup'
 assert_absent "$TASK" 'gh pr create --draft' 'delegated task does not introduce Draft-only delivery'
 
@@ -80,6 +82,8 @@ assert_contains "$TASK_MANAGER_SKILL" 'never own parent workspace cleanup or sta
 assert_contains "$TASK_MANAGER" 'work_run_id: <logical /work run id' 'task-manager receives the parent work run id'
 assert_contains "$TASK_MANAGER" 'approval_wait_started issue_number=<N>' 'task-manager records issue-specific approval waits'
 assert_contains "$TASK_MANAGER" 'approved_head_recorded issue_number=<N>' 'task-manager correlates approved PR heads'
+assert_contains "$TASK_MANAGER" 'reuse 可否を判断せず' 'task-manager forwards evidence without owning reuse policy'
+assert_contains "$TASK_MANAGER" 'full_validation_evidence: <optional' 'task-manager delivery handoff carries optional evidence'
 
 if ((failures > 0)); then
   printf '\n%d unified work contract test(s) failed.\n' "$failures"
