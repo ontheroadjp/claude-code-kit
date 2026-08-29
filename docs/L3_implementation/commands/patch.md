@@ -122,6 +122,7 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
 - 0331e9e feat(#336): rename thread on work branch switch
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
@@ -133,3 +134,9 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 - 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
 - 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
 - 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
+
+## Work-run observability
+
+patchは独自telemetry stateを持たない。routingとterminal resultはsession owner `/work` がemitし、patchはlogging failureを理由に停止しない。
+
+根拠: `commands/patch.md:13-18`

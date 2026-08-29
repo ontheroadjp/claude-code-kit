@@ -60,6 +60,14 @@ gh pr create --title "<title>" --body-file - <<'EOF'
 EOF
 ```
 
+作成結果から issue number、PR number、PR URL、full head SHA を取得でき、work-run context が存在する場合、次を best-effort で emit する。
+
+```text
+bash <agent用installed work-run-events.sh> emit pr_created issue_number=<N> pr_number=<PR> pr_url=<URL> head_sha=<full-sha> || true
+```
+
+取得不能または logging failure の場合は emit を省略し、PR 作成結果を変更しない。PR title/body、diff、tool output は event に含めない。
+
 ### Step 7: 結果報告
 
 - PR URL を報告する

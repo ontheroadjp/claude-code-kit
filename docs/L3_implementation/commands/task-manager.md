@@ -46,7 +46,14 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - f52dd59 feat(#400): unify work entry point
 - 05fbd40 fix(#398): preserve task-manager test executable mode
 - f3be053 feat(#398): stream task-manager issue pipelines
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
+
+## Work-run observability
+
+親 `/work` から `work_run_id` を受け取りworkerへ伝播する。worker registration、issue state、plan/PR approval wait、approved headを、それぞれの既存state transitionのownerがbest-effort emitする。telemetry用の別state machineは持たない。
+
+根拠: `commands/task-manager.md`（worker lifecycle, approval relay）

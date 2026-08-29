@@ -86,9 +86,16 @@ Step 7 の結果報告（PR URL）でこのコマンドの責務は完結する�
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
 - 27f1861 feat(#76): install templates for claude and codex
 - d94812c feat(#185): add autonomous cross-agent PR review workflow
 - 82717a1 feat(#167): add /git-pr command; refactor push and PR creation out of /task and /docs-sync
+
+## Work-run observability
+
+work-run contextがある場合、作成済みPRのnumber・URL・full head SHAとissue numberだけを `pr_created` eventとしてbest-effort記録する。PR title/body/diffは含めない。
+
+根拠: `commands/git-pr.md:55-74`

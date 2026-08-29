@@ -46,7 +46,14 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - f52dd59 feat(#400): unify work entry point
 - a4cc791 fix(#369): generate conventional task PR titles
 - 0331e9e feat(#336): rename thread on work branch switch
 - 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
+
+## Work-run observability
+
+work-run contextがある場合、plan/implementation/Ready PRのissue-specific stateとapproval waitだけをbest-effort emitする。ordinary modeは親session context、delegated modeはworker attach済みcontextを使い、logging failureで実装を停止しない。
+
+根拠: `commands/task.md`（Work-run event contract）

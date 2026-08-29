@@ -34,6 +34,8 @@ preflight 通過後だけ main/worktree branch と dirty workspace を扱い、p
 
 `/work` から validation 済み2〜3 issue、complete project context、base SHA、workspace/stash ownership を受け取った場合だけ動作する internal orchestrator。preflight、project-wide investigation、task implementation contract、parent cleanup を再実行しない。
 
+親の `work_run_id` をworkerへ伝播し、worker registration、issue state、approval wait、approved headを既存lifecycle ownerからbest-effort記録する。telemetry用の別state machineは持たない。
+
 issue ごとの real worker は delegated `commands/task.md` を完全に実行し、issue-specific plan から tests・docs・Ready PR まで同じ worker で進む。plan/Ready PR approval は到着順に独立して relay し、delivery eligibility は入力順の先行 issue が completed になるまで保持する。delivery は `/git-pr-merge` へ委譲し、completion/failure/head/PR/worktree state を `/work` へ返す。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
 
 根拠: `commands/task-manager.md:1-131`, issue #400
@@ -178,6 +180,8 @@ Claude Code では PreToolUse、Codex CLI では PermissionRequest で動く共�
 
 `sed` の `e` / `w`、external command を pipe する `awk getline`、`awk` の `print`/`printf` 出力リダイレクト、file output 等を含む curl short-option cluster は read-only とみなさない。Git write category は shared predicate により `+refspec` push、forced checkout/switch、forced branch deletion を除外する。write redirect 検出は quote-aware（シングルクォート内の比較演算子としての `>` を誤検知しない）で、`>&<数値fd|->` は fd 複製として background operator 扱いしない。
 
+installed `work-run-events.sh` は公開subcommandとliteral schema tokenだけのnarrow allow-shapeで追加promptなしに実行できる。alternate path、`--strict`、変数、未知subcommand、shell syntaxは通常許可フローへ戻す。
+
 セッション ID 解決は `hooks/lib/session-id.sh` を source して行う（`hooks/cleanup-session.sh` と共有）。優先順位は `CLAUDE_CODE_KIT_SESSION_ID` → `CLAUDE_CODE_SESSION_ID`（Claude Code のセッション ID env var） → payload の `session_id` → payload の `transcript_path` hash → `CODEX_THREAD_ID` hash → `process-<PPID>` fallback。承認ファイルの解決結果を通知するグローバル共有ポインタファイル（旧 `current-session-approved-path`）は issue #210 で廃止済み。
 
 安全性が実行時変数に依存する危険操作（例: `rm -f "$VAR"`）は、hook がコマンドテキストを実行せずに値を検証できないため、read-only な解決ステップ → リテラル値埋め込みという2段階（resolve-then-embed、`CLAUDE.md` に規約化）に分けることをエージェントに求める。hook はリテラル引数のみを `is_rm_protected_path`/`is_in_working_repo` と照合する（issue #248, #250）。
@@ -239,6 +243,14 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 `log-access-prompt.sh`、`log-access-tool.sh`、`log-access-stop.sh` はユーザー指示、tool access、modified files を session file / pending file / monthly log に記録する。`log-token-usage.sh` は transcript usage を集計して token usage log に追記する。`log-access-stop.sh` と `log-token-usage.sh` は `hooks/lib/hook-timing.sh` を使って自身の実行時間も計測し、それぞれ `[Hook処理時間]` セクション（累積、カンマ区切り）と `duration_ms=<ms|NA>` フィールド（行単位）としてログへ記録する。`log-access-stop.sh` の重複アクセス検出は `.accesses[].phase`（`log-access-tool.sh` が付与）も集計軸に加え、`重複アクセス:` の各行に `[phase:count, ...]` の内訳を付与する（issue #308）。`log-access-tool.sh` は Read の `offset`/`limit` 使用有無も `.accesses[].narrowed` として付与し、`log-access-stop.sh` はこれを集計して `総アクセス数:` 行と `重複アクセス:` の各行に絞り込み読み件数のサフィックスを追加する（issue #363）。
 
 根拠: `hooks/log-access-prompt.sh`, `hooks/log-access-tool.sh`, `hooks/log-access-stop.sh`, `hooks/log-token-usage.sh`, `hooks/lib/hook-timing.sh`
+
+## Work-run observability
+
+`scripts/work-run-events.sh` は1 logical `/work` に24桁hex `work_run_id` を割り当て、parent/delegated workerの固定schema lifecycle eventを `logs/work-runs/<YYYY-MM>/<work_run_id>.jsonl` へlock付きで追記する。通常modeはfail-openで、test専用 `--strict` のみerrorを非ゼロで返す。prompt、response、source/diff body、tool input/output、任意keyを拒否する。
+
+`scripts/analyze_work_runs.py` はterminal/gate/issue stateからsuccessful、gate-stopped、partial failure、interrupted、cleanup-incompleteを分類し、elapsed、approval wait、PR preparation、delivery time、parallel worker peakを集計する。既存access/approval/token metricsは複製せず、eventの `agent_session_id` をjoin keyとして返す。
+
+根拠: `scripts/work-run-events.sh`, `scripts/analyze_work_runs.py`, `tests/scripts/test-work-run-events.sh`, `tests/scripts/test_analyze_work_runs.py`, issue #401
 
 ## Templates
 

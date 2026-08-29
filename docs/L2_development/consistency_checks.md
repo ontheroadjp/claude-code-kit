@@ -34,6 +34,7 @@ Repo Profile の commands はすべて実体に対応する。
 | analyze | `python3 scripts/analyze_access.py --all` | access log aggregator |
 | analyze | `python3 scripts/analyze_auto_approve.py --all` | auto-approve log aggregator |
 | analyze | `python3 scripts/analyze_token_usage.py --all` | token-usage log aggregator |
+| analyze | `python3 scripts/analyze_work_runs.py logs/work-runs` | logical work-run aggregator |
 | shell lint | `shellcheck -x $(find ...)` | all shell scripts with CI exclusions |
 | shell test | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract |
 | shell test | `bash tests/hooks/test-session-paths.sh` | session path resolution contract |
@@ -49,6 +50,7 @@ Repo Profile の commands はすべて実体に対応する。
 | shell test | `bash tests/scripts/test-link-worktree-untracked.sh` | worktree lazy linker contract |
 | shell test | `bash tests/scripts/test-rename-thread.sh` | transcript title update contract |
 | shell test | `bash tests/scripts/test-worktree-status.sh` | worktree status filtering contract |
+| shell test | `bash tests/scripts/test-work-run-events.sh` | work-run writer contract |
 | Python test | `python3 -m pytest tests/scripts/` | analysis-script contract |
 
 根拠: `docs/.ai/repo.profile.json:commands`, `site/package.json:4-8`, `.github/workflows/deploy.yml:31-37`, `commands/analyze-access.md:27-35`, `commands/analyze-auto-approve.md:28-36`, `commands/analyze-token-usage.md:27-35`, `tests/` 実体一覧
@@ -64,7 +66,7 @@ Repo Profile の commands はすべて実体に対応する。
 
 ## CI 定義との整合性
 
-CI 定義は `.github/workflows/` に3件存在する。shell tests 14本のうち CI job が直接実行するのは `tests/hooks/test-approval-hooks.sh` のみで、他13本と pytest（`tests/scripts/`）は CI job に含まれない。全 shell tests は ShellCheck の対象である。
+CI 定義は `.github/workflows/` に3件存在する。shell tests 15本のうち CI job が直接実行するのは `tests/hooks/test-approval-hooks.sh` のみで、他14本と pytest（`tests/scripts/`）は CI job に含まれない。全 shell tests は ShellCheck の対象である。
 
 根拠: `.github/workflows/deploy.yml:1-53`, `.github/workflows/shellcheck.yml:1-18`, `.github/workflows/test.yml:1-18`, `README.md:80-98`, `docs/L2_development/cicd.md`, `docs/L2_development/test.md`
 

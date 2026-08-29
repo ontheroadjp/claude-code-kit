@@ -2,3 +2,4 @@
 - docs/L3_implementation/commands/work.md:47 — Batch execution treats completed merges as authoritative and reports recovery state instead of assuming rollback (issue #389)
 - docs/L3_implementation/commands/work.md:30-32 — `/work` atomically validates the complete issue input before mutation, acquires shared evidence once, and remains the cleanup owner (issue #400)
 - docs/L3_implementation/commands/task-manager.md:31-33 — Multi-issue orchestration must reuse `/work` and `/task` contracts instead of duplicating investigation, implementation, PR creation, or cleanup ownership (issue #400)
+- docs/L3_implementation/scripts/work-run-events.sh.md:18-22 — Workflow observability must be privacy-preserving and fail-open so logging cannot change routing, approvals, safety, or completion (issue #401)

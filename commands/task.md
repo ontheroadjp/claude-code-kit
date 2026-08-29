@@ -22,6 +22,18 @@ Phase 3: 最終報告
 
 ## 実行モード
 
+## Work-run event contract
+
+`/work` または `/task-manager` から `work_run_id` が渡されている場合だけ、実行 agent 用 installed `work-run-events.sh` に semantic event を best-effort で渡す。helper の失敗は無視し、実装・approval・PR creation の結果を変更しない。自由記述や成果物本文は渡さない。
+
+- plan 提示時: `issue_state_changed issue_number=<N> state=awaiting_plan_approval`
+- plan 承認後: `issue_state_changed issue_number=<N> state=implementing`
+- 実装レビュー待ち: `approval_wait_started issue_number=<N> approval_kind=implementation`
+- 実装 OK/NG: 対応する `approval_wait_finished` (`outcome=approved|rejected`)
+- Ready PR 作成後: `issue_state_changed issue_number=<N> state=awaiting_pr_approval`
+
+ordinary mode では親 `/work` と同じ session context を読む。delegated mode では worker lifecycle の `attach` 済み context を読む。
+
 ### 通常モード
 
 `/work` が単一 issue / 単一作業として委譲する。既存のユーザー gate をこの会話で直接扱い、Ready PR 作成後に終了する。

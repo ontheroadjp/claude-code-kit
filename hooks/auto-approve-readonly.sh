@@ -1558,6 +1558,17 @@ is_safe_mkdir_session_tmp_command() {
     return 1
 }
 
+# The work-run event helper is a repository-owned, fail-open logger. Allow only
+# its installed symlink paths, public subcommands, and literal schema tokens.
+# Variables, --strict, alternate script paths, shell syntax, and whitespace in
+# values fall through to the normal approval path.
+is_safe_work_run_event_command() {
+    local seg="$1"
+    _has_variable_expansion "$seg" && return 1
+    printf '%s' "$seg" | grep -qE \
+        '^bash[[:space:]]+~/(\.claude|\.codex)/scripts/work-run-events\.sh[[:space:]]+(start|attach|emit|current)([[:space:]]+[A-Za-z0-9._/@:+,=-]+)*[[:space:]]*$'
+}
+
 # curl — allow default GET/HEAD requests only; reject writes and custom methods
 is_safe_curl_command() {
     local seg="$1"
@@ -1653,6 +1664,7 @@ is_safe_segment() {
     is_safe_command_v_command "$seg" && return 0
     is_safe_kill_probe_command "$seg" && return 0
     is_safe_mkdir_session_tmp_command "$seg" && return 0
+    is_safe_work_run_event_command "$seg" && return 0
     is_safe_curl_command "$seg" && return 0
     is_safe_npm_command "$seg" && return 0
     is_safe_mise_command "$seg" && return 0
@@ -1695,6 +1707,7 @@ _EXPLAIN_CHECK_FUNCS=(
     is_safe_command_v_command
     is_safe_kill_probe_command
     is_safe_mkdir_session_tmp_command
+    is_safe_work_run_event_command
     is_safe_curl_command
     is_safe_npm_command
     is_safe_mise_command

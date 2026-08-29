@@ -120,6 +120,7 @@ citation の検証方法と stale citation 時の共通フォールバックは 
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - 102bae9 refactor(#362): reuse shared narrowed-read verification principle
 - 2a361fe fix(#354): avoid redundant docs-sync confirmation
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
@@ -130,3 +131,9 @@ citation の検証方法と stale citation 時の共通フォールバックは 
 - 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 - 4b3c0e1 feat(#229): make /docs-sync Phase 2 skip confirmation for mechanical updates, focus on interpretation
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
+
+## Work-run observability
+
+呼び出し元からissueとwork-run contextが渡された場合、docs syncの成功・失敗・停止だけをbest-effort eventとして記録する。HARD STOP判定やdocs更新結果はlogging failureから独立する。
+
+根拠: `commands/docs-sync.md:1-11`

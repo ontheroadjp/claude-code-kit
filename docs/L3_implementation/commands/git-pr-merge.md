@@ -50,4 +50,11 @@ CIがvalidation planを完全coverするときだけCI単独をauthoritativeに�
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - 57dce6c feat(#389): add reviewed PR delivery workflow
+
+## Work-run observability
+
+delegated work-run contextがある場合、latest-main refresh/conflict count、current-head validation、delivery resultをこのworkflowが所有するsemantic eventとしてbest-effort記録する。commit message、diff、conflict/source content、check outputは含めない。
+
+根拠: `commands/git-pr-merge.md:50-58`

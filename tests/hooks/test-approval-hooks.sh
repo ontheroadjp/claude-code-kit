@@ -490,6 +490,24 @@ for command in \
     assert_no_output "$output"
 done
 
+# The installed work-run logger has one narrow, literal allow-shape so its
+# best-effort instrumentation never creates an approval prompt.
+run_parallel_group "approve" \
+    'bash ~/.claude/scripts/work-run-events.sh start issue_number=401' \
+    'bash ~/.codex/scripts/work-run-events.sh emit routing_result issue_number=401 route=task' \
+    'bash ~/.claude/scripts/work-run-events.sh current' \
+    'bash ~/.codex/scripts/work-run-events.sh attach abc123 issue_number=401 worker_id=worker-401 branch=feat/401-observability worker_session_id=codex-123'
+
+# Alternate paths, strict/test mode, variables, unknown subcommands, quoted
+# whitespace, and injected shell syntax stay outside the allow-shape.
+run_parallel_group "NO_OUTPUT" \
+    'bash ./scripts/work-run-events.sh emit routing_result route=task' \
+    'bash ~/.codex/scripts/work-run-events.sh --strict current' \
+    'bash ~/.codex/scripts/work-run-events.sh delete abc123' \
+    'bash ~/.codex/scripts/work-run-events.sh emit routing_result route="$ROUTE"' \
+    'bash ~/.codex/scripts/work-run-events.sh emit routing_result "reason_code=user stopped"' \
+    'bash ~/.codex/scripts/work-run-events.sh emit routing_result route=task; touch /tmp/pwned'
+
 # xargs / find -exec: recursively validate the wrapped command instead of
 # always prompting (issue #254). Read-only wrapped commands are approved,
 # including through a full pipeline and the batching (+) terminator and

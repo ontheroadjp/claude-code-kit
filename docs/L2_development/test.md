@@ -2,9 +2,9 @@
 
 ## 対象
 
-このリポジトリには Bash で直接実行する shell tests が14本、pytest で実行する Python tests が `tests/scripts/` にある。`tests/hooks/test-approval-hooks.sh` と全shell scriptへのShellCheckはCI実行されるが、command contract tests・installer tests・pytestは現状ローカル検証のみである。
+このリポジトリには Bash で直接実行する shell tests が15本、pytest で実行する Python tests が `tests/scripts/` にある。`tests/hooks/test-approval-hooks.sh` と全shell scriptへのShellCheckはCI実行されるが、command contract tests・installer tests・pytestは現状ローカル検証のみである。
 
-根拠: `tests/commands/*.sh`（7本）, `tests/hooks/*.sh`（2本）, `tests/install/*.sh`（2本）, `tests/scripts/*.sh`（3本）, `tests/scripts/test_*.py`（3本）, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
+根拠: `tests/commands/*.sh`（7本）, `tests/hooks/*.sh`（2本）, `tests/install/*.sh`（2本）, `tests/scripts/*.sh`（4本）, `tests/scripts/test_*.py`（4本）, `site/package.json:4-8`, `.github/workflows/deploy.yml:17-52`, `.github/workflows/test.yml:1-18`
 
 ## Hook safety test
 
@@ -94,6 +94,7 @@ bash tests/install/test-setup-statusline-for-codex.sh
 bash tests/scripts/test-link-worktree-untracked.sh
 bash tests/scripts/test-worktree-status.sh
 bash tests/scripts/test-rename-thread.sh
+bash tests/scripts/test-work-run-events.sh
 ```
 
 トップレベル untracked ファイル/ディレクトリの symlink、tracked ディレクトリ配下にネストした untracked ディレクトリの symlink、`.git`/`.claude` の除外、再実行時の冪等性、および `hooks/lib/session-paths.sh` が解決可能な場合の manifest（`worktree-untracked-symlinks.txt`）書き出しを確認する（issue #318）。`test-worktree-status.sh` は manifest 記録済み symlink のみを status から除外し、実変更を残すことを検証する。`test-rename-thread.sh` は session transcript への custom title 追記、session ID 不在時の no-op、空 title の拒否を検証する。
@@ -102,13 +103,13 @@ bash tests/scripts/test-rename-thread.sh
 
 ## Log analysis script tests
 
-`tests/scripts/` は `scripts/analyze_access.py` / `analyze_auto_approve.py` / `analyze_token_usage.py` のパース・集計ロジックを合成ログ fixture で検証する pytest テストである。`tests/scripts/conftest.py` が `scripts/` を `sys.path` に追加する。
+`tests/scripts/` はaccess/auto-approve/token-usage/work-run analyzerのパース・集計ロジックをprivacy-safeな合成log fixtureで検証するpytestテストである。work-run testsはsuccess、gate stop、partial failure、interruption、invalid JSON、timing/concurrency metricsを固定する。
 
 ```bash
 python3 -m pytest tests/scripts/
 ```
 
-根拠: `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`, `tests/scripts/conftest.py`
+根拠: `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py`, `tests/scripts/test_analyze_work_runs.py`, `tests/scripts/conftest.py`
 
 ## Site build verification
 
@@ -128,6 +129,6 @@ CI は Node.js 24 と `site/package-lock.json` を使う。
 ## Coverage と未確認事項
 
 - coverage collection と threshold の定義は存在しない。
-- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の13本の shell tests と pytest は CI に登録されていない。ただし全shell testsはShellCheck対象である。
+- `tests/hooks/test-approval-hooks.sh` は CI に登録されている。他の14本の shell tests と pytest は CI に登録されていない。ただし全shell testsはShellCheck対象である。
 - 2026-08-21 の `/init-docs` 実行では `tests/commands/test-workflow-contracts.sh` の2 assertion が失敗した。`commands/task.md` から `/rename` 手順を削除した実装（commit `4f0953a`）に対し、同 test が `/rename` と installed helper の呼び出しを引き続き要求しているためである。確認・修正対象: `tests/commands/test-workflow-contracts.sh:43-46`, `commands/task.md`。
 - 上記を変更する場合は `site/package.json` または `.github/workflows/` の実体を更新し、この文書も再観測する。

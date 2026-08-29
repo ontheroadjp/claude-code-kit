@@ -11,6 +11,14 @@ Claude Code のステータス表示とトークン使用量確認のための�
 | `analyze_access.py` | `logs/access/*.log` を集計し JSON を出力する（`/analyze-access` から呼ばれる） |
 | `analyze_auto_approve.py` | `logs/auto-approve/*.log` を集計し JSON を出力する（`/analyze-auto-approve` から呼ばれる） |
 | `analyze_token_usage.py` | `logs/token-usage/*.log` を集計し JSON を出力する（`/analyze-token-usage` から呼ばれる） |
+| `work-run-events.sh` | 1回の `/work` と delegated worker の semantic event を固定 schema の per-run JSONL に best-effort 記録する |
+| `analyze_work_runs.py` | `logs/work-runs/**/*.jsonl` を集計し、run status・elapsed time・issue/session correlation を JSON で出力する |
+
+`work-run-events.sh` は `start`、`attach`、`emit`、`current` を提供する。通常モードは常に fail-open で、テスト専用 `--strict` のみ schema/IO failure を非ゼロで返す。出力 JSONL は自由記述を受け付けず、既存 telemetry とは `agent_session_id` で join する。
+
+```bash
+python3 scripts/analyze_work_runs.py logs/work-runs
+```
 | `lib/analyze_common.py` | 上記3スクリプトが共有する対象月解決・ログファイル列挙・JSON出力の共通処理 |
 | `link-worktree-untracked.sh` | `EnterWorktree` が作成した worktree に、元の working tree の untracked/ignored ファイル・ディレクトリを symlink する（`/work-multi` から呼ばれる） |
 | `rename-thread.sh` | Claude Code の現在の会話スレッド名を指定されたブランチ名へ更新する（`/task`・`/patch` から呼ばれる） |

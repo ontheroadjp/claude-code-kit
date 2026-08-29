@@ -559,6 +559,7 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - 8aeaa64 feat(#352): auto-approve WIP squash resets
 - c146ead fix(#340): approve Codex permission requests
 - 880ee07 feat(#301): consolidate /new-issue draft/label/creation approval into Step 4
@@ -573,3 +574,9 @@ heredoc body のマスキング（issue #246）については、`gh pr create -
 - 202a7eb refactor(#257): extract _heredoc_skip_end_index and make subshell span scanner heredoc-aware
 - e8d33b3 feat(#254): recursively validate xargs and find -exec wrapped commands in auto-approve hook
 - 87ce937 fix(#250): protect session-approved from auto-approved rm, tighten task.md Step 2 checklist
+
+## work-run event helper の allow-shape
+
+`is_safe_work_run_event_command()` はClaude/Codexのinstalled helper path、公開subcommand（`start|attach|emit|current`）、literal schema tokenだけを許可する。変数、`--strict`、alternate path、未知subcommand、空白値、shell syntaxは通常許可フローへ戻す。これによりinstrumentationの追加promptを防ぎつつ、任意script/commandの許可へ広げない。
+
+根拠: `hooks/auto-approve-readonly.sh` (`is_safe_work_run_event_command`), `tests/hooks/test-approval-hooks.sh`

@@ -57,6 +57,7 @@ The platform-independent philosophy is defined in `docs/L0_concept/`. Its system
 | Command | Purpose |
 |---|---|
 | `/work` | Unified implementation entry point for one to three issues. Atomically validates all input before mutation, acquires project context once, routes single work to task/patch and accepted batches to task-manager, and owns final cleanup. |
+| Work-run observability | Records privacy-preserving lifecycle events for one logical `/work` run and delegated workers under `logs/work-runs/`; `scripts/analyze_work_runs.py` summarizes status, timing, concurrency, and session correlation without reading full agent transcripts. |
 | `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Records the original working tree and links only explicitly needed untracked/ignored paths; its self-created links are automatically excluded from status checks. |
 | `/task-manager` | Internal multi-issue orchestrator delegated by `/work`. Runs one shared delegated `/task` worker per issue, relays independent plan/Ready PR approvals, and delivers through `/git-pr-merge` in fixed input order. |
 | `/mtg` | Facilitates a human-led, non-linear discussion for an agenda-labeled issue; implementation issues are created only when the user explicitly runs `/new-issue`. |
@@ -196,7 +197,9 @@ bash tests/install/test-setup-statusline-for-codex.sh
 bash tests/scripts/test-link-worktree-untracked.sh
 bash tests/scripts/test-rename-thread.sh
 bash tests/scripts/test-worktree-status.sh
+bash tests/scripts/test-work-run-events.sh
 python3 -m pytest tests/scripts/
+python3 scripts/analyze_work_runs.py logs/work-runs
 shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_modules/*" -not -path "./.git/*" -iname "*.sh")
 ```
 
