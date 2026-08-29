@@ -45,6 +45,7 @@ isolated `TMP_DIR` 上での直接実行による静的検証であり、実際�
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - 8aeaa64 feat(#352): auto-approve WIP squash resets
 - c146ead fix(#340): approve Codex permission requests
 - 880ee07 feat(#301): consolidate /new-issue draft/label/creation approval into Step 4

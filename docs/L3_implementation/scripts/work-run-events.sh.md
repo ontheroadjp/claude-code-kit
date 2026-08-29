@@ -29,3 +29,7 @@ prompt、response、diff、source、tool output、自由記述を受け付けな
 ## 注意事項・既知の制限
 
 強制終了で終端eventが欠けてもworkflow本体は継続し、analyzerがinterruptedとして分類する。
+
+## 変更履歴（git log より自動生成）
+
+- 5f3aacf feat(#401): add structured work run observability

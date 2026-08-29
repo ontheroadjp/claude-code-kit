@@ -138,6 +138,7 @@ branch、Issue、commit、PR、L3 per-file documentation、session temp artifact
 | `python3 scripts/analyze_access.py --all` | access logs の全期間集計 | `commands/analyze-access.md:27-35` |
 | `python3 scripts/analyze_auto_approve.py --all` | auto-approve logs の全期間集計 | `commands/analyze-auto-approve.md:28-36` |
 | `python3 scripts/analyze_token_usage.py --all` | token-usage logs の全期間集計 | `commands/analyze-token-usage.md:27-35` |
+| `python3 scripts/analyze_work_runs.py logs/work-runs` | logical `/work` run のstatus・timing・worker/session相関集計 | `scripts/analyze_work_runs.py` |
 | `shellcheck -x $(find ...)` | CI と同じ除外条件で全 shell script を lint | `.github/workflows/shellcheck.yml:8-18` |
 | `bash tests/hooks/test-approval-hooks.sh` | hook safety contract | `tests/hooks/test-approval-hooks.sh` |
 | `bash tests/hooks/test-session-paths.sh` | session path resolution contract | `tests/hooks/test-session-paths.sh` |
@@ -153,6 +154,7 @@ branch、Issue、commit、PR、L3 per-file documentation、session temp artifact
 | `bash tests/scripts/test-link-worktree-untracked.sh` | worktree lazy linker contract | `tests/scripts/test-link-worktree-untracked.sh` |
 | `bash tests/scripts/test-rename-thread.sh` | Claude transcript title update contract | `tests/scripts/test-rename-thread.sh` |
 | `bash tests/scripts/test-worktree-status.sh` | linked path filtering contract | `tests/scripts/test-worktree-status.sh` |
+| `bash tests/scripts/test-work-run-events.sh` | work-run writerの並列追記・privacy・fail-open contract | `tests/scripts/test-work-run-events.sh` |
 | `python3 -m pytest tests/scripts/` | log analysis scripts の parse / aggregate / CLI contract | `tests/scripts/` |
 
 ## CI/CD

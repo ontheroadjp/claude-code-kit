@@ -23,3 +23,7 @@ raw access/approval/token logは読まず、`agent_session_ids` を外部join ke
 ## 注意事項・既知の制限
 
 対にならないwait/start eventはdurationへ加算しない。
+
+## 変更履歴（git log より自動生成）
+
+- 5f3aacf feat(#401): add structured work run observability

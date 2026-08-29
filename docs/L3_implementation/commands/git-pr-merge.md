@@ -50,6 +50,7 @@ CIがvalidation planを完全coverするときだけCI単独をauthoritativeに�
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - 57dce6c feat(#389): add reviewed PR delivery workflow
 
 ## Work-run observability

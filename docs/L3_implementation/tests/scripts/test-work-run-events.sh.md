@@ -18,3 +18,7 @@ isolated session/log rootでparent start、worker attach、20並列emitを実行
 ## 注意事項
 
 test用log rootを使いproduction logsへ書き込まない。
+
+## 変更履歴（git log より自動生成）
+
+- 5f3aacf feat(#401): add structured work run observability

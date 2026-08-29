@@ -70,13 +70,13 @@ VitePress の公開サイトを置く。`site/package.json` に npm scripts と�
 
 ### `scripts/` と status line setup
 
-`scripts/setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/setup_statusline_for_codex.sh` は `~/.codex/config.toml` の `[tui].status_line` を4項目へ冪等更新し、`install.sh` からも呼ばれる。`scripts/statusline.sh` は `jq` と `bc` を使って Claude Code の context / rate limit 情報を表示する。ログ解析 scripts は `logs/<type>/*.log` を集計し JSON を標準出力へ出力する。
+`scripts/setup_statusline_for_claude.sh` は `scripts/statusline.sh` を `~/.claude/statusline.sh` に symlink し、`~/.claude/settings.json` に `statusLine` を追加する。`scripts/setup_statusline_for_codex.sh` は `~/.codex/config.toml` の `[tui].status_line` を4項目へ冪等更新し、`install.sh` からも呼ばれる。`scripts/statusline.sh` は `jq` と `bc` を使って Claude Code の context / rate limit 情報を表示する。`work-run-events.sh` はlogical `/work` lifecycleをper-run JSONLへ記録し、Python解析scriptsはrepository-local logsを集計してJSONを標準出力へ出力する。
 
 根拠: `scripts/setup_statusline_for_claude.sh:6-57`, `scripts/setup_statusline_for_codex.sh:6-93`, `install.sh:108-109`, `scripts/statusline.sh:10-83`
 
 ### `logs/`
 
-access、auto-approval、token usage の月次ログを置く。log hooks と token usage script が repository-local な観測記録として利用する。
+access、auto-approval、token usage の月次ログと、`logs/work-runs/<YYYY-MM>/<work_run_id>.jsonl` のlogical run eventを置く。既存metricsはwork-run JSONLへ複製せず、共通session IDで関連付ける。
 
 根拠: `logs/` 実体一覧、`hooks/log-access-stop.sh`、`hooks/log-token-usage.sh`
 

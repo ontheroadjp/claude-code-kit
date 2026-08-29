@@ -18,6 +18,7 @@
     "analyze:access": "python3 scripts/analyze_access.py --all",
     "analyze:auto-approve": "python3 scripts/analyze_auto_approve.py --all",
     "analyze:token-usage": "python3 scripts/analyze_token_usage.py --all",
+    "analyze:work-runs": "python3 scripts/analyze_work_runs.py logs/work-runs",
     "lint:shellcheck": "shellcheck -x $(find . -not -path \"./node_modules/*\" -not -path \"./site/node_modules/*\" -not -path \"./.git/*\" -iname \"*.sh\")",
     "test:approval-hooks": "bash tests/hooks/test-approval-hooks.sh",
     "test:session-paths": "bash tests/hooks/test-session-paths.sh",
@@ -33,6 +34,7 @@
     "test:link-worktree-untracked": "bash tests/scripts/test-link-worktree-untracked.sh",
     "test:rename-thread": "bash tests/scripts/test-rename-thread.sh",
     "test:worktree-status": "bash tests/scripts/test-worktree-status.sh",
+    "test:work-run-events": "bash tests/scripts/test-work-run-events.sh",
     "test:analysis-scripts": "python3 -m pytest tests/scripts/"
   },
   "active_commands": [

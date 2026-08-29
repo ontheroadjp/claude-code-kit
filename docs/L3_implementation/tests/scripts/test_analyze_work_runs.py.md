@@ -18,3 +18,7 @@ synthetic JSONLからsuccess、gate-stopped、partial-failure、interrupted、pa
 ## 注意事項
 
 実際のrepository logsやagent transcriptsを使わない。
+
+## 変更履歴（git log より自動生成）
+
+- 5f3aacf feat(#401): add structured work run observability

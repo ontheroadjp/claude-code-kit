@@ -48,6 +48,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - f52dd59 feat(#400): unify work entry point
 - ae1c7f9 fix(#360): align /work heading wording and (A)/(B) investigation references
 - e501904 #358 Prohibit web write/download during /work investigation phase (#359)

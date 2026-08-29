@@ -11,6 +11,7 @@
 | 領域 | 実装 | 役割 | 根拠 |
 |---|---|---|---|
 | 実装入口 | `commands/work.md` | 1〜3 issue の atomic preflight、workspace/context ownership、single task/patch・multi task-manager routing、final cleanup | `commands/work.md:1-153` |
+| work-run observability | `scripts/work-run-events.sh`, `scripts/analyze_work_runs.py` | 1 logical `/work` の固定schema lifecycle eventをper-run JSONLへfail-open記録し、status・時間・並列worker・issue/session相関を集計 | `scripts/work-run-events.sh`, `scripts/analyze_work_runs.py` |
 | agenda 対話 | `commands/mtg.md` | `agenda` label の issue を人間主導で検討し、明示指示時のみ起案へ進む | `commands/mtg.md:1-77` |
 | ログ分析 | `commands/analyze-access.md`, `analyze-auto-approve.md`, `analyze-token-usage.md` | `logs/access`・`logs/auto-approve`・`logs/token-usage` を `scripts/analyze_*.py` で集計し、KPIダッシュボード→Key Findings & Proposals→Evidence の順で構成したレポートと HTML を `logs/reports/` へ出力する read-only workflow | `commands/analyze-access.md:1-85`, `scripts/analyze_access.py:1-6` |
 | docs あり実装 | `commands/task.md` | ordinary/delegated 共通の issue-specific 調査、plan、実装、L3、`/docs-sync`・Ready PR | `commands/task.md:1-229` |
@@ -28,7 +29,7 @@
 | coding 原則 | `commands/coding-*.md` | general / py / js / ts / sh に React / Next.js framework layerを合成する汎用実装規約 | `commands/coding-general.md:1-52`, `commands/coding-react.md:1-43`, `commands/coding-nextjs.md:1-43` |
 | Codex skills | `skills/*/SKILL.md` | 28個の wrapper が対応する command markdown を Source of Truth として実行する | `skills/*/SKILL.md` 実体一覧 |
 | hooks | `hooks/*.sh` | 自動承認、破壊的操作 guard、ログ、セッション cleanup | `hooks/auto-approve-readonly.sh`, `hooks/guard-destructive-cmd.sh`, `hooks/cleanup-session.sh` |
-| tests | `tests/hooks/*.sh`, `tests/commands/*.sh`, `tests/install/*.sh`, `tests/scripts/*.py` | hook safety、declarative workflow、installer symlink contract を shell で、ログ解析を pytest で検証 | `tests/README.md`, `tests/scripts/test_analyze_access.py`, `tests/scripts/test_analyze_auto_approve.py`, `tests/scripts/test_analyze_token_usage.py` |
+| tests | `tests/hooks/*.sh`, `tests/commands/*.sh`, `tests/install/*.sh`, `tests/scripts/*` | hook safety、declarative workflow、installer symlink、work-run writerをshellで、ログ解析をpytestで検証 | `tests/README.md`, `tests/scripts/test-work-run-events.sh`, `tests/scripts/test_analyze_work_runs.py` |
 | site | `site/` | VitePress による公開ドキュメントサイト | `site/package.json:1-14`, `site/.vitepress/config.mts:1-183` |
 
 ## 技術スタック

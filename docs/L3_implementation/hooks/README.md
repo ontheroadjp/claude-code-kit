@@ -29,6 +29,7 @@ hook を追加した場合は、イベントマッピング表とファイル一
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - 3656e6e docs(#175): add README.md to each module directory
 
 ## Work-run correlation

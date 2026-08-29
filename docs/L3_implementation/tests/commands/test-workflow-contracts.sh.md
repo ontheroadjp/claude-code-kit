@@ -20,6 +20,7 @@ docs-sync/init-docs/task/git-pr の既存境界に加え、unified `/work` entry
 
 ## 変更履歴（git log より自動生成）
 
+- 5f3aacf feat(#401): add structured work run observability
 - f52dd59 feat(#400): unify work entry point
 - 3aca4ca refactor(#362): reuse shared narrowed-read verification principle (#396)
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
