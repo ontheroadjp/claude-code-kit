@@ -1,28 +1,27 @@
 ---
 name: task-manager
-description: Execute the streaming task-manager workflow for one to three implementation issues by loading and following commands/task-manager.md exactly. Use when the user requests /task-manager behavior.
+description: Orchestrate delegated task workers only when commands/work.md routes an accepted multi-issue invocation to commands/task-manager.md.
 ---
 
 # Task Manager Skill
 
 ## Source Of Truth
 
-`~/.codex/commands/task-manager.md` is the single authoritative definition of the task-manager workflow.
+`~/.codex/commands/task-manager.md` is the single authoritative definition of the internal multi-issue orchestrator.
 
 ## Required Behavior
 
 1. Read `commands/task-manager.md` completely.
-2. Execute that workflow exactly as written.
-3. Use one real `task-worker` sub-agent per accepted issue, up to the fixed maximum of three.
-4. Omit sub-agent model overrides so every worker inherits the parent model.
-5. Pass each worker the complete structured parent investigation handoff and preserve the same worker across supplemental investigation, plan approval, implementation, documentation, and Draft PR creation when possible.
-6. Keep every issue's plan and PR approval state independent; an approval wait must not stop unrelated workers.
-7. Keep delivery sequential in the user-provided issue order and delegate each approved PR to `commands/git-pr-merge.md` exactly as `commands/task-manager.md` requires.
-8. Include issue-required documentation in each issue PR and never create a final batch documentation PR.
-9. Do not reinterpret, simplify, or merge the workflow with another workflow unless `commands/task-manager.md` explicitly instructs you to do so.
+2. Execute it only with the complete accepted-issue and project-context handoff from `/work`.
+3. Use one real delegated `task-worker` sub-agent per accepted issue, up to three, without model overrides.
+4. Require every worker to read and execute delegated worker mode in `commands/task.md` instead of reproducing task investigation and delivery rules.
+5. Preserve the same worker across plan approval, implementation, documentation, validation, and Ready PR creation when possible.
+6. Keep plan and Ready PR approval states independent while preserving fixed input-order delivery through `commands/git-pr-merge.md`.
+7. Return completion, failure, and remaining-worktree state to `/work`; never own parent workspace cleanup or stash restoration.
+8. Do not reinterpret or duplicate the workflow.
 
 ## Scope Guard
 
-- Do not edit `commands/task-manager.md` from this skill.
+- `/task-manager` is not a standalone implementation entry point. Without a valid `/work` handoff, direct the user to `/work #x #y` and stop.
 - Do not expose `task-worker` as a standalone user command or skill.
-- If the command file is missing or unreadable, report that `/task-manager` cannot run until it is restored.
+- If the command file is missing or unreadable, report that multi-issue orchestration cannot run until it is restored.

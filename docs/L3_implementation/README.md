@@ -1,5 +1,11 @@
 # `README.md`
 
+## Unified work entry
+
+Features・Usage・Design Principles は `/work` を1〜3 issue の唯一の implementation entry として説明する。`/work` は atomic preflight、one-time project context、single task/patch routing、multi-issue task-manager delegation、final cleanup を所有する。`/task-manager` は internal orchestrator であり、delegated `/task` workers の independent plan/Ready PR approvals と fixed-order delivery だけを担う。
+
+根拠: `README.md:55-77`, `README.md:138-170`, `README.md:200-218`
+
 ## 目的・役割
 
 repositoryの公開入口として、project philosophy、利用可能なcommand、installation、usage、local verification、設計原則、構造を一覧化する。
@@ -35,6 +41,7 @@ READMEは概要であり、実行時の完全な安全条件は各command specif
 
 ## 変更履歴（git log より自動生成）
 
+- f52dd59 feat(#400): unify work entry point
 - c9e5dff docs(#393): clarify project design philosophy
 - 149bedd docs: initialize project documentation (init-docs) (#392)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)

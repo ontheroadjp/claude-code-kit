@@ -1,5 +1,11 @@
 # commands/README.md — L3 per-file doc
 
+## Unified routing catalog
+
+command catalog は `/work #x [#y] [#z]` を唯一の implementation entry とし、invalid batch は atomic stop、single work は task/patch、accepted multi-issue work は internal task-manager と delegated task workers へ routing する。`task.md` と `task-manager.md` は user-controlled standalone entry ではなく parent workflow が順序を定める internal stage として分類する。
+
+根拠: `commands/README.md:18-43`
+
 ## 目的・役割
 
 `commands/` ディレクトリの目的・ファイル構成・ルーティング構造・使い方を開発者向けに説明するドキュメント。
@@ -33,6 +39,7 @@ agenda label の issue は人間主導の `/mtg` へ、それ以外は issue と
 
 ## 変更履歴（git log より自動生成）
 
+- f52dd59 feat(#400): unify work entry point
 - c9e5dff docs(#393): clarify project design philosophy
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
 - a46be53 feat(#321): unify operational hazard workflows

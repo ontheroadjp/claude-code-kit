@@ -17,17 +17,13 @@ Claude Code では `/コマンド名` で、Codex CLI では対応 skill を通�
 
 ## エントリポイントとルーティング
 
-実装作業の入口は `/work`（`work.md`）。agenda issue を先に分岐し、それ以外は2段階でルーティングする:
+実装作業の唯一の入口は `/work`（`work.md`）。1〜3件を mutation 前に一括検証し、project context を一度だけ取得して routing する:
 
 ```
-/work
-├─ agenda label の issue
-│   └─ /mtg (mtg.md)  →  人間主導の対話と意思決定
-└─ その他
-    ├─ issue 起点、または docs/* の変更が必要
-    │   └─ /task (task.md)  →  /docs-sync  →  /git-pr
-    └─ docs 変更不要な軽微修正
-        └─ /patch (patch.md)
+/work #x [#y] [#z]
+├─ agenda / hazard / blocked / conflicting issue → invocation 全体を停止して案内
+├─ single issue or work → /task または /patch
+└─ two or three issues → /task-manager → delegated /task workers
 ```
 
 PR レビューコメント対応は `/review-resolve`（`review-resolve.md`）が独立したエントリポイントとなる。
@@ -36,11 +32,11 @@ PR レビューコメント対応は `/review-resolve`（`review-resolve.md`）�
 
 | ファイル | コマンド | 役割 |
 |---|---|---|
-| `work.md` | `/work` | 実装作業の通常入口。agenda issue、task、patch のルーティング判定を行う |
+| `work.md` | `/work` | 単一・複数 issue の統一入口。atomic preflight、context、routing、cleanup を所有する |
 | `work-multi.md` | `/work-multi` | deliberate concurrent sessions 向けに隔離 worktree で `/work` を実行する入口 |
-| `task-manager.md` | `/task-manager` | 1〜3 issue を input order で処理する独立 batch workflow |
+| `task-manager.md` | internal | `/work` から2〜3 issue を受け、delegated task workers と input-order delivery を管理する |
 | `mtg.md` | `/mtg` | agenda issue を人間主導で検討し、必要時に `/new-issue` の起案を案内 |
-| `task.md` | `/task` | docs 変更を伴う実装フロー。issue 自動生成〜実装〜ドラフト PR 作成まで |
+| `task.md` | internal | 通常または delegated worker mode で同じ issue-specific 実装フローを実行する |
 | `patch.md` | `/patch` | docs 変更不要の軽微修正フロー。branch + commit → ユーザーが main へ ff-merge |
 | `docs-sync.md` | `/docs-sync` | git diff を事実として docs を最小更新し commit する |
 | `init-docs.md` | `/init-docs` | repo 再観測・設計ドキュメント再構築（重い初期化） |

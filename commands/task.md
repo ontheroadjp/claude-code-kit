@@ -1,6 +1,6 @@
 # /task
 
-このファイルは `commands/work.md` から Read されることを前提とした、docs 変更を伴う実装専用のワークフローです。ゲート確認・ルーティング判定・stash 管理は work.md が担います。
+このファイルは `commands/work.md` から Read されることを前提とした、docs 変更を伴う issue-specific implementation workflow です。通常の単一 issue と、`/task-manager` が起動する delegated worker は同じ実装契約を使います。ゲート確認・project-wide context・stash 管理は work.md が担います。
 
 - 想像・憶測は一切禁止
 - すべての判断は docs/.ai/repo.profile.json および docs の記述に基づく
@@ -19,6 +19,24 @@ Phase 3: 最終報告
 ```
 
 フェーズをまたいで遡ることはない（フェーズ内の Step を遡ることは許容）。
+
+## 実行モード
+
+### 通常モード
+
+`/work` が単一 issue / 単一作業として委譲する。既存のユーザー gate をこの会話で直接扱い、Ready PR 作成後に終了する。
+
+### delegated worker mode
+
+`/work` → `/task-manager` が起動した issue worker として実行する。payload には accepted issue metadata、isolated worktree/branch、base SHA、merge order、complete project-wide context が必要である。
+
+- `/work` の preflight、repository profile、README、primary investigation doc、workspace/stash gate を再実行しない。
+- handed-off evidence は routine reread しない。`missing evidence`、`stale evidence`、`base drift` を path・範囲・理由つきで記録した場合だけ shortest-path supplemental investigation を行う。
+- Step 2 の plan を `/task-manager` へ返し `awaiting_plan_approval` で待つ。approval は対象 issue だけに適用する。
+- approval 後は同じ worker が Step 3、tests、L3 per-file docs、Phase 2、`/docs-sync`、`/git-pr` まで継続する。
+- `/git-pr` には Ready PR を作成させる。Draft PR で停止しない。
+- Ready PR handoff を `/task-manager` へ返して `awaiting_pr_approval` で待ち、自分では merge・parent cleanup・stash restoration を行わない。
+- replacement worker は approved plan と既存 evidence/state を引き継ぐ。
 
 ## ソースコード修正時の注意点
 ソースコードを修正する場合は、修正前に対象ファイルの言語に応じたコマンドを Read し、記載された原則を適用すること:
@@ -61,6 +79,7 @@ Phase 3: 最終報告
 - `docs/.ai/repo.profile.json` および `docs/L3_implementation/specification_summary.md` は work フェーズで既に Read 済みのため、再度 Read しない
 - Step 2（プラン策定）に必要な情報が不足している場合のみ、差分を調査・補完する
 - 未確認事項が残る場合はユーザーに報告し、確定するまで Step 2 に進まない
+- delegated worker mode では project-wide handoff を引き継ぎ、issue-specific な不足だけを補完する。再読理由と supplemental evidence を plan に記録する
 - 変更対象ファイルが確定したら、各ファイルに対応する L3 per-file doc を確認し、存在する場合は必ず Read する:
     - 対応パス: `docs/L3_implementation/<変更対象ファイルのパス>.md`（例: `commands/task.md` → `docs/L3_implementation/commands/task.md`）
     - L3 per-file doc はファイルの現状スナップショットと設計意図を記録したもの
@@ -91,7 +110,7 @@ Phase 3: 最終報告
     - テストケースの作成/更新
     - テストの実行
 
-※ Step 3 実行前に調査結果・作業プランをユーザーに提示し、明確な許可を得ること（必須）
+※ Step 3 実行前に調査結果・作業プランをユーザーに提示し、明確な許可を得ること（必須）。delegated worker mode は `/task-manager` に plan を返し、同 workflow が issue-specific approval を relay する
 
 ユーザーから OK が出た場合、`tool:gh_issue_write:<N>` に使う N（対象 issue 番号）を session-approved 書き込み前に確定させる必要があるため（issue #297: 番号スコープ化に伴い、書き込みより後に番号が判明する順序は成立しない）、以下の順序で進める:
     - **issue が未作成の場合**（Step 0 で issue 番号がなかった場合）:
@@ -114,6 +133,12 @@ Phase 3: 最終報告
         - Step 3.2 で作成・更新する L3 per-file doc の絶対パス（例: `file:/abs/path/to/docs/L3_implementation/commands/task.md`）
     - 注: `session-approved` はこの Step で 1 度だけ書き込む。実行中にスコープを追加しようとすると hook がブロックする。スコープ変更が必要な場合はこの Step に戻り、ユーザーの許可を得てから再書き込みすること。
     - **issue が元から作成済みだった場合のみ**: 調査結果・作業プランを対象 issue の本文に追記する（`gh issue comment <N>` は上記で書き込んだ `tool:gh_issue_write:<N>` により自動承認される）。今回新規作成した場合は Step 4 のドラフトが既に内容を含むため追記不要
+    - 通常モードでは approved plan の作業ブランチを作成または切り替える。delegated worker mode では payload の isolated worktree/branch が既に用意されているため再作成しない
+    - 作業ブランチ切替後、Claude Code だけが Git の返した branch name を使い、`/rename <作業ブランチ名>` と同じ結果になるよう更新する。Codex CLI はスキップし、失敗しても実装を止めない:
+      ```bash
+      branch_name=$(git branch --show-current)
+      bash ~/.claude/scripts/rename-thread.sh "$branch_name" || true
+      ```
     - Step 3 へ進む
 
 ユーザーから質問や変更があった場合:
@@ -123,8 +148,8 @@ Phase 3: 最終報告
 3.1 作業プランに従って実装を行う
 
 3.2 実装完了後:
-    - 作業内容をユーザーに報告
-    - ユーザーに実機テストおよびコードレビューを促して待機
+    - 作業内容をユーザーに報告（delegated worker mode は `/task-manager` へ implementation result を返す）
+    - ユーザーに実機テストおよびコードレビューを促して待機（delegated worker mode は `/task-manager` が gate を relay する）
     - ユーザーから追加指示が出た場合:
         - Step 2（必要に応じて Step 1）へ戻る
         - ゲートは通過済みの前提で作業を続ける
@@ -186,6 +211,8 @@ mkdir -p "<上記で得た絶対パス>"
 `/docs-sync` が HARD STOP した場合はそこで処理が止まり、ユーザーへ報告される（`/git-pr` は実行しない）。
 `/docs-sync` 完了後、ユーザー確認なしに即座に `/git-pr` を実行する（push → PR 作成まで完結）。
 Phase 3 へ進む。
+
+delegated worker mode では Ready PR 作成後、issue number、approved plan、branch/worktree、base/head SHA、PR number/URL、changed source/test/docs、observable changes、design decisions、tests、risks/followups を implementation handoff として `/task-manager` へ返し、merge せず待機する。
 
 ---
 

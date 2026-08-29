@@ -1,5 +1,11 @@
 # skills/README.md — L3 per-file doc
 
+## Unified workflow adapters
+
+`work/` は単一・複数 issue の session owner、`task/` は ordinary/delegated 共通の issue-specific implementation adapter、`task-manager/` は valid `/work` handoff でのみ起動する internal orchestrator adapter として catalog 化される。
+
+根拠: `skills/README.md:29-40`
+
 ## 目的・役割
 
 `skills/` ディレクトリの目的・skill wrapper の仕組み・`commands/` との対応関係を開発者向けに説明するドキュメント。
@@ -29,6 +35,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- f52dd59 feat(#400): unify work entry point
 - c9e5dff docs(#393): clarify project design philosophy
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)

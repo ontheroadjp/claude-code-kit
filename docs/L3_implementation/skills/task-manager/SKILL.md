@@ -2,39 +2,37 @@
 
 ## 目的・役割
 
-Codexが `/task-manager` を要求されたとき、`commands/task-manager.md`を完全に読み、streaming issue pipelineをそのまま実行させるskill entry pointである。
-
-根拠: `skills/task-manager/SKILL.md:1-15`
+`/work` から valid handoff を受けた場合だけ、2〜3件の delegated task workers を管理する internal batch orchestrator adapter。
 
 ## 動作の概要
 
 1. command sourceを完全に読む。
-2. accepted issueごとに最大3つのreal task-workerを使い、親modelを継承する。
-3. complete structured parent investigation handoffをworkerへ渡す。
-4. issueごとのplan/PR approvalを独立させ、approval waitでunrelated workerを止めない。
-5. issue-required documentationを同じPRへ含め、final batch documentation PRを作らない。
-6. deliveryをuser-provided orderで `/git-pr-merge`へ委譲する。
+2. `/work` の accepted issue と complete project context がなければ停止する。
+3. 最大3つのreal workerへ delegated `commands/task.md` を実行させる。
+4. issueごとのplan/Ready PR approvalを独立させる。
+5. deliveryをinput orderで `/git-pr-merge`へ委譲する。
+6. completion/failure/worktree stateを `/work`へ返し、cleanup/stashを所有しない。
 
-根拠: `skills/task-manager/SKILL.md:12-22`
+根拠: `skills/task-manager/SKILL.md:1-30`
 
 ## 重要な設計判断
 
-skillはworkflow logicを複製せず、worker continuity、non-blocking approval、fixed-order delivery、per-PR documentationという重要なorchestration boundaryだけを固定する。internal task-workerはuser-facing commandにしない。
+skillは `/work` と `/task` のlogicを複製せず、worker continuity、non-blocking approval、fixed-order delivery、cleanup return boundaryだけを固定する。
 
 ## 統合ポイント
 
-- source of truth: `commands/task-manager.md`
-- delivery dependency: `commands/git-pr-merge.md`
-- installer: `install.sh`
-- test: `tests/commands/test-task-manager.sh`
+- source: `commands/task-manager.md`
+- worker: `commands/task.md`
+- delivery: `commands/git-pr-merge.md`
+- caller: `commands/work.md`
 
-## 注意事項・既知の制限
+## 注意事項
 
-- task-workerをstandalone command/skillとして公開しない。
-- command sourceがmissing/unreadableなら実行しない。
+standalone entry ではなく、task-workerも公開しない。
 
 ## 変更履歴（git log より自動生成）
 
-- f3be053 feat(#398): stream task-manager issue pipelines
+- f52dd59 feat(#400): unify work entry point
+- b3d7d3b feat(#398): stream task-manager issue pipelines (#399)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)

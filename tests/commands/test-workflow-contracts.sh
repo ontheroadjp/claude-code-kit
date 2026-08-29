@@ -8,6 +8,7 @@ INIT_DOCS="$REPO_DIR/commands/init-docs.md"
 TASK="$REPO_DIR/commands/task.md"
 PATCH="$REPO_DIR/commands/patch.md"
 GIT_PR="$REPO_DIR/commands/git-pr.md"
+WORK="$REPO_DIR/commands/work.md"
 
 failures=0
 
@@ -65,6 +66,11 @@ assert_contains "$TASK" 'commit が 1 件か複数かにかかわらず' 'task k
 assert_contains "$PATCH" '`/rename <作業ブランチ名>` と同じ結果になるよう更新する' 'patch renames the thread after switching to a work branch'
 assert_contains "$PATCH" 'bash ~/.claude/scripts/rename-thread.sh "$branch_name" || true' 'patch invokes the installed thread-renaming helper'
 assert_contains "$GIT_PR" 'gh pr create --title "<title>"' 'git-pr remains responsible for PR creation'
+assert_contains "$WORK" '単一 issue と複数 issue の両方に対する唯一の実装エントリポイント' 'work is the unified implementation entry point'
+assert_contains "$WORK" 'この Phase が完了するまで、project-wide investigation、checkout、stash' 'work preflight precedes investigation and mutation'
+assert_contains "$WORK" '`commands/task-manager.md` へ委譲する' 'work delegates accepted batches to task-manager'
+assert_contains "$WORK" '委譲先が完了または停止して制御を返した後' 'work owns final cleanup after delegation'
+assert_contains "$TASK" '通常の単一 issue と、`/task-manager` が起動する delegated worker は同じ実装契約' 'ordinary and delegated tasks share one contract'
 
 if ((failures > 0)); then
   printf '\n%d workflow contract test(s) failed.\n' "$failures"

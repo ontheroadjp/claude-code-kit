@@ -10,20 +10,21 @@ workflow の開始権限は user-controlled workflow、internal workflow / stage
 
 ## 通常作業フロー
 
-`/review-resolve` は PR review 専用、`/mtg` は agenda の対話専用である。実装は `/work` から開始する。`/work` は issue に `agenda` label があれば実装調査より先に `/mtg` へ委譲し、`hazard-candidate` label があれば審査を案内し、それ以外を task または patch へ進める。
+`/review-resolve` は PR review 専用、`/mtg` は agenda の対話専用である。実装は単一・複数とも `/work` から開始する。`/work` は入力全体を mutation 前に検証し、project context を一度だけ取得する。単一 work は task/patch、2〜3 issue は internal task-manager へ進め、最終 cleanup も `/work` が行う。
 
 根拠: `commands/work.md:7-149`
 
 ## ルーティング
 
-issue 番号がある場合は最初に exact `agenda` label、次に exact `hazard-candidate` label を判定する。
+issue 番号がある場合は state、exact label、native dependency、management child、conflicting work を入力全体で atomic に判定する。
 
 - `agenda` label の issue: `commands/mtg.md` を Read し、人間主導の対話を進める。`/new-issue` はユーザー明示指示でのみ実行する。
 - `agenda` に該当せず `hazard-candidate` label の issue: `/triage-issues-for-hazard` の実行を促し、`/work` を終了する。
-- どちらの label にも該当しない issue: 次の実装 routing を行う。
+- どちらの label にも該当せず全 issue が ready: 次の実装 routing を行う。
 
 - issue 起点、または docs 変更が必要な場合: `commands/task.md` を Read し task flow を実行する。
 - issue なし、かつ docs 変更が不要な場合: `commands/patch.md` を Read し patch flow を実行する。
+- ready issue が2〜3件の場合: complete project context とともに `commands/task-manager.md` へ委譲する。multi-issue patch は扱わない。
 
 根拠: `commands/work.md:64-121`
 
@@ -35,7 +36,7 @@ issue 番号がある場合は最初に exact `agenda` label、次に exact `haz
 
 ## task flow
 
-`task.md` は docs 変更を伴う実装専用で、issue 確認または自動生成、調査補完、プラン承認、実装、L3 per-file doc、commit、PR title/body 準備、`/docs-sync`、`/git-pr` へ進む。一般 docs は直接変更せず、L3 per-file doc だけを実装 snapshot として管理する。
+`task.md` は ordinary/delegated 共通の issue-specific workflowで、issue確認、調査補完、plan承認、実装、L3、commit、`/docs-sync`、`/git-pr`へ進む。delegated modeは `/work` evidenceを再利用し、Ready PR handoffをtask-managerへ返すがmerge・parent cleanupを行わない。
 
 根拠: `commands/task.md:1-15`, `commands/task.md:30-179`
 
@@ -81,9 +82,9 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 ## task-manager flow
 
-`task-manager.md` はuser-provided 1〜3 issueをinput orderで実行する。combined plan approval後にreal task-workerがDraft source PRを並行作成し、complete set approvalでPRごとのhead SHAを固定する。その後は各PRを `/git-pr-merge`へ順次委譲し、全source delivery後にA/M/D/R-aware documentation syncとissue completion commentsを行う。partial mergeはrollbackせずcompleted/pending stateとして回復する。
+`task-manager.md` は `/work` が検証した2〜3 issueだけを受け取る internal orchestratorである。real workerはdelegated `commands/task.md`を実行してissue-specific planからReady PRまで進む。plan/PR approvalは独立し、deliveryだけをinput orderで `/git-pr-merge`へ委譲する。preflight・project investigation・task contract・parent cleanupは複製しない。
 
-根拠: `commands/task-manager.md:1-412`
+根拠: `commands/task-manager.md:1-131`
 
 ## State continuity の現状
 
