@@ -19,3 +19,8 @@ Codex が user-requested `/work` を実行する adapter。単一・複数 issue
 ## 注意事項
 
 adapter は workflow を再解釈せず、command source を直接編集しない。
+
+## 変更履歴（git log より自動生成）
+
+- f52dd59 feat(#400): unify work entry point
+- d034a50 refactor(#60): drop self-referencing symlinks and add work wrapper

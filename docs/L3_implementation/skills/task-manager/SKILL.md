@@ -29,3 +29,10 @@ skillは `/work` と `/task` のlogicを複製せず、worker continuity、non-b
 ## 注意事項
 
 standalone entry ではなく、task-workerも公開しない。
+
+## 変更履歴（git log より自動生成）
+
+- f52dd59 feat(#400): unify work entry point
+- b3d7d3b feat(#398): stream task-manager issue pipelines (#399)
+- a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
+- 5f1d984 #377 Add independent task-manager batch workflow (#378)

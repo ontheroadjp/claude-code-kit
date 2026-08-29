@@ -18,13 +18,11 @@
 
 ### `/work` (`commands/work.md`)
 
-全作業の通常入口。G-0 はまず `git rev-parse --show-toplevel` が `.claude/worktrees/` 配下かを判定し、配下であれば（`EnterWorktree` が作成した worktree 内、例: `/work-multi`）main は主 worktree で既にチェックアウト済みのため `git checkout main` をスキップする。配下でなければ従来どおり `git checkout main` を実行する（session-approved には触れない。Stop hook が正常であれば既に absent であり、Step 2 の初回承認書き込みが自然に承認される）。G-2 は agent 別に配布された `worktree-status.sh` を使う。通常実行では `git status --porcelain` と同じ結果を返し、隔離 worktree の current session manifest があるときだけ自己作成 symlink を自動除外する。その後 repo profile と workspace を確認する。issue 番号がある場合は現状調査より先に親子関係と labels を取得する。親 issue なら native `subIssues` と未完了 task list から子 issue を収集し、open かつ GitHub native `blockedBy` が全て `CLOSED` の最初の子 issue、または実行不能な理由を報告して終了する。子 issue の実装・`/task`・`/patch` への委譲は行わない。
+単一 issue と2〜3 issue の唯一の implementation entry。Phase 0 は token、repository/auth/profile、全 issue の state・exact label・native dependency・management child・conflicting work を read-only で検証し、1件でも invalid なら project-wide investigation や mutation より前に invocation 全体を停止する。parent issue、単一 agenda、hazard routing の既存安全境界もここで扱う。
 
-exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず終了する。`agenda` に該当せず exact `hazard-candidate` label があれば、`/triage-issues-for-hazard` の実行を促して終了する。どちらにも該当しない場合は issue 起点か、次に docs 変更が必要かで task / patch を判定する。「現状調査（共通）」の間は Read/Grep/Glob/WebFetch/WebSearch/`gh` の読み取り専用呼び出しのみを許可し、Edit/Write（session-tmp・session-approved ファイルを除く）は task.md/patch.md の Step 2 プラン承認まで行わない。WebFetch・WebSearch は調査目的の読み取りに限定し、web 上の素材のダウンロード・取得や外部サービスへの書き込みなど現状変更を伴う操作は禁止する。これらの禁止事項に該当する操作が調査上どうしても必要な場合は、理由をユーザーに報告し実行可否の判断を仰ぐ（issue #358）。
+preflight 通過後だけ main/worktree branch と dirty workspace を扱い、profile、README、primary investigation doc から project-wide context を一度だけ取得する。単一 work は ordinary `/task` または `/patch`、2〜3 issue は complete context と workspace/stash ownership を internal `/task-manager` へ渡す。委譲後の owned worktree cleanup と、自ら作成した stash の復元は `/work` が行う。multi-issue `/patch`、queue、自動 issue 選定は扱わない。
 
-非 main ブランチからの再開（case B scenario 2: コミットあり・ワークスペースクリーン）では、Phase 2 直接開始ではなく Phase 1 Step 2 から開始し session-approved を再作成する。
-
-根拠: `commands/work.md:9-56`, `commands/work.md:60-63`, `commands/work.md:90-158`
+根拠: `commands/work.md:1-153`, issue #400
 
 ### `/work-multi` (`commands/work-multi.md`)
 
@@ -34,13 +32,11 @@ exact `agenda` label があれば `commands/mtg.md` へ委譲して実装せず�
 
 ### `/task-manager` (`commands/task-manager.md`)
 
-ユーザー指定の1〜3 implementation issueを独立したwork-equivalent pipelineとして進めるbatch executor。4件以上、重複、不正形式、closed/blocked/management issue、既存作業はmutation前に拒否する。親agentが `/work` 相当の調査結果をstructured handoffとしてissueごとの実 `task-worker`へ渡し、workerは補完調査後にplanを返す。planとDraft PRはissueごとに到着後すぐ承認を求め、承認待ち・修復・失敗はunrelated workerの調査、実装、validation、PR準備を止めない。同じworkerが通常は補完調査からsource、test、L3、aggregate docs、READMEを含むDraft PR作成まで継続する。
+`/work` から validation 済み2〜3 issue、complete project context、base SHA、workspace/stash ownership を受け取った場合だけ動作する internal orchestrator。preflight、project-wide investigation、task implementation contract、parent cleanup を再実行しない。
 
-承認済みPRはdelivery eligibilityを保持するが、deliveryは固定入力順で先行issueのcompletedを待つ。各actual PR branchはlatest mainとcurrent documentation truthでrefreshされ、current mainとの差分をissue-localに保ったうえで `/git-pr-merge`へ委譲される。citation/history/aggregate docsなどの機械的refreshは再承認不要とし、source behavior、public contract、design/security boundary、approved scope、unknown remote diffが変わる場合だけaffected PRを再承認する。
+issue ごとの real worker は delegated `commands/task.md` を完全に実行し、issue-specific plan から tests・docs・Ready PR まで同じ worker で進む。plan/Ready PR approval は到着順に独立して relay し、delivery eligibility は入力順の先行 issue が completed になるまで保持する。delivery は `/git-pr-merge` へ委譲し、completion/failure/head/PR/worktree state を `/work` へ返す。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
 
-final batch documentation worktree/PRは作らない。全issueのmerge確認後だけbatch completeを報告し、途中停止時は完了済みmergeをrollbackせずissueごとのstateとmanual recovery情報を報告する。
-
-根拠: `commands/task-manager.md:1-117`, `commands/task-manager.md:119-218`, `commands/task-manager.md:220-234`, issue #398
+根拠: `commands/task-manager.md:1-131`, issue #400
 
 ### `/mtg` (`commands/mtg.md`)
 
@@ -68,9 +64,11 @@ final batch documentation worktree/PRは作らない。全issueのmerge確認後
 
 ### `/task` (`commands/task.md`)
 
-`/work` から呼ばれる docs 変更を伴う実装 flow。issue がなければプラン策定とユーザー許可を先に行い、承認後に `commands/new-issue.md` Step 4-5 を使ってユーザー確認なしで issue を自動作成する（Step 1-3 の対話はスキップし、確定済みプランの内容で各セクションを埋める）。Step 1 では変更対象ファイルが確定した後に対応する L3 per-file doc（`docs/L3_implementation/<source-path>.md`）が存在する場合は必ず Read する。Step 2 では L3 per-file doc のパスを session-approved に含める。作業ブランチを作成または切り替えた直後は、Claude Code でのみ Git が返すブランチ名を `~/.claude/scripts/rename-thread.sh` に渡して会話スレッドを更新し、Codex CLI はこの操作をスキップする。更新に失敗しても実装を中断しない。実装後・`/git-commit` 前に変更した各ソースファイルの L3 per-file doc を作成または更新し（現状スナップショット + 設計意図、changelog ではない）、`/git-commit` で commit する。Phase 2 ではPR全体の主目的に基づくtypeとdescriptionをprimary implementation commitに揃え、commit数にかかわらず `<type>(#<issue-number>): <description>` 形式のPRタイトルを生成する。PR本文・タイトルを SESSION_TMP_DIR（`/tmp/claude-code-kit/<session-id>/`）の `pr-body.md` / `pr-title.txt` に書き出し、`/docs-sync` → `/git-pr` を順に自動実行する（push・PR 作成は `/git-pr` が担う）。`docs/*` の変更は原則行わないが、L3 per-file doc（`docs/L3_implementation/<source-path>.md`）は実装フローの一部として例外的に task が管理する。PR 本文の `Specific docs sections to update` フィールドには、Phase 1 の投資調査で既に確認済みの specification_summary.md セクションの行範囲を citation として書き込み、`/docs-sync` へ引き継ぐ（issue #307）。
+ordinary single issue と delegated worker が共有する docs-aware issue-specific flow。delegated mode は `/work` の complete evidence と prepared worktree/branch を再利用し、具体的な missing/stale/base-drift reason がある場合だけ shortest-path supplemental investigation を行う。plan approval後は同じworkerがsource、tests、L3、`/docs-sync`、`/git-pr`まで進みReady PRを作る。
 
-根拠: `commands/task.md:1-15`, `commands/task.md:50-66`, `commands/task.md:94-95`, `commands/task.md:149-190`, issue #307, issue #369
+ordinary modeはユーザーgateを直接扱いReady PRで終了する。delegated modeはplanとReady PR handoffを `/task-manager`へ返し、merge、parent workspace cleanup、stash restorationを行わない。issue creation、session-approved、L3 snapshot、Conventional Commit、PR title/bodyの既存contractは両modeで共有する。
+
+根拠: `commands/task.md:1-229`, issue #400
 
 ### `/patch` (`commands/patch.md`)
 

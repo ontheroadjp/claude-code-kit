@@ -1,2 +1,4 @@
 - docs/L3_implementation/commands/git-pr-merge.md:31-34 — Reviewed PR delivery must use an owned PR worktree and fail closed instead of writing through local main or rewriting history (issue #389)
-- docs/L3_implementation/commands/task-manager.md:60-64 — Batch execution treats completed source merges as authoritative and reports completed/pending recovery state instead of assuming rollback (issue #389)
+- docs/L3_implementation/commands/work.md:47 — Batch execution treats completed merges as authoritative and reports recovery state instead of assuming rollback (issue #389)
+- docs/L3_implementation/commands/work.md:30-32 — `/work` atomically validates the complete issue input before mutation, acquires shared evidence once, and remains the cleanup owner (issue #400)
+- docs/L3_implementation/commands/task-manager.md:31-33 — Multi-issue orchestration must reuse `/work` and `/task` contracts instead of duplicating investigation, implementation, PR creation, or cleanup ownership (issue #400)

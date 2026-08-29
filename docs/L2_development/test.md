@@ -48,7 +48,7 @@ bash tests/commands/test-coding-guidelines.sh
 bash tests/commands/test-workflow-contracts.sh
 ```
 
-`test-workflow-contracts.sh` は `docs-sync.md`・`init-docs.md`・`task.md`・`git-pr.md` 間の契約（HARD STOP からの自動委譲、standalone mode のデフォルト、`/task` が docs-sync の内部エスカレーションを意識しないこと、PR 作成責務が `/git-pr` にあること等）を静的検証する。
+`test-workflow-contracts.sh` は既存の docs-sync/init-docs/task/git-pr 境界に加え、`/work` の unified entry、preflight-before-mutation、task-manager delegation、post-delegation cleanup、ordinary/delegated task共有contractを静的検証する。
 
 根拠: `tests/commands/test-workflow-contracts.sh:1-56`
 
@@ -66,9 +66,9 @@ bash tests/commands/test-git-pr-merge.sh
 bash tests/commands/test-hazard-workflows.sh
 ```
 
-`test-task-manager.sh` はcomplete Draft setのapproved-head context、input-order delivery delegation、partial completion、documentation A/M/D/R、completion commentsを検証する。`test-git-pr-merge.sh` はstandalone/delegated approval、unknown commit、latest-main refresh、current-head CI/local validation、actual-branch conflict repair、local main prohibition、explicit squash deliveryを検証する。`test-hazard-workflows.sh` は auto-approve/access の source 固有分析、legacy 名の排除、hazard-candidate から triage-approved への gate を検証する。
+`test-task-manager.sh` は `/work` のatomic multi-input contract、shared delegated `/task`、task-managerからpreflight/implementation/PR creation重複が除かれていること、independent approvals、Ready PR、input-order delivery、cleanup ownershipを検証する。`test-git-pr-merge.sh` はstandalone/delegated approval、unknown commit、latest-main refresh、current-head CI/local validation、actual-branch conflict repair、local main prohibition、explicit squash deliveryを検証する。`test-hazard-workflows.sh` は auto-approve/access の source 固有分析、legacy 名の排除、hazard-candidate から triage-approved への gate を検証する。
 
-根拠: `tests/commands/test-task-manager.sh:1-139`, `tests/commands/test-git-pr-merge.sh:1-81`, `tests/commands/test-hazard-workflows.sh:1-39`
+根拠: `tests/commands/test-task-manager.sh:1-103`, `tests/commands/test-git-pr-merge.sh:1-81`, `tests/commands/test-hazard-workflows.sh:1-39`
 
 ## Installer contract test
 

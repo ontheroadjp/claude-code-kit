@@ -35,6 +35,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- f52dd59 feat(#400): unify work entry point
 - c9e5dff docs(#393): clarify project design philosophy
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)

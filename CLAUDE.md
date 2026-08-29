@@ -13,21 +13,22 @@
 
 ## Custom / Command の使い分け（AI向けルール）
 
-**重要: PR レビューコメントへの対話対応は `/review-resolve`、方針や実装境界の対話的な検討は `/mtg`、それ以外の実装作業は直ちに `/work` を呼ぶこと。`/work`（および委譲先の `/task`）のゴールは ready PR の作成までであり、PR 作成後の自動レビューは行わない。以降のレビュー・マージは人間、または `/review-resolve`・`/codex-review` を手動起動して行う。`agenda` label の issue は `/work #N` が `/mtg` へ委譲する。`/mtg` は `/new-issue` を自動実行せず、ユーザーの明示指示でのみ起案へ進む。`hazard-candidate` label の issue は `/work #N` の前に `/triage-issues-for-hazard` で人間審査する。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使い、その後 `/work` で実装に入る。調査は `/work` 内で行う。`/docs-sync` が L0 昇格候補ありを案内した場合のみ任意で `/concept-maker` を使う。**
+**重要: PR レビューコメントへの対話対応は `/review-resolve`、方針や実装境界の対話的な検討は `/mtg`、それ以外の単一・複数 issue 実装は直ちに `/work` を呼ぶこと。`/work` は1〜3 issueのatomic preflight、project-wide context、routing、cleanupを所有する唯一の実装入口である。単一 issue の `/task` は ready PR 作成まで、複数 issue は internal `/task-manager` が delegated `/task` workers を管理し入力順にreview済みPRをdeliveryする。`agenda`・`hazard-candidate`・blocked・conflicting issueを含むbatchはmutation前に停止する。`/mtg` は `/new-issue` を自動実行せず、ユーザーの明示指示でのみ起案へ進む。漠然としたアイデアから issue を作成したい場合のみ任意で `/new-issue` を先に使う。`/docs-sync` が L0 昇格候補ありを案内した場合のみ任意で `/concept-maker` を使う。**
 
 - **review-resolve.md**: PR レビューコメント対応専用のエントリポイント。`/work` を経由せず自己完結（checkout → 実装 → commit → push → 返信）。ユーザーが `/review-resolve #N` で直接呼び出す。
-- **work.md**: 実装作業のエントリポイント。ゲート確認・ワークスペース管理を行い、agenda issue は mtg.md、hazard-candidate issue は triage-issues-for-hazard.md、それ以外は現状調査後に task.md または patch.md へ委譲する。
+- **work.md**: 1〜3 issue の唯一の実装入口。全 input を mutation 前に検証し、project context を一度だけ取得する。単一 work は task/patch、複数 issue は task-manager へ委譲し、最終 workspace/stash cleanup も担う。
   - `agenda` label の issue → mtg.md を Read し、人間主導の対話を進める（実装・branch 作成は行わない）
   - docs 変更不要 → patch.md を Read して patch フロー（issue/PR なし、branch + commit → ユーザーが ff-merge）
-  - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → ドラフト PR 作成 → /docs-sync へ引き継ぎ）
+  - docs 変更あり → task.md を Read して task フロー（issue 自動生成 → 実装 → /docs-sync → ready PR）
+  - ready issue が2〜3件 → task-manager.md へ complete context を渡し、delegated task workers を起動
 - **work-multi.md**: `/work` と全く同じワークフローを、`EnterWorktree` で作成した専用 worktree 内で実行する明示的 opt-in 入口（issue #296）。複数セッションが同じ working tree を共有すると `git checkout` が他セッションの作業中ファイルを書き換える衝突が起こり得るため、意図的に並行セッションを走らせるとわかっている場合に使う。**「2セッション目以降だけ隔離すればよい」という判断はしない** — どのセッションが「隔離不要な primary」かを常に追跡するのは同種の人為ミスの温床になるため、並行実行するバッチが分かった時点で、最初のセッションを含む全セッションで `/work-multi` を使う。通常の単一セッション作業では引き続き `/work` を使う（overhead なし）。untracked ファイル・ディレクトリ（`.git`・`.claude` を除く）は worktree 作成後に自動で symlink されるが、これには `node_modules` 等セッション中に書き換わる依存ディレクトリも含まれるため、同じ依存ディレクトリを持つ複数 `/work-multi` セッションでパッケージマネージャの書き込み操作（`npm install` 等）を同時実行しないこと。
 - **mtg.md**: `agenda` label の issue を、人間と AI が対話して進める。必要時に Facts / Assessment / Opinions / Proposals を用いて論点を具体化するが、方向性・実装範囲・close は人間だけが決定する。`/new-issue` はユーザーの明示指示でのみ実行する。
 - **new-issue.md**: 漠然としたアイデアから 1 件または複数件の整形された issue を生成する任意の pre-`/work` エントリポイント。issue 作成のみで実装は行わない。
 - **triage-issues.md**: open issue を現状 docs と照合し、stale / inconsistent / duplicated / unclear / ready に分類するスタンドアロン入口。issue 操作はユーザー承認後のみ行う。
 - **codex-review.md**: Codex CLI で PR をレビューし、`CODEX_REVIEW_TOKEN` がある場合に approve/request-changes を投稿する。変更要求時は `/review-resolve` へ引き継ぐ。
 - **git-pr-merge.md**: ユーザーがレビュー承認した単一PRをapproved head SHAで固定し、owned worktree上でlatest main取り込み・current-head検証・明示的squash mergeを行う。`/task-manager`からもPR単位で委譲される。
-- **task-manager.md**: ユーザー指定の1〜3 issueを入力順に実行するbatch executor。実装PRを並行作成し、complete Draft set承認後は各PRを `/git-pr-merge` へ逐次委譲する。
-- **task.md**: ドキュメント変更を伴う実装に特化。issue 自動生成〜実装〜ドラフト PR 作成まで。docs/* は変更しない。
+- **task-manager.md**: `/work` から検証済み2〜3 issueを受ける internal orchestrator。delegated `/task` workers のplan/Ready PR approvalを独立管理し、deliveryだけを入力順に `/git-pr-merge`へ委譲してstateを `/work`へ返す。
+- **task.md**: ordinary/delegated共通のissue-specific実装フロー。delegated modeは `/work` contextを再利用し、同じworkerがplanからdocs同期・Ready PRまで進む。merge・parent cleanupは行わない。
 - **patch.md**: ドキュメント変更を伴わない軽微な修正に特化。issue/PR 不要。branch + commit → ユーザーが main へマージ。スコープが広がった場合は /task へエスカレーション。
 - **docs-sync.md**: git diff を事実として docs を最小更新し、ドラフト PR を公開する。HARD STOP 時は /init-docs を要求して終了する。L0（`docs/L0_concept/`）には書き込まず、L0 相当の記述を検知した場合は候補を `docs/.ai/l0_candidates.md` に積んで /concept-maker の実行を案内するに留める。
 - **init-docs.md**: repo の実態把握と設計ドキュメント再構築。重い初期化。docs-sync が説明不能になった時点でここに戻る。L0（`docs/L0_concept/`）は存在しない場合のみ新規作成し、既に存在する場合は再実行時も一切変更しない。
@@ -112,8 +113,8 @@ L3 per-file doc の `根拠: <file>:<line-range>` citation を使った対象読
 
 ## Local Tooling Environment
 
-Observed by /init-docs on 2026-08-21:
-- gh: 2.97.0
+Observed by /init-docs on 2026-08-29:
+- gh: 2.98.0
 - gh auth: logged in to github.com; active account available for repository operations
 - node: v24.16.0
 - npm: 11.13.0

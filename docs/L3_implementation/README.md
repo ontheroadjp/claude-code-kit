@@ -41,6 +41,7 @@ READMEは概要であり、実行時の完全な安全条件は各command specif
 
 ## 変更履歴（git log より自動生成）
 
+- f52dd59 feat(#400): unify work entry point
 - c9e5dff docs(#393): clarify project design philosophy
 - 149bedd docs: initialize project documentation (init-docs) (#392)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)

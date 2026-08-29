@@ -39,6 +39,7 @@ agenda label の issue は人間主導の `/mtg` へ、それ以外は issue と
 
 ## 変更履歴（git log より自動生成）
 
+- f52dd59 feat(#400): unify work entry point
 - c9e5dff docs(#393): clarify project design philosophy
 - 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
 - a46be53 feat(#321): unify operational hazard workflows

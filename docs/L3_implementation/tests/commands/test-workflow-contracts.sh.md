@@ -17,3 +17,10 @@ docs-sync/init-docs/task/git-pr の既存境界に加え、unified `/work` entry
 ## 注意事項
 
 固定文字列による責務境界testであり、GitHub操作は実行しない。
+
+## 変更履歴（git log より自動生成）
+
+- f52dd59 feat(#400): unify work entry point
+- 3aca4ca refactor(#362): reuse shared narrowed-read verification principle (#396)
+- a9fbb5f fix(#369): generate conventional task PR titles (#395)
+- ed9fa91 #354 Avoid redundant docs-sync confirmation (#355)

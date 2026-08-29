@@ -46,6 +46,7 @@
 
 ## 変更履歴（git log より自動生成）
 
+- f52dd59 feat(#400): unify work entry point
 - 05fbd40 fix(#398): preserve task-manager test executable mode
 - f3be053 feat(#398): stream task-manager issue pipelines
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
