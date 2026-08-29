@@ -13,6 +13,7 @@
 3. plan と Ready PR を到着順に個別承認へ relay し、unrelated worker は継続させる。
 4. approved PR を input order で `/git-pr-merge` に渡す。
 5. completion/failure、head、PR、validation、remaining worktree を `/work` へ返す。
+6. worker が返した optional SHA-bound full-suite evidence は完全性と Ready PR head の一致だけを確認して保持し、reuse policy を解釈せず `/git-pr-merge` へ転送する。
 
 根拠: `commands/task-manager.md:6-131`
 
@@ -23,6 +24,7 @@
 - `MAX_TASK_WORKERS = 3`、worker model override なし。
 - delivery は先行 issue が completed のときだけ進む。
 - mechanical latest-main/docs refresh は再承認不要だが、behavior・contract・design/security・scope・unknown diff の変更は対象 PR だけ再承認する。
+- validation evidence の生成・補完・再利用判定は行わない。evidence がなくても PR approval と delivery は継続し、authoritative fallback は `/git-pr-merge` に委ねる。
 
 根拠: `commands/task-manager.md:16-29`, `commands/task-manager.md:70-113`
 
@@ -31,12 +33,14 @@
 - `/work` 相当の preflight/project investigation と `/task` 相当の実装・docs・PR contract を削除し、reasoning と workflow definition の重複を避ける。
 - worker は既存 `/task` の delegated mode を完全に実行し、Draft-only な独自 pipeline を持たず Ready PR を返す。
 - parent workspace と stash は session owner `/work` に残し、orchestrator は cleanup candidate の報告だけを行う。
+- validation reuse decision を delivery owner に局所化し、task-manager は orchestration-focused handoff のまま保つ。
 
 ## 統合ポイント
 
 - caller/session owner: `commands/work.md`
 - worker contract: `commands/task.md`
 - delivery: `commands/git-pr-merge.md`
+- optional evidence producer: delegated `commands/task.md` merge position `1/<batch size>` worker
 - adapter: `skills/task-manager/SKILL.md`
 
 ## 注意事項・既知の制限
@@ -46,11 +50,16 @@
 
 ## 変更履歴（git log より自動生成）
 
-- 5f3aacf feat(#401): add structured work run observability
-- f52dd59 feat(#400): unify work entry point
-- 05fbd40 fix(#398): preserve task-manager test executable mode
-- f3be053 feat(#398): stream task-manager issue pipelines
+- 089cf6c feat(#404): reuse SHA-bound full-suite validation
+- 9fc5b9a feat(#401): add structured work run observability (#403)
+- 72a11b5 feat(#400): unify work entry point (#402)
+- b3d7d3b feat(#398): stream task-manager issue pipelines (#399)
+- a9fbb5f fix(#369): generate conventional task PR titles (#395)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
+- 6dc29d5 #387 Simplify task-manager source delivery (#388)
+- b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
+- 823f676 #381 Align task-manager source PR titles with work (#382)
+- 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
 
 ## Work-run observability
 

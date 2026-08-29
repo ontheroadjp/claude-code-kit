@@ -91,6 +91,8 @@ delegated `/task` が返した issue-specific plan を到着後すぐユーザ�
 
 worker が Ready PR handoff を返したら、remote head、diff scope、documentation completeness、validation を確認してすぐ個別提示する。
 
+worker が `full_validation_evidence` を返した場合は、field の完全性と Ready PR remote head との一致だけを確認して保持する。task-manager 自身は reuse 可否を判断せず、evidence の補完・推測・生成も行わない。evidence がない PR も通常どおり approval と delivery の対象にする。
+
 > issue #N の Ready PR をレビューしてください。これでよいですか？
 
 - NG: 対象 worker だけを再開し、同じ PR を修正・再提示する。
@@ -112,9 +114,10 @@ final_validation_plan: <required CI and local fallback>
 approval_source: task-manager issue-specific Ready PR approval
 owned_worktree: <task-worker worktree or isolated repair worktree permission>
 known_delivery_changes: <latest-main and mechanical documentation refresh>
+full_validation_evidence: <optional SHA-bound successful full-suite evidence returned by the same task worker>
 ```
 
-`/git-pr-merge` が actual PR branch で latest main refresh、current documentation truth、authoritative current-head validation、squash merge、GitHub merged state を確認した後だけ `completed` とする。
+`/git-pr-merge` が actual PR branch で latest main refresh、current documentation truth、reused-or-executed authoritative current-head validation、squash merge、GitHub merged state を確認した後だけ `completed` とする。validation evidence の再利用判定は `/git-pr-merge` だけが所有する。
 
 mechanical latest-main/citation/history/catalog/aggregate-doc refresh と approved behavior を変えない repair は再承認不要。source behavior/public contract、design/security boundary、approved scope、unknown remote diff が変わる場合は対象 PR だけ `awaiting_pr_approval` に戻す。
 
@@ -128,6 +131,7 @@ approved_and_current_heads:
 ready_pr_urls:
 delivery_results:
 validation_results:
+forwarded_full_validation_evidence:
 remaining_worktrees:
 manual_recovery:
 ```

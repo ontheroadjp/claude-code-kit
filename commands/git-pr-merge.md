@@ -32,9 +32,10 @@ approved_scope_or_behavior: <reviewed files, scope, and observable behavior>
 final_validation_plan: <required CI coverage and/or exact local commands>
 approval_source: task-manager complete Draft set approval
 owned_worktree: <absolute path or explicit permission to create an isolated repair worktree>
+full_validation_evidence: <optional; SHA-bound successful full-suite evidence>
 ```
 
-delegated contextが完全なら重複するユーザー承認を求めない。delegated approvalはこの1本のPRだけに適用し、別PRへ流用しない。
+`full_validation_evidence` は optional であり、欠如しても delegated context 不足とは扱わない。それ以外の delegated context が完全なら重複するユーザー承認を求めない。delegated approvalと validation evidence はこの1本のPRだけに適用し、別PRへ流用しない。
 
 ## 絶対不変条件
 
@@ -125,12 +126,20 @@ repairがobservable behavior、public contract、security boundary、approved sc
 1. refresh/repair commitをforceなしでactual PR branchへpushする。
 2. GitHubからcurrent remote headを再取得し、Phase 1 drift guardを適用する。
 3. current post-refresh headに対応するGitHub checksを取得する。古いheadのcheck結果を再利用しない。
-4. required CIがfinal validation planを完全にcoverする場合、そのcurrent headの完了を待ち、全required checkのsuccessを確認する。
-5. 対応するCIがない場合、approved final validation commandsをactual PR worktreeで実行する。
-6. CIがplanの一部だけをcoverする場合、current-head CI successに加え、missing validationをapproved local commandsで実行する。
-7. missing、pendingのまま、skipped、neutral、対応不明、古いhead、実行不能なvalidationをpassとして扱わない。
-8. failure修正がapproved scope内でも新しいrepair commitを必要とする場合、修正案と影響をユーザーへ提示し承認を得る。承認後にcommitをknown delivery commitとして記録し、Phase 4を最初から繰り返す。
-9. merge直前に`origin/main`を再fetchし、actual PR headがcurrent latest `origin/main`を含むことを確認する。不足ならPhase 2へ戻る。
+4. optional `full_validation_evidence` は次の全条件を満たす場合だけ再利用する。
+   - `validation_scope` が exact `full`、`validation_outcome` が exact `success` で、全 field が存在する。
+   - `validation_plan` が approved `final_validation_plan` と完全一致する。
+   - `validated_head_sha` が current post-refresh remote head SHA と完全一致する。
+   - `validated_base_sha` が Phase 2 で記録した current latest `origin/main` SHA と完全一致し、current head がその base を含む。
+   - refresh merge、conflict repair、validation repair、external push により evidence 取得後の head/base が変化していない。
+5. 4の全条件を満たす場合、同じ full-suite local commands は再実行せず、SHA-bound evidence を authoritative local validation result として記録する。required checks は evidence で省略せず、current head に対する完了と success を従来どおり確認する。
+6. evidence が absent、targeted-only、failed、incomplete、実行不能、plan mismatch、head mismatch、base mismatch、stale、または判定不能なら再利用しない。理由を記録し、以下の既存 authoritative current-head validation を実行する。
+7. required CIがfinal validation planを完全にcoverする場合、そのcurrent headの完了を待ち、全required checkのsuccessを確認する。
+8. 対応するCIがない場合、approved final validation commandsをactual PR worktreeで実行する。
+9. CIがplanの一部だけをcoverする場合、current-head CI successに加え、missing validationをapproved local commandsで実行する。
+10. missing、pendingのまま、skipped、neutral、対応不明、古いhead、実行不能なvalidationをpassとして扱わない。
+11. failure修正がapproved scope内でも新しいrepair commitを必要とする場合、修正案と影響をユーザーへ提示し承認を得る。承認後にcommitをknown delivery commitとして記録し、Phase 4を最初から繰り返す。
+12. merge直前に`origin/main`を再fetchし、actual PR headがcurrent latest `origin/main`を含むことを確認する。不足ならPhase 2へ戻る。再fetchでbase SHAが変わった場合、以前のevidenceは再利用せずPhase 2から再評価する。
 
 ## Phase 5: Ready transitionとexplicit squash merge
 
@@ -150,7 +159,7 @@ GitHubとgit remote stateを再取得し、次をすべて確認する。
 - squash resultのtree/diffがapproved PR changesを含む。
 - delivery直前に記録したlatest-main SHAがdelivery結果の履歴へ含まれる。
 
-1項目でも未確認ならsuccessを報告しない。確認できた場合だけPR URL、approved head、delivered remote head、squash SHA、latest-main SHA、CI/local validation結果、known delivery commitsをcallerへ返す。
+1項目でも未確認ならsuccessを報告しない。確認できた場合だけPR URL、approved head、delivered remote head、squash SHA、latest-main SHA、CI/local validation結果、validation evidence の reused/executed と判定理由、known delivery commitsをcallerへ返す。
 
 ## 停止時の報告
 
