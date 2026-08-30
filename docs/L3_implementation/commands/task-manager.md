@@ -53,7 +53,8 @@
 
 ## 変更履歴（git log より自動生成）
 
-- 089cf6c feat(#404): reuse SHA-bound full-suite validation
+- 015f76c feat(#406): forbid batching approval gates across task-manager issues
+- 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
 - 72a11b5 feat(#400): unify work entry point (#402)
 - b3d7d3b feat(#398): stream task-manager issue pipelines (#399)
@@ -62,7 +63,6 @@
 - 6dc29d5 #387 Simplify task-manager source delivery (#388)
 - b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
 - 823f676 #381 Align task-manager source PR titles with work (#382)
-- 8a9903f #379 Reuse task-manager integration conflict resolutions (#380)
 
 ## Work-run observability
 

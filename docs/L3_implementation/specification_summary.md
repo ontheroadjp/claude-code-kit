@@ -36,9 +36,9 @@ preflight 通過後だけ main/worktree branch と dirty workspace を扱い、p
 
 親の `work_run_id` をworkerへ伝播し、worker registration、issue state、approval wait、approved headを既存lifecycle ownerからbest-effort記録する。telemetry用の別state machineは持たない。
 
-issue ごとの real worker は delegated `commands/task.md` を完全に実行し、issue-specific plan から tests・docs・Ready PR まで同じ worker で進む。plan/Ready PR approval は到着順に独立して relay し、delivery eligibility は入力順の先行 issue が completed になるまで保持する。先頭 worker が返した optional SHA-bound full-suite evidence は補完・推測・reuse 判定をせず `/git-pr-merge` へ転送する。delivery は `/git-pr-merge` へ委譲し、completion/failure/head/PR/worktree state を `/work` へ返す。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
+issue ごとの real worker は delegated `commands/task.md` を完全に実行し、issue-specific plan から tests・docs・Ready PR まで同じ worker で進む。plan・実装レビュー・Ready PR approval は到着順に issue 単独で relay し、複数 issue の gate を1プロンプトに束ねず、まとめ承認も求めない。ready handoff を他 issue と揃える目的で保留せず、cross-issue の順序待ちは Phase 3 fixed-order delivery のみに限定する。delivery eligibility は入力順の先行 issue が completed になるまで保持する。先頭 worker が返した optional SHA-bound full-suite evidence は補完・推測・reuse 判定をせず `/git-pr-merge` へ転送する。delivery は `/git-pr-merge` へ委譲し、completion/failure/head/PR/worktree state を `/work` へ返す。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
 
-根拠: `commands/task-manager.md:1-131`, issue #400
+根拠: `commands/task-manager.md:1-143`, `commands/task-manager.md:84-96`, issue #400, issue #406
 
 ### `/mtg` (`commands/mtg.md`)
 
