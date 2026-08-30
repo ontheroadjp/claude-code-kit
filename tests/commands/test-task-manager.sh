@@ -64,6 +64,11 @@ for state in investigating awaiting_plan_approval implementing awaiting_pr_appro
 done
 assert_contains "$TASK_MANAGER" 'worker message を到着順に処理' 'approval results are streamed'
 assert_contains "$TASK_MANAGER" 'Ready PR をレビュー' 'Ready PR approval is issue-specific'
+assert_contains "$TASK_MANAGER" '複数 issue の plan・実装レビュー・PR gate を1つのプロンプトに束ねて提示すること' 'task-manager forbids batching gates across issues'
+assert_contains "$TASK_MANAGER" '複数 issue をまとめて承認・却下させること' 'task-manager forbids one approval covering multiple issues'
+assert_contains "$TASK_MANAGER" 'cross-issue の順序待ちが許されるのは Phase 3 の fixed-order delivery だけ' 'cross-issue waiting is limited to fixed-order delivery'
+assert_contains "$TASK_MANAGER" '状態遷移のない進捗ナレーション' 'task-manager suppresses idle progress-narration turns'
+assert_contains "$TASK" 'この実装レビュー gate も対象 issue 単独で relay され' 'implementation-review gate is relayed per issue'
 assert_contains "$TASK_MANAGER" '先行 issue がすべて `completed`' 'delivery remains in input order'
 assert_contains "$TASK_MANAGER" '`commands/git-pr-merge.md` を完全に Read' 'delivery delegates to git-pr-merge'
 assert_contains "$TASK_MANAGER" 'return to /work' 'task-manager returns lifecycle state to work'

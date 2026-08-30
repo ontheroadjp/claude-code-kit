@@ -43,14 +43,15 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 注意事項・既知の制限
 
-- delegated mode でも plan と Ready PR の approval は issue ごとに必須。
+- delegated mode でも plan・実装レビュー・Ready PR の approval は issue ごとに必須で、`/task-manager` は他 worker の gate と束ねずに relay する。
 - worker は merge、parent workspace cleanup、stash restoration を行わない。
 - L3 per-file docs 以外の aggregate docs は `/docs-sync` が diff を事実として更新する。
 - merge order 2件目以降は先行 delivery で base が変わるため、PR preparation では targeted validation に留め、authoritative full validation を delivery 時に行う。
 
 ## 変更履歴（git log より自動生成）
 
-- 089cf6c feat(#404): reuse SHA-bound full-suite validation
+- 015f76c feat(#406): forbid batching approval gates across task-manager issues
+- 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
 - 72a11b5 feat(#400): unify work entry point (#402)
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
@@ -59,7 +60,6 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - 0bc7683 #344 Add a thread-renaming helper (#346)
 - f32ec17 #336 Rename thread on work branch switch (#337)
 - ea565ac #326 Automate worktree symlink status filtering (#327)
-- 1aa3c2d fix(#318): distinguish worktree-untracked symlinks from real changes via manifest
 
 ## Work-run observability
 
