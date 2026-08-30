@@ -51,7 +51,8 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 変更履歴（git log より自動生成）
 
-- 015f76c feat(#406): forbid batching approval gates across task-manager issues
+- 5c22e8b feat(#408): carry resolved command and helper paths in worker payload
+- 3a2f223 feat(#406): forbid batching approval gates across task-manager issues (#407)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
 - 72a11b5 feat(#400): unify work entry point (#402)
@@ -60,7 +61,6 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)
 - 0bc7683 #344 Add a thread-renaming helper (#346)
 - f32ec17 #336 Rename thread on work branch switch (#337)
-- ea565ac #326 Automate worktree symlink status filtering (#327)
 
 ## Work-run observability
 
