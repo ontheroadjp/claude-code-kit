@@ -162,7 +162,7 @@ ordinary mode では親 `/work` と同じ session context を読む。delegated 
 
 3.2 実装完了後:
     - 作業内容をユーザーに報告（delegated worker mode は `/task-manager` へ implementation result を返す）
-    - ユーザーに実機テストおよびコードレビューを促して待機（delegated worker mode は `/task-manager` が gate を relay する）
+    - ユーザーに実機テストおよびコードレビューを促して待機（delegated worker mode は `/task-manager` が gate を relay する。この実装レビュー gate も対象 issue 単独で relay され、他 worker の実装レビュー・PR gate と束ねられない）
     - ユーザーから追加指示が出た場合:
         - Step 2（必要に応じて Step 1）へ戻る
         - ゲートは通過済みの前提で作業を続ける

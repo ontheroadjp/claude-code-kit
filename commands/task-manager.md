@@ -81,6 +81,19 @@ replacement worker には worktree/branch、project context、supplemental findi
 
 worker message を到着順に処理する。
 
+### 非バッチ制約（必須）
+
+approval relay は issue ごとに完全独立で行う。次を禁止する。
+
+- ready な plan / 実装レビュー / PR handoff を、他 issue の handoff と足並みを揃える目的で保留すること。到着した時点で、他 issue の状態に関係なくその issue 単独で提示する。
+- 複数 issue の plan・実装レビュー・PR gate を1つのプロンプトに束ねて提示すること。gate は常に「issue #N の ○○ をレビューしてください」という単一 issue の問いにする。
+- 複数 issue をまとめて承認・却下させること。承認・却下・修正指示は1 issue ずつ受け、対象 issue だけに適用する。
+- 「両方揃ってから」「まとめて最終承認」「整合性をまとめて確認」を判断根拠にすること。独立 PR 間の latest-main 取り込みや挙動差の確認は Phase 3 delivery が担う。
+
+cross-issue の順序待ちが許されるのは Phase 3 の fixed-order delivery だけである。それ以前の investigating・plan・implementing・実装レビュー・PR の各 gate は、対象 issue の handoff 到着だけで進み、他 issue を待たない。
+
+worker message の待機中は、状態遷移のない進捗ナレーション（「まだ両 worker が作業中です」等）を新しいターンとして出力しない。単一の長い wait を発行し、実 worker message の到着または必須の user gate 到来時にだけ発話する。
+
 ### plan gate
 
 delegated `/task` が返した issue-specific plan を到着後すぐユーザーへ提示する。承認された issue だけ `implementing` に進め、同じ worker に approval を返す。修正・拒否・approval reset は対象 issue だけに適用する。
@@ -100,7 +113,7 @@ worker が `full_validation_evidence` を返した場合は、field の完全性
 
 PR gate も同様に `approval_kind=pr` の wait events を emit し、承認時は `approved_head_recorded issue_number=<N> pr_number=<PR> head_sha=<full-sha>` を emit する。
 
-他 issue の plan/PR approval 待ちは unrelated worker を止めない。
+他 issue の plan・実装レビュー・PR approval 待ちは unrelated worker を止めない。
 
 ## Phase 3: fixed-order delivery
 

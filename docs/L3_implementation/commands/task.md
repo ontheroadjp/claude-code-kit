@@ -43,7 +43,7 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 注意事項・既知の制限
 
-- delegated mode でも plan と Ready PR の approval は issue ごとに必須。
+- delegated mode でも plan・実装レビュー・Ready PR の approval は issue ごとに必須で、`/task-manager` は他 worker の gate と束ねずに relay する。
 - worker は merge、parent workspace cleanup、stash restoration を行わない。
 - L3 per-file docs 以外の aggregate docs は `/docs-sync` が diff を事実として更新する。
 - merge order 2件目以降は先行 delivery で base が変わるため、PR preparation では targeted validation に留め、authoritative full validation を delivery 時に行う。
