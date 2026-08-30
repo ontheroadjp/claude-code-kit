@@ -30,13 +30,12 @@ pr_number: <number>
 approved_head_sha: <full remote head SHA>
 approved_scope_or_behavior: <reviewed files, scope, and observable behavior>
 final_validation_plan: <required CI coverage and/or exact local commands>
-approval_source: task-manager complete Draft set approval
-owned_worktree: <absolute path or explicit permission to create an isolated repair worktree>
-predecessor_approved_head: <chain position k≥2: #(k-1) の approved PR head SHA。position 1 / standalone: none>
+approval_source: task-manager issue-specific Ready PR approval
+owned_worktree: <permission to create an isolated delivery worktree for this PR>
 full_validation_evidence: <optional; SHA-bound successful full-suite evidence>
 ```
 
-`full_validation_evidence` と `predecessor_approved_head` は optional であり、欠如しても delegated context 不足とは扱わない（`predecessor_approved_head` は chain position 1 と standalone では `none`）。それ以外の delegated context が完全なら重複するユーザー承認を求めない。delegated approvalと validation evidence はこの1本のPRだけに適用し、別PRへ流用しない。
+`full_validation_evidence` は optional であり、欠如しても delegated context 不足とは扱わない。それ以外の delegated context が完全なら重複するユーザー承認を求めない。delegated approvalと validation evidence はこの1本のPRだけに適用し、別PRへ流用しない。
 
 ## 絶対不変条件
 
@@ -48,7 +47,6 @@ full_validation_evidence: <optional; SHA-bound successful full-suite evidence>
 - force push、rebase、reset、history rewrite、merge commit方式、rebase merge方式を使用しない。
 - branchとworktreeのcleanupはcallerに任せ、このworkflowでは削除しない。
 - Draft/Readyの違いはReady transitionが必要かだけに影響する。latest-main refreshとfinal validationは常に行う。
-- `predecessor_approved_head` を伴う delegated chain delivery では、対象PRは既にその predecessor head を内包している。sibling-worker divergence 由来のconflictは構造的に発生せず、Phase 3のconflict repairは想定外の外部変更専用に残る。
 
 ## Work-run event contract
 
@@ -58,7 +56,7 @@ full_validation_evidence: <optional; SHA-bound successful full-suite evidence>
 - current-head validation: `validation_result issue_number=<N> pr_number=<PR> outcome=<success|failed|stopped>`
 - delivery: `delivery_result issue_number=<N> pr_number=<PR> outcome=<success|failed|stopped> [head_sha=<full-sha>]`
 
-`predecessor_approved_head` を伴う delegated chain delivery では `#k` が既に `#(k-1)` を内包するため、`main_refresh_result` の構造上の期待値は `outcome=success conflict_count=0` である。`conflict_count>0` は想定外の外部変更を示す。
+delegated deliveryでは対象PRが起動時点のlatest `origin/main`から分岐しているため、`main_refresh_result` の通常の期待値は `outcome=success conflict_count=0` である。`conflict_count>0` は起動後の外部変更を示す。
 
 ## Phase 0: read-only preflight
 
@@ -105,8 +103,8 @@ unknown commitを1件でも検出したら、書き込みとdeliveryを停止し
 3. 上記を満たすworktreeを確保できなければ停止する。
 4. worktree内でbranch、HEAD、remote tracking branch、clean statusを確認し、`git fetch origin main <head-ref>`を実行する。
 5. fetch後のremote headにPhase 1 drift guardを再適用する。
-6. latest `origin/main` SHAを記録し、actual PR branchが含んでいなければ`git merge --no-ff origin/main`相当のnormal non-rewriting mergeを行う。`predecessor_approved_head` を伴う delegated chain delivery では、`#k` がその predecessor head を既に内包しており（squash 済み `#(k-1)` と content 等価）このmergeはtree変化のないtrivial mergeになる。tree変化が生じた場合は想定外の外部変更としてPhase 3で扱う。
-7. conflictがなければ生成されたmerge commitをknown delivery commitとして記録する。tree変化がなければ「known-empty delivery merge」として併せて記録する（Phase 4のevidence再利用で参照する）。
+6. latest `origin/main` SHAを記録し、actual PR branchが含んでいなければ`git merge --no-ff origin/main`相当のnormal non-rewriting mergeを行う。delegated deliveryでは対象PRが起動時点のlatest `origin/main`から分岐しているため、通常このmergeはno-opまたはclean fast-forwardになる。conflictやtree変化は起動後の外部変更を示し、Phase 3で扱う。
+7. conflictがなければ生成されたmerge commitをknown delivery commitとして記録する。
 
 local `main`のcheckout状態、index、working tree、HEADは変更しない。
 
@@ -134,12 +132,8 @@ repairがobservable behavior、public contract、security boundary、approved sc
    - `validated_head_sha` が current post-refresh remote head SHA と完全一致する。
    - `validated_base_sha` が Phase 2 で記録した current latest `origin/main` SHA と完全一致し、current head がその base を含む。
    - refresh merge、conflict repair、validation repair、external push により evidence 取得後の head/base が変化していない。
-   - **delegated chain 例外**: caller が `predecessor_approved_head` を渡し、evidence の `validated_base_sha` がその `predecessor_approved_head` と完全一致する場合、直前の head/base 完全一致2条件を次の全てを満たすときに限り緩和する。緩和後も他の条件はそのまま要求する。
-     - current post-refresh head が `predecessor_approved_head` と Phase 2 で記録した current latest `origin/main` の両方を含む。
-     - `validated_head_sha` から current post-refresh head までの差分が、この invocation が Phase 2/3 で記録した known delivery commit だけで構成され、その全てが Phase 2 step 7 で「known-empty delivery merge」として記録されている（tree 変化ゼロ）。
-     - unknown commit、実 conflict、tree 変化のある merge、external push がその区間に一切ない。
-5. 4の全条件（または delegated chain 例外）を満たす場合、同じ full-suite local commands は再実行せず、SHA-bound evidence を authoritative local validation result として記録する。required checks は evidence で省略せず、current head に対する完了と success を従来どおり確認する。
-6. evidence が absent、targeted-only、failed、incomplete、実行不能、plan mismatch、head mismatch、base mismatch、stale、または判定不能なら再利用しない（delegated chain 例外を満たす head/base mismatch は除く）。理由を記録し、以下の既存 authoritative current-head validation を実行する。
+5. 4の全条件を満たす場合、同じ full-suite local commands は再実行せず、SHA-bound evidence を authoritative local validation result として記録する。required checks は evidence で省略せず、current head に対する完了と success を従来どおり確認する。
+6. evidence が absent、targeted-only、failed、incomplete、実行不能、plan mismatch、head mismatch、base mismatch、stale、または判定不能なら再利用しない。理由を記録し、以下の既存 authoritative current-head validation を実行する。
 7. required CIがfinal validation planを完全にcoverする場合、そのcurrent headの完了を待ち、全required checkのsuccessを確認する。
 8. 対応するCIがない場合、approved final validation commandsをactual PR worktreeで実行する。
 9. CIがplanの一部だけをcoverする場合、current-head CI successに加え、missing validationをapproved local commandsで実行する。

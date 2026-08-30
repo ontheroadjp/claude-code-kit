@@ -13,7 +13,7 @@ description: Orchestrate delegated task workers only when commands/work.md route
 
 1. Read `commands/task-manager.md` completely.
 2. Execute it only with the complete accepted-issue and project-context handoff from `/work`.
-3. Use one real delegated `task-worker` sub-agent per accepted issue, up to three, without model overrides.
+3. Use one real delegated `task-worker` sub-agent per accepted issue (batch of two or three), launched serially one at a time — the next worker starts only after the previous issue's PR is squash-merged — without model overrides. Workers branch in the shared working tree; create no per-issue worktree.
 4. Require every worker to read and execute delegated worker mode in `commands/task.md` instead of reproducing task investigation and delivery rules.
 5. Preserve the same worker across plan approval, implementation, documentation, validation, and Ready PR creation when possible.
 6. Keep plan and Ready PR approval states independent while preserving fixed input-order delivery through `commands/git-pr-merge.md`.
