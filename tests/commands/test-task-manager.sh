@@ -48,8 +48,12 @@ assert_contains "$TASK" '### delegated worker mode' 'task defines delegated work
 assert_contains "$TASK" 'shortest-path supplemental investigation' 'delegated task limits supplemental investigation'
 assert_contains "$TASK" '同じ worker' 'delegated task preserves worker continuity'
 assert_contains "$TASK" 'Ready PR handoff' 'delegated task returns a Ready PR handoff'
-assert_contains "$TASK" 'full_validation_evidence:' 'first delegated task can return SHA-bound full validation evidence'
-assert_contains "$TASK" '後続 worker は先行 delivery により base が変わる' 'later workers do not precompute reusable full validation'
+assert_contains "$TASK" 'full_validation_evidence:' 'delegated task returns SHA-bound full validation evidence'
+assert_contains "$TASK" '全 delegated worker は' 'every delegated worker runs the up-front full suite'
+assert_contains "$TASK" 'issue につき1回だけ' 'the full suite runs once per issue implementation'
+assert_contains "$TASK" 'position k≥2 の `validated_base_sha` は `Predecessor approved head`' 'chain worker evidence is bound to the frozen predecessor head'
+assert_contains "$TASK" 'git merge <Predecessor approved head>' 'chain worker merges the predecessor approved head, not a reset'
+assert_absent "$TASK" '後続 worker は PR preparation では targeted validation に留める' 'the merge-position-1-only full-suite restriction is gone'
 assert_contains "$TASK" 'parent cleanup・stash restoration' 'delegated task does not own parent cleanup'
 assert_absent "$TASK" 'gh pr create --draft' 'delegated task does not introduce Draft-only delivery'
 assert_contains "$TASK" 'payload の絶対パス（`Command root`・`Work-run events helper`）から直接読む' 'delegated task reads command/helper files from payload paths'
@@ -72,7 +76,7 @@ assert_contains "$TASK_MANAGER" 'filesystem-searching for task.md, coding-*.md, 
 assert_contains "$TASK_MANAGER" 'Read <Command root>/task.md completely' 'worker reads task.md from the payload command root'
 assert_contains "$TASK_MANAGER" '複数 issue の plan・実装レビュー・PR gate を1つのプロンプトに束ねて提示すること' 'task-manager forbids batching gates across issues'
 assert_contains "$TASK_MANAGER" '複数 issue をまとめて承認・却下させること' 'task-manager forbids one approval covering multiple issues'
-assert_contains "$TASK_MANAGER" 'cross-issue の順序待ちが許されるのは Phase 3 の fixed-order delivery だけ' 'cross-issue waiting is limited to fixed-order delivery'
+assert_contains "$TASK_MANAGER" 'cross-issue の待ちは次の2つだけに限られ' 'cross-issue waiting is limited to chain implementation order and fixed-order delivery'
 assert_contains "$TASK_MANAGER" '状態遷移のない進捗ナレーション' 'task-manager suppresses idle progress-narration turns'
 assert_contains "$TASK" 'この実装レビュー gate も対象 issue 単独で relay され' 'implementation-review gate is relayed per issue'
 assert_contains "$TASK_MANAGER" '先行 issue がすべて `completed`' 'delivery remains in input order'
@@ -94,7 +98,17 @@ assert_contains "$TASK_MANAGER" 'work_run_id: <logical /work run id' 'task-manag
 assert_contains "$TASK_MANAGER" 'approval_wait_started issue_number=<N>' 'task-manager records issue-specific approval waits'
 assert_contains "$TASK_MANAGER" 'approved_head_recorded issue_number=<N>' 'task-manager correlates approved PR heads'
 assert_contains "$TASK_MANAGER" 'reuse 可否を判断せず' 'task-manager forwards evidence without owning reuse policy'
-assert_contains "$TASK_MANAGER" 'full_validation_evidence: <optional' 'task-manager delivery handoff carries optional evidence'
+assert_contains "$TASK_MANAGER" 'full_validation_evidence: <SHA-bound successful full-suite evidence returned by that issue'"'"'s task worker' 'task-manager delivery handoff carries per-issue full validation evidence'
+
+# Chain implementation: #k (k>=2) branches on the predecessor's approved PR head; investigation/planning stay parallel.
+assert_contains "$TASK_MANAGER" 'investigation と planning は全 worker が並行で行い、実装以降だけを入力順に直列化する' 'investigation and planning stay parallel while implementation is chained'
+assert_contains "$TASK_MANAGER" 'Predecessor approved head: <#(k-1) の approved PR head SHA' 'worker payload carries the predecessor approved head for k>=2'
+assert_contains "$TASK_MANAGER" 'plan 承認後も実装を開始せず、`#(k-1)` の PR gate 承認を待つ' 'chain worker implementation starts only after the predecessor PR is approved'
+assert_contains "$TASK_MANAGER" 'git merge <predecessor approved head>' 'the predecessor head is taken in with a non-rewriting merge'
+assert_contains "$TASK_MANAGER" 'branch の付け替え（`reset` 等の rewriting 操作）はしない' 'chain never re-anchors a branch by reset'
+assert_contains "$TASK_MANAGER" 'sibling-worker divergence 由来の conflict は構造的に発生しない' 'chain removes the parallel sibling-divergence conflict path'
+assert_contains "$TASK_MANAGER" 'conflict_count=0' 'chain delivery expects a zero-conflict latest-main refresh'
+assert_contains "$TASK_MANAGER" 'delivery 時に full-suite を再実行しない' 'delivery reuses the per-issue up-front evidence instead of re-running the full suite'
 
 if ((failures > 0)); then
   printf '\n%d unified work contract test(s) failed.\n' "$failures"

@@ -42,17 +42,18 @@ ordinary mode では親 `/work` と同じ session context を読む。delegated 
 
 ### delegated worker mode
 
-`/work` → `/task-manager` が起動した issue worker として実行する。payload には accepted issue metadata、isolated worktree/branch、base SHA、merge order、complete project-wide context が必要である。
+`/work` → `/task-manager` が起動した issue worker として実行する。payload には accepted issue metadata、isolated worktree/branch、base SHA、merge order、complete project-wide context が必要で、merge position k≥2 では PR gate 承認後に `Predecessor approved head`（`#(k-1)` の approved PR head SHA）が渡される。
 
 - `/work` の preflight、repository profile、README、primary investigation doc、workspace/stash gate を再実行しない。
 - `task.md`・`coding-*.md`・`work-run-events.sh` は payload の絶対パス（`Command root`・`Work-run events helper`）から直接読む。cwd 相対の解決やファイルシステム探索はしない。
 - handed-off evidence は routine reread しない。`missing evidence`、`stale evidence`、`base drift` を path・範囲・理由つきで記録した場合だけ shortest-path supplemental investigation を行う。
 - Step 2 の plan を `/task-manager` へ返し `awaiting_plan_approval` で待つ。approval は対象 issue だけに適用する。
+- merge position が `k/<batch size>`（k≥2）の worker は、plan 承認後すぐには実装せず、`/task-manager` から `Predecessor approved head`（`#(k-1)` の approved PR head SHA）を受け取るまで待つ。受け取ったら自分の branch へ `git merge <Predecessor approved head>`（normal non-rewriting merge）で取り込み、承認済み plan を merge 後の状態と突き合わせる。plan の前提（完了条件・変更対象・検証方法）が実質変わらなければそのまま Step 3 へ進む。material に変わる場合は差分を添えて `/task-manager` 経由で plan gate へ再提示し、対象 issue だけの再承認を待つ。merge position `1/<batch size>` の worker はこの待ち・merge を行わず、plan 承認後すぐ実装する。
 - approval 後は同じ worker が Step 3、tests、L3 per-file docs、Phase 2、`/docs-sync`、`/git-pr` まで継続する。
 - `/git-pr` には Ready PR を作成させる。Draft PR で停止しない。
 - Ready PR handoff を `/task-manager` へ返して `awaiting_pr_approval` で待ち、自分では merge・parent cleanup・stash restoration を行わない。
-- payload の merge position が `1/<batch size>` の worker だけは、Ready PR の final remote head が validated base 上にあり、その base が引き続き latest `origin/main` であることを確認した後、approved final validation plan の full suite を実行できる。成功した場合だけ head/base SHA に束縛した validation evidence を handoff に含める。後続 worker は PR preparation では targeted validation に留める。
-- replacement worker は approved plan と既存 evidence/state を引き継ぐ。
+- 全 delegated worker は、Ready PR の final remote head を確定してから、approved final validation plan の full suite を **issue につき1回だけ** 実行する。base は merge position `1/<batch size>` では validated base（引き続き latest `origin/main` であることを確認する）、position k≥2 では merge 済みの `Predecessor approved head`。全 command が成功した場合だけ head/base SHA に束縛した validation evidence を handoff に含める。`Predecessor approved head` は承認後に変わらないため、この base は delivery まで凍結される。
+- replacement worker は approved plan、既存 evidence/state、`Predecessor approved head`（branch へ merge 済みかどうか）を引き継ぐ。
 
 ## ソースコード修正時の注意点
 ソースコードを修正する場合は、修正前に対象ファイルの言語に応じたコマンドを Read し、記載された原則を適用すること:
@@ -149,7 +150,7 @@ ordinary mode では親 `/work` と同じ session context を読む。delegated 
         - Step 3.2 で作成・更新する L3 per-file doc の絶対パス（例: `file:/abs/path/to/docs/L3_implementation/commands/task.md`）
     - 注: `session-approved` はこの Step で 1 度だけ書き込む。実行中にスコープを追加しようとすると hook がブロックする。スコープ変更が必要な場合はこの Step に戻り、ユーザーの許可を得てから再書き込みすること。
     - **issue が元から作成済みだった場合のみ**: 調査結果・作業プランを対象 issue の本文に追記する（`gh issue comment <N>` は上記で書き込んだ `tool:gh_issue_write:<N>` により自動承認される）。今回新規作成した場合は Step 4 のドラフトが既に内容を含むため追記不要
-    - 通常モードでは approved plan の作業ブランチを作成または切り替える。delegated worker mode では payload の isolated worktree/branch が既に用意されているため再作成しない
+    - 通常モードでは approved plan の作業ブランチを作成または切り替える。delegated worker mode では payload の isolated worktree/branch が既に用意されているため再作成しない。merge position k≥2 の worker は、Step 3 開始前に `/task-manager` から渡された `Predecessor approved head` を自分の branch へ `git merge`（non-rewriting）で取り込み、承認済み plan を merge 後の状態と突き合わせてから Step 3 へ進む（差分が material なら plan gate へ再提示）
     - 作業ブランチ切替後、Claude Code だけが Git の返した branch name を使い、`/rename <作業ブランチ名>` と同じ結果になるよう更新する。Codex CLI はスキップし、失敗しても実装を止めない:
       ```bash
       branch_name=$(git branch --show-current)
@@ -230,18 +231,18 @@ Phase 3 へ進む。
 
 delegated worker mode では Ready PR 作成後、issue number、approved plan、branch/worktree、base/head SHA、PR number/URL、changed source/test/docs、observable changes、design decisions、tests、risks/followups を implementation handoff として `/task-manager` へ返し、merge せず待機する。
 
-batch の先頭 worker は handoff 前に remote head と latest `origin/main` を再取得する。remote head がローカルの検証対象 head と一致し、latest `origin/main` が payload の validated base と一致し、その head が base を含む場合に限り、approved final validation plan の exact full-suite commands を Ready PR worktree で実行する。全 command が成功した場合だけ次を handoff に追加する。途中失敗、実行不能、head/base drift、targeted-only validation の場合は evidence を作らず、理由を通常の validation result として返す。
+全 delegated worker は handoff 前に remote head と自分の base を再取得する。base は merge position `1/<batch size>` では latest `origin/main`、position k≥2 では merge 済みの `Predecessor approved head` である。remote head がローカルの検証対象 head と一致し、base が期待値と一致し、その head が base を含む場合に限り、approved final validation plan の exact full-suite commands を Ready PR worktree で **issue につき1回だけ** 実行する。全 command が成功した場合だけ次を handoff に追加する。途中失敗、実行不能、head/base drift、targeted-only validation の場合は evidence を作らず、理由を通常の validation result として返す。
 
 ```text
 full_validation_evidence:
   validated_head_sha: <full Ready PR remote head SHA>
-  validated_base_sha: <full latest origin/main SHA>
+  validated_base_sha: <position 1: full latest origin/main SHA / position k≥2: full Predecessor approved head SHA>
   validation_scope: full
   validation_plan: <exact approved commands/plan>
   validation_outcome: success
 ```
 
-後続 worker は先行 delivery により base が変わるため、この evidence を作らない。通常モードも自動 delivery handoff を持たないため対象外とする。
+position k≥2 の `validated_base_sha` は `Predecessor approved head` であり、承認済み PR head は変わらないため delivery まで凍結される。`/git-pr-merge` はこの evidence を、`#(k-1)` を既に内包する `#k` の tree 変化のない latest-main refresh merge をまたいで再利用する（`commands/git-pr-merge.md` の chain 節）。通常モードは自動 delivery handoff を持たないため evidence 生成の対象外とする。
 
 ---
 
