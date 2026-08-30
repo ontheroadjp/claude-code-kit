@@ -67,6 +67,6 @@
 
 ## Work-run observability
 
-親 `/work` から `work_run_id` を受け取りworkerへ伝播する。worker registration、issue state、plan/PR approval wait、approved headを、それぞれの既存state transitionのownerがbest-effort emitする。telemetry用の別state machineは持たない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照し再記述しない。親 `/work` から `work_run_id` を受け取りworkerへ伝播し、`worker_registered`・issue state・plan/PR approval wait・`approved_head_recorded` を、それぞれの既存state transitionのownerがemitする。telemetry用の別state machineは持たない。
 
 根拠: `commands/task-manager.md`（worker lifecycle, approval relay）

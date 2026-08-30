@@ -24,7 +24,9 @@ Phase 3: 最終報告
 
 ## Work-run event contract
 
-`/work` または `/task-manager` から `work_run_id` が渡されている場合だけ、`work-run-events.sh` に semantic event を best-effort で渡す。helper の絶対パスは呼び出し元 payload の literal 値（delegated mode は `Work-run events helper`）を使い、ファイルシステム探索はしない。値がない・`unavailable` の場合は emit を省略する。helper の失敗は無視し、実装・approval・PR creation の結果を変更しない。自由記述や成果物本文は渡さない。
+共有契約は `commands/work.md` の「Work-run observability › 共有契約（work-run events を emit する全 command 共通）」に従う。helper のパスは delegated mode では payload の `Work-run events helper`、ordinary mode では実行 agent の installed path。
+
+`/task` が emit する event:
 
 - plan 提示時: `issue_state_changed issue_number=<N> state=awaiting_plan_approval`
 - plan 承認後: `issue_state_changed issue_number=<N> state=implementing`

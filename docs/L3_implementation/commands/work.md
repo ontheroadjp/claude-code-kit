@@ -57,6 +57,6 @@
 
 ## Work-run observability
 
-invocation開始時に1つの `work_run_id` をbest-effortで作り、gate・routing・cleanup・terminal outcomeだけを共有helperへ渡す。schema・serialization・aggregationはscripts側が所有し、prompt、response、diff、source、tool output、自由記述はeventへ渡さない。logging failureはpreflight・routing・approval・completionを変更しない。
+§Work-run observability は2部構成。`### 共有契約（work-run events を emit する全 command 共通）` が best-effort・no-content・context がある時だけ emit・helper パスは受け取った literal・schema は helper 所有・自分の遷移だけ emit の6不変条件を一度だけ定義し、`/task`・`/task-manager`・`/patch`・`/git-pr`・`/git-pr-merge`・`/docs-sync` はこの見出しを参照するだけで再記述しない。`### /work が emit する event` が `/work` 固有分（start 呼び出し・`work_run_id` handoff・gate_result・routing_result・cleanup_result・run_finished）を定義する。event 名と key の正準は `scripts/work-run-events.sh` の `allowed_event()` / `allowed_key()`。
 
-根拠: `commands/work.md`（Work-run observability）, `scripts/work-run-events.sh`
+根拠: `commands/work.md`（Work-run observability › 共有契約 / /work が emit する event）, `scripts/work-run-events.sh`

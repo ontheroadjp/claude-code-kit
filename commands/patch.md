@@ -14,7 +14,7 @@ template 参照時の `TEMPLATES_DIR` は実行 agent に応じて決定する:
 
 ## ワークフロー
 
-`/work` が開始した work-run logging context が存在する場合も、`/patch` は独自 schema や lifecycle state を持たない。routing と最終結果は owner である `/work` が emit し、patch は logging failure を理由に実装を停止しない。
+work-run event の共有契約は `commands/work.md` の「Work-run observability › 共有契約（work-run events を emit する全 command 共通）」に従う。`/patch` は独自 schema や lifecycle state を持たず、work-run event を自分では emit しない（routing と最終結果は owner の `/work` が emit する）。logging failure を理由に実装を停止しない。
 
 ### Phase 1: 実装
 

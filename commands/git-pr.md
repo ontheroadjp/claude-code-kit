@@ -60,13 +60,11 @@ gh pr create --title "<title>" --body-file - <<'EOF'
 EOF
 ```
 
-作成結果から issue number、PR number、PR URL、full head SHA を取得でき、work-run context が存在する場合、次を best-effort で emit する。
+work-run event の共有契約は `commands/work.md` の「Work-run observability › 共有契約（work-run events を emit する全 command 共通）」に従う。`/git-pr` が emit する event:
 
-```text
-bash <agent用installed work-run-events.sh> emit pr_created issue_number=<N> pr_number=<PR> pr_url=<URL> head_sha=<full-sha> || true
-```
+- PR 作成後、issue number・PR number・PR URL・full head SHA を取得できた場合: `pr_created issue_number=<N> pr_number=<PR> pr_url=<URL> head_sha=<full-sha>`
 
-取得不能または logging failure の場合は emit を省略し、PR 作成結果を変更しない。PR title/body、diff、tool output は event に含めない。
+いずれかが取得不能なら emit を省略する。
 
 ### Step 7: 結果報告
 

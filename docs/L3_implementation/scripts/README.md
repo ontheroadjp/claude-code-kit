@@ -37,7 +37,7 @@
 
 ## Work-run tools
 
-- `work-run-events.sh`: logical `/work` runのprivacy-preserving semantic eventをper-run JSONLへ記録するfail-open writer。
+- `work-run-events.sh`: logical `/work` runのprivacy-preserving semantic eventをper-run JSONLへ記録するfail-open writer。event/key の正準は `allowed_event()` / `allowed_key()`、caller 側の契約は `commands/work.md`「Work-run observability › 共有契約」を参照。
 - `analyze_work_runs.py`: status、elapsed/approval/PR preparation/delivery time、parallel worker peak、issue/session correlationを集計するread-only analyzer。
 
 根拠: `scripts/README.md:11-22`

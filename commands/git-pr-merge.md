@@ -50,13 +50,11 @@ full_validation_evidence: <optional; SHA-bound successful full-suite evidence>
 
 ## Work-run event contract
 
-delegated context に `work_run_id` がある場合、実行 agent 用 installed `work-run-events.sh` へ、この workflow が所有する結果だけを best-effort emit する。logging failure は drift guard、repair、validation、merge、停止判断を一切変更しない。
+共有契約は `commands/work.md` の「Work-run observability › 共有契約（work-run events を emit する全 command 共通）」に従う。helper のパスは delegated context の値、standalone 起動で work-run context がなければ emit しない。`/git-pr-merge` が emit する event:
 
 - latest-main refresh: `main_refresh_result issue_number=<N> pr_number=<PR> outcome=<success|conflict|failed> conflict_count=<count>`
 - current-head validation: `validation_result issue_number=<N> pr_number=<PR> outcome=<success|failed|stopped>`
 - delivery: `delivery_result issue_number=<N> pr_number=<PR> outcome=<success|failed|stopped> [head_sha=<full-sha>]`
-
-event に commit message、diff、conflict/source content、check output、自由記述を含めない。standalone invocation で work-run context がなければ emit しない。
 
 ## Phase 0: read-only preflight
 

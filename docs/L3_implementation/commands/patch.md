@@ -137,6 +137,6 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 
 ## Work-run observability
 
-patchは独自telemetry stateを持たない。routingとterminal resultはsession owner `/work` がemitし、patchはlogging failureを理由に停止しない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照。patchは独自telemetry stateを持たず work-run event を自分では emit しない（routingとterminal resultはsession owner `/work` がemit）。logging failureを理由に停止しない。
 
 根拠: `commands/patch.md:13-18`

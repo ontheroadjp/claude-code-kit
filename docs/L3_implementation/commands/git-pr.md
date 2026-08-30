@@ -96,6 +96,6 @@ Step 7 の結果報告（PR URL）でこのコマンドの責務は完結する�
 
 ## Work-run observability
 
-work-run contextがある場合、作成済みPRのnumber・URL・full head SHAとissue numberだけを `pr_created` eventとしてbest-effort記録する。PR title/body/diffは含めない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照。`/git-pr` は作成済みPRのnumber・URL・full head SHAとissue numberを取得できた場合に `pr_created` event を emit する（取得不能なら省略）。
 
 根拠: `commands/git-pr.md:55-74`

@@ -134,6 +134,6 @@ citation の検証方法と stale citation 時の共通フォールバックは 
 
 ## Work-run observability
 
-呼び出し元からissueとwork-run contextが渡された場合、docs syncの成功・失敗・停止だけをbest-effort eventとして記録する。HARD STOP判定やdocs更新結果はlogging failureから独立する。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照。呼び出し元からissue番号とwork-run contextが渡された場合のみ、完了・停止時に `docs_sync_result` を emit する。HARD STOP判定やdocs更新結果はlogging failureから独立する。
 
 根拠: `commands/docs-sync.md:1-11`

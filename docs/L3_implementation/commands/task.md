@@ -64,6 +64,6 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## Work-run observability
 
-work-run contextがある場合、plan/implementation/Ready PRのissue-specific stateとapproval waitだけをbest-effort emitする。ordinary modeは親session context、delegated modeはworker attach済みcontextを使い、logging failureで実装を停止しない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照し再記述しない。`/task` は plan/implementation/Ready PR の issue-specific state と approval wait だけを emit する。ordinary modeは親session context、delegated modeはworker attach済みcontext（helper パスは payload の `Work-run events helper`）を使う。
 
 根拠: `commands/task.md`（Work-run event contract）
