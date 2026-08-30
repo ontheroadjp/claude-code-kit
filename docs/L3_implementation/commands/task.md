@@ -22,6 +22,7 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - plan approval 前に file edit を行わず、session-approved へ tool/file/L3 scope を一度だけ書く。
 - delegated worker は `/task-manager` 経由で issue-specific plan/implementation approval を受け、同じ worker が Ready PR まで継続する。
 - 通常モードだけ branch を作り、delegated mode は payload の branch/worktree を再利用する。
+- delegated mode は `task.md`・`coding-*.md`・`work-run-events.sh` を payload の絶対パス（`Command root`・`Work-run events helper`）から読み、ファイルシステム探索をしない。helper が `unavailable` なら event emit を省略する。
 - reusable evidence は `validated_head_sha`、`validated_base_sha`、exact `full` scope、exact validation plan、`success` outcome をすべて持つ場合だけ生成する。head/base drift、失敗、targeted-only result は evidence に昇格しない。
 
 根拠: `commands/task.md:35-50`, `commands/task.md:76-156`, `commands/task.md:227-245`

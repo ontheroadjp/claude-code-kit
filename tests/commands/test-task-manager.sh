@@ -52,6 +52,8 @@ assert_contains "$TASK" 'full_validation_evidence:' 'first delegated task can re
 assert_contains "$TASK" '後続 worker は先行 delivery により base が変わる' 'later workers do not precompute reusable full validation'
 assert_contains "$TASK" 'parent cleanup・stash restoration' 'delegated task does not own parent cleanup'
 assert_absent "$TASK" 'gh pr create --draft' 'delegated task does not introduce Draft-only delivery'
+assert_contains "$TASK" 'payload の絶対パス（`Command root`・`Work-run events helper`）から直接読む' 'delegated task reads command/helper files from payload paths'
+assert_contains "$TASK" 'ファイルシステム探索はしない' 'delegated task does not search the filesystem for command/helper files'
 
 # task-manager contains orchestration, not duplicated work/task logic.
 assert_contains "$TASK_MANAGER" 'internal batch orchestrator' 'task-manager is internal orchestration'
@@ -64,6 +66,10 @@ for state in investigating awaiting_plan_approval implementing awaiting_pr_appro
 done
 assert_contains "$TASK_MANAGER" 'worker message を到着順に処理' 'approval results are streamed'
 assert_contains "$TASK_MANAGER" 'Ready PR をレビュー' 'Ready PR approval is issue-specific'
+assert_contains "$TASK_MANAGER" 'Command root: <absolute installed commands dir for the executing agent' 'worker payload carries the resolved command root'
+assert_contains "$TASK_MANAGER" 'Work-run events helper: <absolute installed work-run-events.sh path' 'worker payload carries the resolved work-run helper path'
+assert_contains "$TASK_MANAGER" 'filesystem-searching for task.md, coding-*.md, or work-run-events.sh instead of using the payload paths' 'worker must not search the filesystem for command/helper files'
+assert_contains "$TASK_MANAGER" 'Read <Command root>/task.md completely' 'worker reads task.md from the payload command root'
 assert_contains "$TASK_MANAGER" '複数 issue の plan・実装レビュー・PR gate を1つのプロンプトに束ねて提示すること' 'task-manager forbids batching gates across issues'
 assert_contains "$TASK_MANAGER" '複数 issue をまとめて承認・却下させること' 'task-manager forbids one approval covering multiple issues'
 assert_contains "$TASK_MANAGER" 'cross-issue の順序待ちが許されるのは Phase 3 の fixed-order delivery だけ' 'cross-issue waiting is limited to fixed-order delivery'

@@ -9,7 +9,7 @@
 ## 動作の概要
 
 1. `/work` から accepted issue metadata、complete project context、base SHA、workspace/stash ownership を受け取る。
-2. issue ごとの isolated worktree と real worker を作り、worker に `commands/task.md` delegated mode を実行させる。
+2. issue ごとの isolated worktree と real worker を作り、worker payload に解決済み絶対パス（`Command root`＝実行 agent の installed commands dir、`Work-run events helper`＝同 `work-run-events.sh`、`L3 doc root`）を載せて `<Command root>/task.md` delegated mode を実行させる。
 3. plan・実装レビュー・Ready PR を到着順に issue 単独で承認へ relay し、unrelated worker は継続させる。複数 issue の gate を束ねて提示せず、1 プロンプト＝1 issue の問いにする。
 4. approved PR を input order で `/git-pr-merge` に渡す。
 5. completion/failure、head、PR、validation、remaining worktree を `/work` へ返す。
@@ -22,6 +22,7 @@
 - payload が不完全なら mutation せず failure を返す。
 - issue state は `investigating`、`awaiting_plan_approval`、`implementing`、`awaiting_pr_approval`、`delivery_eligible`、`delivering`、`completed`、`failed`。
 - `MAX_TASK_WORKERS = 3`、worker model override なし。
+- worker payload は `task.md`・`coding-*.md`・`work-run-events.sh` の解決済み絶対パスを運ぶ。worker は cwd 相対解決やファイルシステム探索をせず payload パスから読む（worker cwd はターゲットレポの worktree で、toolkit レポの `commands/` は相対解決できないため）。
 - approval relay は非バッチ（必須）。ready handoff を他 issue と揃える目的で保留せず、複数 issue の plan・実装レビュー・PR gate を1プロンプトに束ねず、1 issue ずつ承認・却下・修正指示を受ける。
 - cross-issue の順序待ちは Phase 3 fixed-order delivery のみ。それ以前の各 gate は対象 issue の handoff 到着だけで進む。
 - worker message 待機中は状態遷移のない進捗ナレーションを新ターンとして出さず、単一の長い wait で実 message / 必須 gate 到来時のみ発話する。
