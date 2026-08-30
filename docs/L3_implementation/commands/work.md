@@ -48,12 +48,16 @@
 
 ## 変更履歴（git log より自動生成）
 
-- 5f3aacf feat(#401): add structured work run observability
-- f52dd59 feat(#400): unify work entry point
-- ae1c7f9 fix(#360): align /work heading wording and (A)/(B) investigation references
+- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- 9fc5b9a feat(#401): add structured work run observability (#403)
+- 72a11b5 feat(#400): unify work entry point (#402)
+- bf1692f feat(#363): add narrowed-read verification principle and track offset/limit usage (#364)
+- cf6fcba #360 Align /work heading wording and (A)/(B) investigation references (#361)
 - e501904 #358 Prohibit web write/download during /work investigation phase (#359)
 - 4ddff6e #356 Prohibit edits during /work investigation phase (#357)
 - f484a2d Route parent issues to their next ready child (#351)
+- 446c4d3 #343 Replace report review with human-led mtg agendas (#345)
+- ea565ac #326 Automate worktree symlink status filtering (#327)
 
 ## Work-run observability
 

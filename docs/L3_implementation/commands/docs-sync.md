@@ -56,20 +56,18 @@ Phase 4: 最終報告（L0 候補ありの案内を含む）
 **Step 2**: L3 per-file doc の変更履歴セクション更新
 - Phase 1 で取得したファイル一覧から `docs/` 配下を除くソースファイルを対象とする
 - 各ファイルに対応する `docs/L3_implementation/<path>.md` が存在する場合のみ処理する
-- `git log --oneline -10 -- <file>` を実行し、`## 変更履歴（git log より自動生成）` セクションを更新または末尾に追加する
-- L3 doc が存在しないファイルはスキップ（L3 doc 新規作成は `/task` が担う）
-- `docs/` 配下のファイル（`docs/L3_implementation/` を含む）は対象外
+- `git log --oneline -10 -- <file>` を実行し、`## 変更履歴（git log より自動生成）
 
-**Step 2b**: L0 昇格候補の検知（`docs/L0_concept/` 自体は変更しない）
-- Step 2 で変更履歴を更新した各 L3 doc について、この PR による「重要な設計判断」への追加分を `git diff main...HEAD -- <L3 docのパス>` で確認する
-- `docs/L0_concept/policy.md` の既存カテゴリ（技術選定・セキュリティ・運用/性能・禁止事項・整合性）に類する project-wide な決定と読める場合、`docs/.ai/l0_candidates.md`（存在しなければ新規作成）へ `- <L3 docのパス>:<行範囲> — <一行要約> (issue #<N>)` の形式で1行追記する
-- L0 ファイル自体（`concept.md`・`policy.md`）には一切書き込まない。判断はキューイングのみに使われるため、Phase 2 の「確認不要/確認必要」分類の対象外として扱う
-
-**Step 3**: docs 変更があった場合のみ `/git-commit`（`fixed_message="docs: sync documentation"`）を実行し、`SESSION_TMP_DIR/pr-docs-sync-result.md` を書き出す（docs 変更の有無にかかわらず常に実行）。push は行わない。
-
-Phase 4 最終報告では、`docs/.ai/l0_candidates.md` が空でない場合に `/concept-maker` の実行をユーザーへ案内する（自動実行はしない）。
-
-根拠: `commands/docs-sync.md:140-203`, `commands/docs-sync.md:206-209`, issue #273
+- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- 9fc5b9a feat(#401): add structured work run observability (#403)
+- 3aca4ca refactor(#362): reuse shared narrowed-read verification principle (#396)
+- ed9fa91 #354 Avoid redundant docs-sync confirmation (#355)
+- e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
+- 58cded5 fix: validate specification_summary.md citations before reuse, fall back on stale ones
+- 5e9bc3f feat(#307): carry specification_summary.md citations from /task to /docs-sync
+- 65a9329 feat(#302): resume task after docs-sync hard stop
+- e6845d7 feat(#273): introduce L0 promotion queue and /concept-maker; make L0 write-once by /init-docs
+- 5722f08 feat(#271): add deterministic docs-sync CI rule, wire approval hook tests into CI, dedupe work.md investigation text
 
 ## 重要な設計判断
 

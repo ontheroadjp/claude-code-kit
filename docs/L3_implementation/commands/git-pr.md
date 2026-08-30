@@ -86,7 +86,8 @@ Step 7 の結果報告（PR URL）でこのコマンドの責務は完結する�
 
 ## 変更履歴（git log より自動生成）
 
-- 5f3aacf feat(#401): add structured work run observability
+- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- 9fc5b9a feat(#401): add structured work run observability (#403)
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 5a4ecc6 chore(#205): remove /pr-review; /work and /task now end at PR creation
