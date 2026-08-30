@@ -6,8 +6,10 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 DOCS_SYNC="$REPO_DIR/commands/docs-sync.md"
 INIT_DOCS="$REPO_DIR/commands/init-docs.md"
 TASK="$REPO_DIR/commands/task.md"
+TASK_MANAGER="$REPO_DIR/commands/task-manager.md"
 PATCH="$REPO_DIR/commands/patch.md"
 GIT_PR="$REPO_DIR/commands/git-pr.md"
+GIT_PR_MERGE="$REPO_DIR/commands/git-pr-merge.md"
 WORK="$REPO_DIR/commands/work.md"
 
 failures=0
@@ -68,8 +70,18 @@ assert_contains "$PATCH" 'bash ~/.claude/scripts/rename-thread.sh "$branch_name"
 assert_contains "$WORK" 'work-run-events.sh start || true' 'work starts best-effort logical-run logging'
 assert_contains "$WORK" 'run_finished outcome=' 'work records every terminal outcome'
 assert_contains "$TASK" 'issue_state_changed issue_number=<N>' 'task emits issue-owned lifecycle state'
-assert_contains "$GIT_PR" 'emit pr_created issue_number=<N>' 'git-pr emits structured PR correlation'
+assert_contains "$GIT_PR" 'pr_created issue_number=<N>' 'git-pr emits structured PR correlation'
 assert_contains "$GIT_PR" 'gh pr create --title "<title>"' 'git-pr remains responsible for PR creation'
+
+# The shared work-run event contract is defined once in work.md; every emitter references it.
+assert_contains "$WORK" '共有契約（work-run events を emit する全 command 共通）' 'work.md defines the shared work-run event contract once'
+assert_contains "$WORK" 'allowed_event()` / `allowed_key()' 'work.md points at the helper as the event/key schema authority'
+assert_contains "$TASK" 'Work-run observability › 共有契約' 'task references the shared work-run contract'
+assert_contains "$TASK_MANAGER" 'Work-run observability › 共有契約' 'task-manager references the shared work-run contract'
+assert_contains "$PATCH" 'Work-run observability › 共有契約' 'patch references the shared work-run contract'
+assert_contains "$GIT_PR" 'Work-run observability › 共有契約' 'git-pr references the shared work-run contract'
+assert_contains "$GIT_PR_MERGE" 'Work-run observability › 共有契約' 'git-pr-merge references the shared work-run contract'
+assert_contains "$DOCS_SYNC" 'Work-run observability › 共有契約' 'docs-sync references the shared work-run contract'
 assert_contains "$WORK" '単一 issue と複数 issue の両方に対する唯一の実装エントリポイント' 'work is the unified implementation entry point'
 assert_contains "$WORK" 'この Phase が完了するまで、project-wide investigation、checkout、stash' 'work preflight precedes investigation and mutation'
 assert_contains "$WORK" '`commands/task-manager.md` へ委譲する' 'work delegates accepted batches to task-manager'

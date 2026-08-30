@@ -54,7 +54,8 @@
 
 ## 変更履歴（git log より自動生成）
 
-- 5c22e8b feat(#408): carry resolved command and helper paths in worker payload
+- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- ff0872c feat(#408): carry resolved command and helper paths in worker payload (#409)
 - 3a2f223 feat(#406): forbid batching approval gates across task-manager issues (#407)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
@@ -63,10 +64,9 @@
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 - 6dc29d5 #387 Simplify task-manager source delivery (#388)
-- b2b83ac #384 Replace task-manager pre-integration with sequential PR refresh (#385)
 
 ## Work-run observability
 
-親 `/work` から `work_run_id` を受け取りworkerへ伝播する。worker registration、issue state、plan/PR approval wait、approved headを、それぞれの既存state transitionのownerがbest-effort emitする。telemetry用の別state machineは持たない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照し再記述しない。親 `/work` から `work_run_id` を受け取りworkerへ伝播し、`worker_registered`・issue state・plan/PR approval wait・`approved_head_recorded` を、それぞれの既存state transitionのownerがemitする。telemetry用の別state machineは持たない。
 
 根拠: `commands/task-manager.md`（worker lifecycle, approval relay）

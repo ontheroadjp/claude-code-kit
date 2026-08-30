@@ -54,12 +54,13 @@ delegated caller から受け取る `full_validation_evidence` は optional で�
 
 ## 変更履歴（git log より自動生成）
 
-- 089cf6c feat(#404): reuse SHA-bound full-suite validation
+- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
 
 ## Work-run observability
 
-delegated work-run contextがある場合、latest-main refresh/conflict count、current-head validation、delivery resultをこのworkflowが所有するsemantic eventとしてbest-effort記録する。commit message、diff、conflict/source content、check outputは含めない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照。delegated work-run contextがある場合、`main_refresh_result`（conflict count 含む）・`validation_result`・`delivery_result` をこのworkflowが所有するeventとして emit する。standalone 起動で context がなければ emit しない。
 
 根拠: `commands/git-pr-merge.md:50-58`

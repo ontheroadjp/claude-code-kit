@@ -19,9 +19,12 @@ lock directoryでsequence採番と追記を直列化する。通常modeはfail-o
 
 prompt、response、diff、source、tool output、自由記述を受け付けない。既存telemetryは複製せず、共通resolverの `agent_session_id` でjoinする。
 
+event 名と key の正準は `allowed_event()` / `allowed_key()`。caller 側の契約（いつ・どの event を emit するか、best-effort の6不変条件）は `commands/work.md`「Work-run observability › 共有契約」に一元化され、他の caller spec はそれを参照する。
+
 ## 統合ポイント
 
-- callers: work/task-manager/task/docs-sync/git-pr/git-pr-merge command specs
+- shared caller contract: `commands/work.md`（Work-run observability › 共有契約）
+- callers: work/task-manager/task/patch/docs-sync/git-pr/git-pr-merge command specs
 - session resolver: `hooks/lib/session-id.sh`
 - analyzer: `scripts/analyze_work_runs.py`
 - approval shape: `hooks/auto-approve-readonly.sh`

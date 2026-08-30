@@ -10,6 +10,19 @@
 
 ## Work-run observability（best-effort）
 
+### 共有契約（work-run events を emit する全 command 共通）
+
+`/work`・`/task`・`/task-manager`・`/patch`・`/git-pr`・`/git-pr-merge`・`/docs-sync` が work-run event を emit するときは、次に従う。各 command は自分がこの節を参照していることと、自分が emit する event の一覧だけを持ち、以下の不変条件を再記述しない。
+
+1. **best-effort のみ。** helper の失敗・空出力・emit 失敗はすべて無視し、gate・routing・approval・validation・merge・completion・停止判断を一切変更せず、追加の確認も求めない。
+2. **content を入れない。** event に prompt・response・body・diff・source・tool input/output・commit message・conflict/check output・自由記述を渡さない。
+3. **context がある時だけ emit。** caller から `work_run_id`（work-run context）を渡された場合のみ emit する。standalone 起動（context なし）では emit しない。
+4. **helper のパスは受け取った literal を使う。** delegated payload の `Work-run events helper`、なければ実行 agent の installed path（Claude Code: `~/.claude/scripts/work-run-events.sh`、Codex CLI: `~/.codex/scripts/work-run-events.sh`）。ファイルシステム探索はしない。値が `unavailable` なら emit を省略する。emit 形式は `bash <helper> emit <event> key=value ... || true`。
+5. **schema は helper が所有。** event 名と key の正準定義は `scripts/work-run-events.sh` の `allowed_event()` / `allowed_key()`。JSONL の sequence・serialization・aggregation も helper が所有し、command spec は実装しない。
+6. **自分が所有する遷移だけ emit。** telemetry 用の別 state machine を持たない。
+
+### /work が emit する event
+
 invocation の最初に、実行 agent に対応する installed helper を1回だけ呼ぶ。
 
 ```text
@@ -17,16 +30,14 @@ Claude Code: bash ~/.claude/scripts/work-run-events.sh start || true
 Codex CLI:   bash ~/.codex/scripts/work-run-events.sh start || true
 ```
 
-helper が返す `work_run_id` は logical run の相関 ID として保持し、委譲 payload に渡す。helper の失敗、空出力、event emit の失敗はすべて無視し、gate・routing・approval・completion を変更せず、追加の確認も求めない。event には prompt、response、body、diff、source、tool input/output、自由記述を渡さない。
-
-各 emit も同じ agent 用 literal path で `bash <installed-helper> emit <event> key=value ... || true` として行う。
+helper が返す `work_run_id` は logical run の相関 ID として保持し、委譲 payload に渡す。
 
 - Phase 0 の issue 判定ごと: `gate_result issue_number=<N> outcome=<approved|stopped> reason_code=<none|input_gate|repository_gate|issue_gate>`
 - routing 確定時: `routing_result [issue_number=<N>] route=<task|patch|task_manager|mtg|hazard_triage|stop>`
 - Phase 3 cleanup 後: `cleanup_result outcome=<success|incomplete> remaining_worktrees=<count> stash_restored=<true|false|not_applicable>`
 - invocation の全終了経路: `run_finished outcome=<success|failed|stopped|interrupted|incomplete> reason_code=<defined reason code>`
 
-preflight stop でも `gate_result` と `run_finished` を可能な範囲で emit するが、logging のために preflight mutation を行ったとは扱わない。JSONL は helper が所有し、`commands/work.md` は schema、sequence、serialization、aggregation を実装しない。
+preflight stop でも `gate_result` と `run_finished` を可能な範囲で emit するが、logging のために preflight mutation を行ったとは扱わない。
 
 ## Phase 0: atomic read-only preflight（必須）
 

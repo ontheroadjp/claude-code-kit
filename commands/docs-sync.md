@@ -7,7 +7,7 @@
 - **`docs/L0_concept/`（concept.md, policy.md）には一切書き込まない**。L0 相当の記述を検知した場合は `docs/.ai/l0_candidates.md` へ候補を追記するに留める（L0 への実際の追記はユーザー承認を経て `/concept-maker` が行う）
 - 判断の根拠: `git diff main...HEAD`（事実）+ セッション temp の `pr-body.md`（補助）
 - 作業完了後、docs sync 結果をセッション temp の `pr-docs-sync-result.md` に書き出す
-- work-run context が存在する場合、完了または停止時に `bash <agent用installed work-run-events.sh> emit docs_sync_result issue_number=<N> outcome=<success|failed|stopped> || true` を実行する。issue 番号は呼び出し元から渡された既知の値だけを使い、不明なら emit を省略する。logging failure は HARD STOP 判定や docs sync の結果を変更しない
+- work-run event は `commands/work.md`「Work-run observability › 共有契約（work-run events を emit する全 command 共通）」に従う。`/docs-sync` が emit する event は、完了または停止時の `docs_sync_result issue_number=<N> outcome=<success|failed|stopped>` のみ。issue 番号は呼び出し元から渡された既知の値だけを使い、不明なら emit を省略する
 - push・PR 作成は `/git-pr` が担う
 - レビュー・マージは人間が行う
 

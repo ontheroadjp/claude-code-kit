@@ -77,7 +77,12 @@ worker は logging が利用可能な場合、編集前に payload の `Work-run
 bash <Work-run events helper> attach <work_run_id> issue_number=<N> worker_id=<stable-worker-id> branch=<branch> worktree=<absolute-worktree> || true
 ```
 
-親と worker は、各 issue state 遷移時にそれぞれが所有する遷移だけを `emit issue_state_changed issue_number=<N> state=<state> || true` で記録する。重複した telemetry state machine は持たない。
+work-run event の共有契約は `commands/work.md` の「Work-run observability › 共有契約（work-run events を emit する全 command 共通）」に従う。`/task-manager` と各 worker は、それぞれが所有する遷移だけを emit する:
+
+- `worker_registered`（上記 `attach` による worker 起動時）
+- `issue_state_changed issue_number=<N> state=<state>`（所有する issue state 遷移時）
+- `approval_wait_started` / `approval_wait_finished`（plan gate・PR gate。詳細は各 gate 節）
+- `approved_head_recorded`（PR 承認時。詳細は PR gate 節）
 
 replacement worker には worktree/branch、project context、supplemental findings、approved plan、current state、failure evidence をすべて渡し、承認済み調査をやり直さない。
 

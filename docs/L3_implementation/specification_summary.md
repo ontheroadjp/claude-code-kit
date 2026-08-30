@@ -248,11 +248,13 @@ Notification と Stop で Claude/Codex の hook 設定から呼ばれる Slack �
 
 ## Work-run observability
 
-`scripts/work-run-events.sh` は1 logical `/work` に24桁hex `work_run_id` を割り当て、parent/delegated workerの固定schema lifecycle eventを `logs/work-runs/<YYYY-MM>/<work_run_id>.jsonl` へlock付きで追記する。通常modeはfail-openで、test専用 `--strict` のみerrorを非ゼロで返す。prompt、response、source/diff body、tool input/output、任意keyを拒否する。
+`scripts/work-run-events.sh` は1 logical `/work` に24桁hex `work_run_id` を割り当て、parent/delegated workerの固定schema lifecycle eventを `logs/work-runs/<YYYY-MM>/<work_run_id>.jsonl` へlock付きで追記する。通常modeはfail-openで、test専用 `--strict` のみerrorを非ゼロで返す。prompt、response、source/diff body、tool input/output、任意keyを拒否する。event名とkeyの正準は `allowed_event()` / `allowed_key()`。
+
+caller側の契約（いつ・どのeventをemitするか、best-effortの6不変条件）は `commands/work.md`「Work-run observability › 共有契約（work-run eventsをemitする全command共通）」に一元化され、`/task`・`/task-manager`・`/patch`・`/git-pr`・`/git-pr-merge`・`/docs-sync` はこの見出しを参照して自分のemit event一覧だけを持つ。
 
 `scripts/analyze_work_runs.py` はterminal/gate/issue stateからsuccessful、gate-stopped、partial failure、interrupted、cleanup-incompleteを分類し、elapsed、approval wait、PR preparation、delivery time、parallel worker peakを集計する。既存access/approval/token metricsは複製せず、eventの `agent_session_id` をjoin keyとして返す。
 
-根拠: `scripts/work-run-events.sh`, `scripts/analyze_work_runs.py`, `tests/scripts/test-work-run-events.sh`, `tests/scripts/test_analyze_work_runs.py`, issue #401
+根拠: `scripts/work-run-events.sh`, `scripts/analyze_work_runs.py`, `commands/work.md`（Work-run observability › 共有契約）, `tests/scripts/test-work-run-events.sh`, `tests/scripts/test_analyze_work_runs.py`, issue #401, issue #410
 
 ## Templates
 

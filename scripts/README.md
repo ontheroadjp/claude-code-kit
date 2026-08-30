@@ -14,7 +14,7 @@ Claude Code のステータス表示とトークン使用量確認のための�
 | `work-run-events.sh` | 1回の `/work` と delegated worker の semantic event を固定 schema の per-run JSONL に best-effort 記録する |
 | `analyze_work_runs.py` | `logs/work-runs/**/*.jsonl` を集計し、run status・elapsed time・issue/session correlation を JSON で出力する |
 
-`work-run-events.sh` は `start`、`attach`、`emit`、`current` を提供する。通常モードは常に fail-open で、テスト専用 `--strict` のみ schema/IO failure を非ゼロで返す。出力 JSONL は自由記述を受け付けず、既存 telemetry とは `agent_session_id` で join する。
+`work-run-events.sh` は `start`、`attach`、`emit`、`current` を提供する。通常モードは常に fail-open で、テスト専用 `--strict` のみ schema/IO failure を非ゼロで返す。出力 JSONL は自由記述を受け付けず、既存 telemetry とは `agent_session_id` で join する。event 名と key の正準は `allowed_event()` / `allowed_key()`。caller 側の契約（いつ・どの event を emit するか、best-effort の不変条件）は `commands/work.md` の「Work-run observability › 共有契約」に定義される。
 
 ```bash
 python3 scripts/analyze_work_runs.py logs/work-runs

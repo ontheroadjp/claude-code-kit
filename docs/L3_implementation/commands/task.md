@@ -51,7 +51,8 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 変更履歴（git log より自動生成）
 
-- 5c22e8b feat(#408): carry resolved command and helper paths in worker payload
+- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- ff0872c feat(#408): carry resolved command and helper paths in worker payload (#409)
 - 3a2f223 feat(#406): forbid batching approval gates across task-manager issues (#407)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
@@ -60,10 +61,9 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - 4f0953a docs(task): remove /rename step from Step 3 pre-implementation checklist
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)
 - 0bc7683 #344 Add a thread-renaming helper (#346)
-- f32ec17 #336 Rename thread on work branch switch (#337)
 
 ## Work-run observability
 
-work-run contextがある場合、plan/implementation/Ready PRのissue-specific stateとapproval waitだけをbest-effort emitする。ordinary modeは親session context、delegated modeはworker attach済みcontextを使い、logging failureで実装を停止しない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照し再記述しない。`/task` は plan/implementation/Ready PR の issue-specific state と approval wait だけを emit する。ordinary modeは親session context、delegated modeはworker attach済みcontext（helper パスは payload の `Work-run events helper`）を使う。
 
 根拠: `commands/task.md`（Work-run event contract）

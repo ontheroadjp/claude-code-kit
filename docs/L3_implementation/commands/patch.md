@@ -122,21 +122,19 @@ issue draft の `${TEMPLATES_DIR}/issue.md` は実行 agent に応じ、Claude C
 
 ## 変更履歴（git log より自動生成）
 
-- 5f3aacf feat(#401): add structured work run observability
-- ccd9fe3 wip: 2026-08-14 01:31:37 before apply_patch
-- 0331e9e feat(#336): rename thread on work branch switch
+- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- 9fc5b9a feat(#401): add structured work run observability (#403)
+- 0bc7683 #344 Add a thread-renaming helper (#346)
+- f32ec17 #336 Rename thread on work branch switch (#337)
 - e7d5698 fix(#316): resolve session paths via hooks/lib/session-paths.sh to survive worktree-isolated harness guard
 - 1146f95 feat(#286): add generic React and Next.js guidelines
 - d4bd418 feat(#267): add /coding-sh command and enforce shellcheck across all shell scripts
 - db6d6c3 fix(#210): resolve session id from env instead of a shared pointer file
 - 27f1861 feat(#76): install templates for claude and codex
 - 17c844b feat(#163): introduce L3 per-file docs and enforce reading them in task/patch flows
-- 89d5fad feat(#157): move git-commit to commands/, add skill wrapper, update all callers to /git-commit
-- 028b3af fix(#136): announce session-approved path from hook so Claude can locate it
-- 13dbefd refactor: reduce duplicate file reads across work/task/patch/codex-review flows
 
 ## Work-run observability
 
-patchは独自telemetry stateを持たない。routingとterminal resultはsession owner `/work` がemitし、patchはlogging failureを理由に停止しない。
+共有契約は `commands/work.md`「Work-run observability › 共有契約」を参照。patchは独自telemetry stateを持たず work-run event を自分では emit しない（routingとterminal resultはsession owner `/work` がemit）。logging failureを理由に停止しない。
 
 根拠: `commands/patch.md:13-18`
