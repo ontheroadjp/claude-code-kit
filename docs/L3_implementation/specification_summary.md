@@ -36,9 +36,9 @@ preflight 通過後だけ main/worktree branch と dirty workspace を扱い、p
 
 親の `work_run_id` をworkerへ伝播し、worker registration、issue state、approval wait、approved headを既存lifecycle ownerからbest-effort記録する。telemetry用の別state machineは持たない。
 
-issue ごとに validated base から worktree を1つ作り（1 issue = 1 worker = 1 worktree）、解決済みの command root・work-run helper パスと、k≥2 では `Predecessor approved head` / `Predecessor PR` を payload で渡し（worker は探索しない）、delegated `commands/task.md` を完全に実行させる。investigation と planning は全 worker 並行だが、実装は入力順の chain で、`#k`（k≥2）は `#(k-1)` の PR gate 承認を待ち、その approved head を自分の branch へ non-rewriting `git merge` で内包し、承認済み plan を突き合わせてから実装する（material な差分だけ plan gate へ戻す。branch の付け替えはしない）。plan・実装レビュー・Ready PR approval は到着順に issue 単独で relay し、複数 issue の gate を1プロンプトに束ねず、まとめ承認も求めない。cross-issue の待ちは chain 実装順と Phase 3 fixed-order delivery のみ。delivery eligibility は入力順の先行 issue が completed になるまで保持する。全 worker が返す SHA-bound full-suite evidence（結合状態を issue につき1回検証、base は `#1` が latest-main・`#k` が凍結された `Predecessor approved head`）は補完・推測・reuse 判定をせず `predecessor_approved_head` と共に `/git-pr-merge` へ転送する。chain により `#k` は `#(k-1)` を内包するので delivery 時の latest-main refresh は trivial merge（`conflict_count=0` 期待）で、full-suite は再実行しない。delivery は `/git-pr-merge` へ委譲し、completion/failure/head/PR/worktree state を `/work` へ返す。並行による短縮は目的でなく、batch のコストは逐次 `/work` 以下に保つ（3 issue の実装 wall time は概ね 3×）。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
+issue を入力順に完全直列で1件ずつ処理する（`MAX_TASK_WORKERS = 1`）。各 `#k` の起動前に共有 working tree を latest `origin/main`（`#(k-1)` の squash commit を含む）へ fast-forward し、その SHA を `Base SHA` として、解決済みの command root・work-run helper パスとともに payload で渡し、delegated `commands/task.md` を完全に実行させる。per-issue worktree は作らず、worker は plan 承認後に共有 working tree 上で作業ブランチ `feat/<issue-number>-<slug>` を作る（別 worktree なし、branch の付け替えなし）。investigation・planning・実装がすべて直列で、`#(k+1)` の worker は `#k` が `origin/main` に squash merge されて `completed` になってから起動する。plan・実装レビュー・Ready PR approval は issue 単独で relay し、複数 issue の gate を1プロンプトに束ねず、まとめ承認も求めない。cross-issue の待ちは「`#(k+1)` 起動 = `#k` の delivery 完了」の1つだけ。全 worker が返す SHA-bound full-suite evidence（結合状態を issue につき1回検証、base は latest `origin/main`）は補完・推測・reuse 判定をせず `/git-pr-merge` へ転送し、`/git-pr-merge` は #404 の厳密な head/base/plan SHA 一致でのみ再利用する。delivery は `/git-pr-merge` へ委譲し（`/git-pr-merge` が自分で isolated delivery worktree を作る）、completion/failure/head/PR/worktree state を `/work` へ返す。直列化による短縮は目的でなく、batch のコストは逐次 `/work` 以下に保つ（3 issue の wall time は概ね 3×）。#412 の approved-head chain は実測の squash divergence conflict を受けて issue #414 で撤回した。final batch docs PR、Draft-only pipeline、persistent batch state は持たない。
 
-根拠: `commands/task-manager.md:1-182`, issue #400, issue #406, issue #408, issue #412
+根拠: `commands/task-manager.md:1-177`, issue #400, issue #406, issue #408, issue #414
 
 ### `/mtg` (`commands/mtg.md`)
 
@@ -66,11 +66,11 @@ issue ごとに validated base から worktree を1つ作り（1 issue = 1 worke
 
 ### `/task` (`commands/task.md`)
 
-ordinary single issue と delegated worker が共有する docs-aware issue-specific flow。delegated mode は `/work` の complete evidence と prepared worktree/branch を再利用し、具体的な missing/stale/base-drift reason がある場合だけ shortest-path supplemental investigation を行う。plan approval後は同じworkerがsource、tests、L3、`/docs-sync`、`/git-pr`まで進みReady PRを作る。
+ordinary single issue と delegated worker が共有する docs-aware issue-specific flow。delegated mode は `/work` の complete evidence を再利用し、具体的な missing/stale/base-drift reason がある場合だけ shortest-path supplemental investigation を行う。plan approval後は同じworkerがsource、tests、L3、`/docs-sync`、`/git-pr`まで進みReady PRを作る。
 
-ordinary modeはユーザーgateを直接扱いReady PRで終了する。delegated modeはplanとReady PR handoffを `/task-manager`へ返し、merge、parent workspace cleanup、stash restorationを行わない。merge position k≥2 の worker は `#(k-1)` の approved head を non-rewriting `git merge` で内包し、承認済み plan を突き合わせてから実装する。全 delegated worker は final Ready PR head 確定後に exact approved full suite を issue につき1回実行し、成功時に SHA-bound evidence（base は `#1` が latest-main、`#k` が凍結された `Predecessor approved head`）を返す。issue creation、session-approved、L3 snapshot、Conventional Commit、PR title/bodyの既存contractは両modeで共有する。
+ordinary modeはユーザーgateを直接扱いReady PRで終了する。delegated modeはplanとReady PR handoffを `/task-manager`へ返し、merge、parent workspace cleanup、stash restorationを行わない。両 mode とも plan 承認後に worker が作業ブランチを作る（delegated mode は payload の `Base SHA` = 共有 working tree の現在 HEAD = latest `origin/main` を根にする。別 worktree は作らない）。全 delegated worker は final Ready PR head 確定後に exact approved full suite を issue につき1回実行し、成功時に SHA-bound evidence（base は latest `origin/main`）を返す。issue creation、session-approved、L3 snapshot、Conventional Commit、PR title/bodyの既存contractは両modeで共有する。
 
-根拠: `commands/task.md:1-257`, issue #400, issue #412
+根拠: `commands/task.md:1-257`, issue #400, issue #414
 
 ### `/patch` (`commands/patch.md`)
 
@@ -160,9 +160,9 @@ PR 番号を受け取り、PR ブランチに checkout し、事前に `git diff
 
 ### `/git-pr-merge` (`commands/git-pr-merge.md`)
 
-review済みの単一Draft/Ready PRをapproved head SHAで固定し、owned PR worktree上でlatest `origin/main`をnormal mergeし、current post-refresh headをCIまたはapproved local commandsで検証してexplicit squash mergeするworkflow。standaloneは表示したPR/headへの明示承認を求め、delegated invocationはPR番号、approved head、scope/behavior、validation plan、approval source、owned worktreeを必須とし、optional full-suite evidence と optional `predecessor_approved_head` を受け取れる。
+review済みの単一Draft/Ready PRをapproved head SHAで固定し、自分で作成したisolated worktree上でlatest `origin/main`をnormal mergeし、current post-refresh headをCIまたはapproved local commandsで検証してexplicit squash mergeするworkflow。standaloneは表示したPR/headへの明示承認を求め、delegated invocationはPR番号、approved head、scope/behavior、validation plan、approval source、isolated delivery worktree作成許可を必須とし、optional full-suite evidence を受け取れる。
 
-successful full scope、exact approved plan、current post-refresh head SHA、current latest-main base SHA がすべて一致する evidence だけを authoritative local result として再利用し、同じ full suite の再実行を省略する。delegated chain delivery では `#k` が `#(k-1)` を内包するため latest-main refresh が trivial（`conflict_count=0` 期待）で、evidence の base が凍結された `predecessor_approved_head` と一致し head 差分が tree 変化ゼロの known-empty delivery merge のみなら、head/base SHA 完全一致を緩和して再利用する。evidence が absent、targeted、failed、incomplete、stale、（chain 例外に該当しない）plan/head/base mismatch、判定不能なら既存 current-head validation にフォールバックする。required checks は evidence で省略しない。
+successful full scope、exact approved plan、current post-refresh head SHA、current latest-main base SHA がすべて一致する evidence だけを authoritative local result として再利用し、同じ full suite の再実行を省略する（#404 の厳密一致）。delegated delivery では対象PRが起動時点の latest `origin/main` から分岐しているため latest-main refresh は通常 no-op か clean fast-forward（`conflict_count=0` 期待）になる。evidence が absent、targeted、failed、incomplete、stale、plan/head/base mismatch、判定不能なら既存 current-head validation にフォールバックする。required checks は evidence で省略しない。
 
 active invocation自身がSHA・parent・目的・changed pathsを記録したlatest-main merge/approved repairだけをknown commitとし、それ以外のhead driftは対象PRだけを再承認する。local `main` workspaceはcheckout、edit、repair、commit、pushに使わず、worktreeがdirty/unavailable/ownership不明ならfallbackせず停止する。merge後はPR state、squash OID、latest-main包含、1-commit resultを再取得して検証する。cleanupはcaller責務である。
 
@@ -296,9 +296,9 @@ caller側の契約（いつ・どのeventをemitするか、best-effortの6不�
 
 根拠: `tests/commands/test-work-multi.sh:1-83`
 
-`tests/commands/test-task-manager.sh` はinput boundary、real task-worker、input-order `/git-pr-merge` delegation、embedded delivery mechanicsのabsence、partial completion、completion comment に加え、chain 実装（parallel investigation/planning、`Predecessor approved head` payload、`#(k-1)` PR 承認後の実装開始、non-rewriting merge、reset 不使用、sibling-divergence conflict 経路の不在、`conflict_count=0`、delivery 時の full-suite 非再実行）を検証する。`tests/commands/test-git-pr-merge.sh` はstandalone/delegated approval、head drift、known/unknown commit、latest-main refresh、CI/local fallback、actual-branch conflict repair、Draft/Ready、local main prohibition、explicit squash verification に加え、delegated chain 例外（`predecessor_approved_head` 受領、frozen-base evidence の head/base 一致緩和、known-empty delivery merge 限定）を検証する。
+`tests/commands/test-task-manager.sh` はinput boundary、real task-worker、input-order `/git-pr-merge` delegation、embedded delivery mechanicsのabsence、partial completion、completion comment に加え、直列モデル（完全直列で1件ずつ処理、`#(k+1)` は `#k` の squash merge 後に起動、per-issue worktree 不使用、共有 working tree でのブランチ作成、`MAX_TASK_WORKERS = 1`、`Predecessor` 系 payload の不在、#404 厳密 evidence reuse）を検証する。`tests/commands/test-git-pr-merge.sh` はstandalone/delegated approval、head drift、known/unknown commit、latest-main refresh、CI/local fallback、actual-branch conflict repair、Draft/Ready、local main prohibition、explicit squash verification に加え、`predecessor_approved_head` と delegated chain 例外の不在、delegated delivery が isolated worktree を自作すること、起動時 latest `origin/main` からの分岐を検証する。
 
-根拠: `tests/commands/test-task-manager.sh:1-118`, `tests/commands/test-git-pr-merge.sh:1-92`
+根拠: `tests/commands/test-task-manager.sh:1-122`, `tests/commands/test-git-pr-merge.sh:1-93`
 
 `tests/scripts/test-link-worktree-untracked.sh` は lazy linker の functional test である。`prepare` が source と空 manifest だけを記録し、`link` が指定された untracked/ignored path だけを作成・manifest へ一度だけ記録することを確認する。tracked path、unsafe path、unavailable path は拒否する。
 

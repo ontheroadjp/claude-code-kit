@@ -36,9 +36,9 @@ issue 番号がある場合は state、exact label、native dependency、managem
 
 ## task flow
 
-`task.md` は ordinary/delegated 共通の issue-specific workflowで、issue確認、調査補完、plan承認、実装、L3、commit、`/docs-sync`、`/git-pr`へ進む。delegated modeは `/work` evidenceを再利用し、Ready PR handoffをtask-managerへ返すがmerge・parent cleanupを行わない。delegated の merge position k≥2 は `#(k-1)` の approved PR head を non-rewriting `git merge` で内包しplanを突き合わせてから実装し、全 delegated worker が結合状態のfull-suiteをissueにつき1回実行してSHA-bound evidenceを返す。
+`task.md` は ordinary/delegated 共通の issue-specific workflowで、issue確認、調査補完、plan承認、実装、L3、commit、`/docs-sync`、`/git-pr`へ進む。delegated modeは `/work` evidenceを再利用し、Ready PR handoffをtask-managerへ返すがmerge・parent cleanupを行わない。delegated worker は plan 承認後に payload の `Base SHA`（起動時点の latest `origin/main`）から共有 working tree 上で作業ブランチを作り（別 worktree は作らない）、全 delegated worker が latest `origin/main` を base に結合状態の full-suite を issue につき1回実行して SHA-bound evidence を返す。
 
-根拠: `commands/task.md:1-56`, `commands/task.md:70-257`
+根拠: `commands/task.md:1-57`, `commands/task.md:71-257`
 
 ## patch flow
 
@@ -76,15 +76,15 @@ L0 は `/init-docs`（初回新規作成のみ）とこの flow の 2 経路以�
 
 ## git-pr-merge flow
 
-`git-pr-merge.md` はreview済み単一PRをdeliveryする。standalone invocationは表示したPRとcurrent head SHAへの明示承認を得る。delegated invocationはPR番号、approved head、scope/behavior、final validation plan、approval source、owned worktreeを必須とし、chain position k≥2 では optional `predecessor_approved_head` を受け取る。unknown head driftは対象PRだけを再承認し、actual PR branchへlatest `origin/main`をnormal mergeしてcurrent headをCI/local commandsで検証後、DraftだけReady化してexplicit squash mergeする。delegated chain deliveryでは対象PRが `predecessor_approved_head` を内包しておりlatest-main refreshはtrivial merge（`conflict_count=0` 期待）で、frozen-base evidenceはtree変化ゼロのknown-empty delivery mergeをまたいで再利用される。local `main` workspaceは一切writeに使わない。
+`git-pr-merge.md` はreview済み単一PRをdeliveryする。standalone invocationは表示したPRとcurrent head SHAへの明示承認を得る。delegated invocationはPR番号、approved head、scope/behavior、final validation plan、approval source、isolated delivery worktree作成許可を必須とし、optional で `full_validation_evidence` を受け取る。unknown head driftは対象PRだけを再承認し、自分で作成したisolated worktree内でactual PR branchへlatest `origin/main`をnormal mergeしてcurrent headをCI/local commandsで検証後、DraftだけReady化してexplicit squash mergeする。delegated deliveryでは対象PRが起動時点のlatest `origin/main`から分岐しているためlatest-main refreshは通常no-opかclean fast-forward（`conflict_count=0` 期待）で、evidence再利用は #404 の厳密な head/base/plan SHA 一致でのみ行う。local `main` workspaceは一切writeに使わない。
 
-根拠: `commands/git-pr-merge.md:1-158`
+根拠: `commands/git-pr-merge.md:1-149`
 
 ## task-manager flow
 
-`task-manager.md` は `/work` が検証した2〜3 issueだけを受け取る internal orchestratorである。real workerはdelegated `commands/task.md`を実行してissue-specific planからReady PRまで進む。investigation/planningは全worker並行だが実装はinput orderのchainで、`#k`(k≥2)は `#(k-1)` のPR承認後にそのapproved headを non-rewriting `git merge` で内包してから実装する。sibling-worker divergence 由来のconflictは構造的に発生せず、各workerがPR作成前に結合状態のfull-suiteを1回実行するのでdelivery時に再実行しない。plan/PR approvalは独立し、deliveryだけをinput orderで `/git-pr-merge`へ委譲する。preflight・project investigation・task contract・parent cleanupは複製しない。並行による短縮は目的でなく、batchのコストは逐次 `/work` 以下に保つ（3 issueの実装 wall time は概ね 3×。issue #412）。
+`task-manager.md` は `/work` が検証した2〜3 issueだけを受け取る internal orchestratorである。real workerはdelegated `commands/task.md`を実行してissue-specific planからReady PRまで進む。issueは入力順に完全直列で1件ずつ処理し、`#(k+1)`のworkerは`#k`が`origin/main`にsquash mergeされてから起動する。各workerは起動前にfast-forwardした共有 working treeのlatest `origin/main`（`#(k-1)`を含む）から作業ブランチを作り、per-issue worktreeは作らない。各workerがPR作成前に結合状態のfull-suiteを1回実行し、`/git-pr-merge`は #404 の厳密なSHA一致でのみそれを再利用する。plan/PR approvalは独立し、deliveryだけをinput orderで `/git-pr-merge`へ委譲する。preflight・project investigation・task contract・parent cleanupは複製しない。直列化による短縮は目的でなく、batchのコストは逐次 `/work` 以下に保つ（3 issueのwall timeは概ね 3×。#412のapproved-head chainは実測のsquash divergence conflictを受けてissue #414で撤回）。
 
-根拠: `commands/task-manager.md:1-182`
+根拠: `commands/task-manager.md:1-177`
 
 ## State continuity の現状
 
@@ -92,7 +92,7 @@ branch、Issue、commit、PR、L3 per-file documentation、session temp artifact
 
 したがって、既存 artifact は再開時の調査材料として扱うが、正式な checkpoint/resume 機能であるとは扱わない。
 
-根拠: `commands/work.md:160-175`, `commands/git-commit.md:25-52`, `commands/git-pr.md:18-44`, `commands/task-manager.md:396-408`
+根拠: `commands/work.md:160-175`, `commands/git-commit.md:25-52`, `commands/git-pr.md:18-44`, `commands/task-manager.md:173-177`
 
 ## codex-review flow
 

@@ -55,7 +55,8 @@ delegated caller から受け取る `full_validation_evidence` は optional で�
 
 ## 変更履歴（git log より自動生成）
 
-- a405d08 feat(#412): chain delegated workers on the predecessor's approved PR head
+- dcfb4af refactor(#414): replace the task-manager approved-head chain with fully-serial, worktree-free implementation
+- 118ab35 feat(#412): chain delegated task-manager workers on the predecessor approved PR head (#413)
 - abe4573 feat(#410): consolidate the shared work-run event contract into work.md (#411)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)

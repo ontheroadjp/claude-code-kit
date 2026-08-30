@@ -53,7 +53,8 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 変更履歴（git log より自動生成）
 
-- a405d08 feat(#412): chain delegated workers on the predecessor's approved PR head
+- dcfb4af refactor(#414): replace the task-manager approved-head chain with fully-serial, worktree-free implementation
+- 118ab35 feat(#412): chain delegated task-manager workers on the predecessor approved PR head (#413)
 - abe4573 feat(#410): consolidate the shared work-run event contract into work.md (#411)
 - ff0872c feat(#408): carry resolved command and helper paths in worker payload (#409)
 - 3a2f223 feat(#406): forbid batching approval gates across task-manager issues (#407)
@@ -62,7 +63,6 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - 72a11b5 feat(#400): unify work entry point (#402)
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
 - 4f0953a docs(task): remove /rename step from Step 3 pre-implementation checklist
-- 5f1d984 #377 Add independent task-manager batch workflow (#378)
 
 ## Work-run observability
 

@@ -59,7 +59,7 @@ The platform-independent philosophy is defined in `docs/L0_concept/`. Its system
 | `/work` | Unified implementation entry point for one to three issues. Atomically validates all input before mutation, acquires project context once, routes single work to task/patch and accepted batches to task-manager, and owns final cleanup. |
 | Work-run observability | Records privacy-preserving lifecycle events for one logical `/work` run and delegated workers under `logs/work-runs/`; `scripts/analyze_work_runs.py` summarizes status, timing, concurrency, and session correlation without reading full agent transcripts. |
 | `/work-multi` | Explicit opt-in entry point that runs the exact same `/work` workflow inside a dedicated `EnterWorktree`-isolated worktree, for deliberate concurrent-session use. Records the original working tree and links only explicitly needed untracked/ignored paths; its self-created links are automatically excluded from status checks. |
-| `/task-manager` | Internal multi-issue orchestrator delegated by `/work`. Investigation and planning run in parallel, but implementation is a serial chain: each worker `#k` (k≥2) merges `#(k-1)`'s approved PR head before implementing, so sibling-divergence conflicts cannot occur and every worker validates the combined state with one up-front full suite. Relays independent plan/Ready PR approvals and delivers through `/git-pr-merge` in fixed input order. Not a speed optimization — a batch costs no more than the same issues run as sequential `/work`, and a 3-issue batch's implementation wall time is ~3× one issue. |
+| `/task-manager` | Internal multi-issue orchestrator delegated by `/work`. Processes the two or three accepted issues strictly one at a time in input order: worker `#(k+1)` starts only after `#k` is squash-merged, and each worker branches from the current `origin/main` (which already contains `#(k-1)`) in the shared working tree — no per-issue worktree. Relays independent per-issue plan/Ready PR approvals and delivers through `/git-pr-merge` in fixed input order. Not a speed optimization — a batch costs no more than the same issues run as sequential `/work`, and a 3-issue batch's wall time is ~3× one issue. |
 | `/mtg` | Facilitates a human-led, non-linear discussion for an agenda-labeled issue; implementation issues are created only when the user explicitly runs `/new-issue`. |
 | `/analyze-access` | Aggregates `logs/access/*.log` via a Python script, then prints a KPI dashboard (duplicate-read waste) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/access/`. |
 | `/analyze-auto-approve` | Aggregates `logs/auto-approve/*.log` via a Python script, then prints a KPI dashboard (auto-approval rate, routine-op user-prompt rate) followed by Key Findings & Proposals, and writes an HTML report to `logs/reports/auto-approve/`. |
@@ -75,7 +75,7 @@ The platform-independent philosophy is defined in `docs/L0_concept/`. Its system
 | `/docs-sync` | Syncs `docs/*` and README from `git diff`; on HARD STOP, automatically delegates comprehensive regeneration to `/init-docs` in documentation-only mode, then resumes and writes Docs Sync Result for `/git-pr`. |
 | `/git-commit` | Normalizes WIP commits when needed, checks staged changes, and creates a Conventional Commit. |
 | `/git-pr` | Reads PR title/body/docs-sync-result from session temp and creates a ready PR. This is the end of the `/work`/`/task` flow — further review and merge are manual. |
-| `/git-pr-merge` | Delivers one explicitly reviewed Draft or Ready PR: pins the approved head SHA, refreshes the actual PR branch with latest main in an owned worktree, reuses SHA-bound successful full-suite evidence when the exact head/base/plan still match (or, for a delegated chain delivery, when the frozen predecessor-head evidence spans only tree-neutral delivery merges), otherwise validates the current head, and squash-merges it. Also serves as `/task-manager`'s sequential source-delivery component. |
+| `/git-pr-merge` | Delivers one explicitly reviewed Draft or Ready PR: pins the approved head SHA, refreshes the actual PR branch with latest main in an isolated worktree it creates, reuses SHA-bound successful full-suite evidence when the exact head/base/plan still match, otherwise validates the current head, and squash-merges it. Also serves as `/task-manager`'s sequential source-delivery component. |
 | `/init-docs` | Re-observes the repository and reconstructs project design docs. Defaults to standalone mode with its own draft PR; explicit documentation-only mode preserves the current branch and skips commit, push, and PR creation. Creates L0 only when absent. |
 | `/concept-maker` | Standalone entry point that processes L0 promotion candidates queued in `docs/.ai/l0_candidates.md` by `/docs-sync`, iterating on wording with the user until explicit approval, then appends to `docs/L0_concept/`. The only AI-facing write path to L0 besides `/init-docs`'s first-time creation. |
 | `/coding-general` | Language-independent coding principles. |
@@ -150,8 +150,8 @@ Codex omits status items whose current values are unavailable. Restart the relev
   one issue, docs required     -> task flow: issue -> implement -> /docs-sync -> ready PR
                        HARD STOP -> /docs-sync runs /init-docs documentation-only -> resumes -> ready PR
                        (end of single-issue flow -- review/merge are manual)
-  two or three issues -> task-manager -> parallel investigation/planning,
-                       serial implementation chain (#k builds on #(k-1)'s approved PR head)
+  two or three issues -> task-manager -> fully serial: one issue at a time in input order,
+                       each worker branching from post-squash latest main (no per-issue worktree)
                        -> per-issue Ready PR approval -> fixed-order /git-pr-merge -> work cleanup
 
 /review-resolve #N
@@ -164,14 +164,11 @@ Codex omits status items whose current values are unavailable. Restart the relev
   EnterWorktree -> new isolated worktree -> lazily link needed untracked files -> runs /work unchanged
 
 /task-manager (internal; invoked by /work for two or three accepted issues)
-  /work handoff -> one delegated /task worker per issue
-  investigation + planning run in parallel; per-issue plan approval
-  implementation is a serial chain: #k (k>=2) merges #(k-1)'s approved PR head,
-    reconciles its plan, then implements -> per-issue Ready PR approval
-  every worker validates the combined state with one up-front full suite
-  eligible PRs -> trivial latest-main refresh (no sibling conflicts) -> reuse the
-    frozen-base evidence -> /git-pr-merge in input order -> return cleanup state to /work
-  not a speedup: a 3-issue batch's implementation wall time is ~3x one issue
+  /work handoff -> one delegated /task worker per issue, launched serially one at a time
+  each worker branches from the current origin/main (already contains #(k-1)) in the shared tree
+  investigation, planning, and implementation are all serial; per-issue plan and Ready PR approval
+  approved PR -> /git-pr-merge in input order -> #(k+1) starts after #k is merged -> cleanup state to /work
+  not a speedup: a 3-issue batch's wall time is ~3x one issue
 ```
 
 Site commands are under `site/`:
@@ -223,7 +220,7 @@ shellcheck -x $(find . -not -path "./node_modules/*" -not -path "./site/node_mod
 - `/task` creates and updates L3 per-file docs (`docs/L3_implementation/<source-path>.md`) as part of implementation; `/docs-sync` handles all other docs updates and auto-inserts `git log --oneline -10` output into the `## 変更履歴（git log より自動生成）` section of existing L3 per-file docs.
 - `/docs-sync` makes minimal updates and, when the structure can no longer be explained locally, runs `/init-docs` in documentation-only mode before resuming its normal commit/result flow.
 - `/work` owns atomic issue preflight, one-time project context, routing, and final workspace/stash cleanup for both single and multiple issue work.
-- `/task-manager` runs delegated `/task` workers with parallel investigation/planning but a serial implementation chain — each `#k` builds on `#(k-1)`'s approved PR head — so sibling-divergence conflicts are eliminated by construction and delivery stays sequential in user-provided order. It is not a speed optimization (a batch costs no more than the same issues run as sequential `/work`) and does not duplicate `/work` investigation or `/task` implementation contracts.
+- `/task-manager` runs delegated `/task` workers strictly one at a time in user-provided order — each `#k` branches from the post-squash `origin/main` that already contains `#(k-1)`, in the shared working tree with no per-issue worktree — so divergence conflicts cannot arise and delivery stays sequential. It is not a speed optimization (a batch costs no more than the same issues run as sequential `/work`) and does not duplicate `/work` investigation or `/task` implementation contracts.
 - `/git-pr-merge` never uses a local `main` workspace for delivery or conflict repair; every Draft and Ready PR is refreshed and validated on its actual head branch before explicit squash merge.
 - `/init-docs` defaults to standalone mode; documentation-only mode is used only when explicitly instructed and never creates a branch, commit, push, or PR.
 - `~/.claude/` and `~/.codex/` are symlink-only; this repository remains the source of truth.
