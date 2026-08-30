@@ -28,9 +28,9 @@ core-toolkit-for-claude/
 
 ### `commands/`
 
-Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常実装入口で、`git-pr.md` のready PR作成で `/work` と `/task` は完結する。review後の単一PR deliveryは `git-pr-merge.md` がapproved head・owned worktree・current-head validation・squash mergeを管理する。`task-manager.md` は複数source PRを準備し、complete Draft set承認後に同delivery workflowへ入力順で委譲する。
+Claude Code / Codex CLI が読む Markdown command 仕様を置く。`work.md` が通常実装入口で、`git-pr.md` のready PR作成で `/work` と `/task` は完結する。review後の単一PR deliveryは `git-pr-merge.md` がapproved head・isolated worktree・current-head validation・squash mergeを管理する。`task-manager.md` は `/work` が検証した2〜3 issueを入力順に完全直列で1件ずつ実装し、per-issueのReady PR承認後に同delivery workflowへ入力順で委譲する。
 
-根拠: `commands/work.md:1-187`, `commands/git-pr.md:62-65`, `commands/git-pr-merge.md:1-147`, `commands/task-manager.md:1-412`, `commands/README.md`
+根拠: `commands/work.md:1-187`, `commands/git-pr.md:62-65`, `commands/git-pr-merge.md:1-149`, `commands/task-manager.md:1-177`, `commands/README.md`
 
 ### `skills/`
 
