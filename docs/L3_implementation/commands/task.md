@@ -55,7 +55,8 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 変更履歴（git log より自動生成）
 
-- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- a405d08 feat(#412): chain delegated workers on the predecessor's approved PR head
+- abe4573 feat(#410): consolidate the shared work-run event contract into work.md (#411)
 - ff0872c feat(#408): carry resolved command and helper paths in worker payload (#409)
 - 3a2f223 feat(#406): forbid batching approval gates across task-manager issues (#407)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
@@ -64,7 +65,6 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
 - 4f0953a docs(task): remove /rename step from Step 3 pre-implementation checklist
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)
-- 0bc7683 #344 Add a thread-renaming helper (#346)
 
 ## Work-run observability
 

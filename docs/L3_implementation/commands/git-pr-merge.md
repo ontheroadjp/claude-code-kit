@@ -55,7 +55,8 @@ delegated caller から受け取る `full_validation_evidence` は optional で�
 
 ## 変更履歴（git log より自動生成）
 
-- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- a405d08 feat(#412): chain delegated workers on the predecessor's approved PR head
+- abe4573 feat(#410): consolidate the shared work-run event contract into work.md (#411)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)

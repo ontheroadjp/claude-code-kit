@@ -60,7 +60,8 @@
 
 ## 変更履歴（git log より自動生成）
 
-- 3aff0cc feat(#410): consolidate the shared work-run event contract into work.md
+- a405d08 feat(#412): chain delegated workers on the predecessor's approved PR head
+- abe4573 feat(#410): consolidate the shared work-run event contract into work.md (#411)
 - ff0872c feat(#408): carry resolved command and helper paths in worker payload (#409)
 - 3a2f223 feat(#406): forbid batching approval gates across task-manager issues (#407)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
@@ -69,7 +70,6 @@
 - b3d7d3b feat(#398): stream task-manager issue pipelines (#399)
 - a9fbb5f fix(#369): generate conventional task PR titles (#395)
 - a23fda3 #389 Add reusable reviewed PR delivery workflow (#391)
-- 6dc29d5 #387 Simplify task-manager source delivery (#388)
 
 ## Work-run observability
 
