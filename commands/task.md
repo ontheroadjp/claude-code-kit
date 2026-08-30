@@ -24,7 +24,7 @@ Phase 3: 最終報告
 
 ## Work-run event contract
 
-`/work` または `/task-manager` から `work_run_id` が渡されている場合だけ、実行 agent 用 installed `work-run-events.sh` に semantic event を best-effort で渡す。helper の失敗は無視し、実装・approval・PR creation の結果を変更しない。自由記述や成果物本文は渡さない。
+`/work` または `/task-manager` から `work_run_id` が渡されている場合だけ、`work-run-events.sh` に semantic event を best-effort で渡す。helper の絶対パスは呼び出し元 payload の literal 値（delegated mode は `Work-run events helper`）を使い、ファイルシステム探索はしない。値がない・`unavailable` の場合は emit を省略する。helper の失敗は無視し、実装・approval・PR creation の結果を変更しない。自由記述や成果物本文は渡さない。
 
 - plan 提示時: `issue_state_changed issue_number=<N> state=awaiting_plan_approval`
 - plan 承認後: `issue_state_changed issue_number=<N> state=implementing`
@@ -43,6 +43,7 @@ ordinary mode では親 `/work` と同じ session context を読む。delegated 
 `/work` → `/task-manager` が起動した issue worker として実行する。payload には accepted issue metadata、isolated worktree/branch、base SHA、merge order、complete project-wide context が必要である。
 
 - `/work` の preflight、repository profile、README、primary investigation doc、workspace/stash gate を再実行しない。
+- `task.md`・`coding-*.md`・`work-run-events.sh` は payload の絶対パス（`Command root`・`Work-run events helper`）から直接読む。cwd 相対の解決やファイルシステム探索はしない。
 - handed-off evidence は routine reread しない。`missing evidence`、`stale evidence`、`base drift` を path・範囲・理由つきで記録した場合だけ shortest-path supplemental investigation を行う。
 - Step 2 の plan を `/task-manager` へ返し `awaiting_plan_approval` で待つ。approval は対象 issue だけに適用する。
 - approval 後は同じ worker が Step 3、tests、L3 per-file docs、Phase 2、`/docs-sync`、`/git-pr` まで継続する。

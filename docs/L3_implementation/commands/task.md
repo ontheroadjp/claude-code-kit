@@ -22,6 +22,7 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - plan approval 前に file edit を行わず、session-approved へ tool/file/L3 scope を一度だけ書く。
 - delegated worker は `/task-manager` 経由で issue-specific plan/implementation approval を受け、同じ worker が Ready PR まで継続する。
 - 通常モードだけ branch を作り、delegated mode は payload の branch/worktree を再利用する。
+- delegated mode は `task.md`・`coding-*.md`・`work-run-events.sh` を payload の絶対パス（`Command root`・`Work-run events helper`）から読み、ファイルシステム探索をしない。helper が `unavailable` なら event emit を省略する。
 - reusable evidence は `validated_head_sha`、`validated_base_sha`、exact `full` scope、exact validation plan、`success` outcome をすべて持つ場合だけ生成する。head/base drift、失敗、targeted-only result は evidence に昇格しない。
 
 根拠: `commands/task.md:35-50`, `commands/task.md:76-156`, `commands/task.md:227-245`
@@ -50,7 +51,8 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 
 ## 変更履歴（git log より自動生成）
 
-- 015f76c feat(#406): forbid batching approval gates across task-manager issues
+- 5c22e8b feat(#408): carry resolved command and helper paths in worker payload
+- 3a2f223 feat(#406): forbid batching approval gates across task-manager issues (#407)
 - 29b88f2 feat(#404): reuse SHA-bound full-suite validation (#405)
 - 9fc5b9a feat(#401): add structured work run observability (#403)
 - 72a11b5 feat(#400): unify work entry point (#402)
@@ -59,7 +61,6 @@ docs 変更を伴う issue-specific implementation workflow。通常の単一 is
 - 5f1d984 #377 Add independent task-manager batch workflow (#378)
 - 0bc7683 #344 Add a thread-renaming helper (#346)
 - f32ec17 #336 Rename thread on work branch switch (#337)
-- ea565ac #326 Automate worktree symlink status filtering (#327)
 
 ## Work-run observability
 

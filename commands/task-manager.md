@@ -52,9 +52,12 @@ Base SHA: <base SHA>
 Merge order: <position>/<batch size>
 Project-wide context: <complete /work handoff>
 Work run ID: <work_run_id or unavailable>
+Command root: <absolute installed commands dir for the executing agent: ~/.claude/commands or ~/.codex/commands>
+Work-run events helper: <absolute installed work-run-events.sh path for the executing agent: ~/.claude/scripts/work-run-events.sh or ~/.codex/scripts/work-run-events.sh, or unavailable>
+L3 doc root: <Worktree>/docs/L3_implementation
 
 Required:
-1. Read commands/task.md completely.
+1. Read <Command root>/task.md completely. Its coding-*.md siblings are in the same directory.
 2. Execute delegated worker mode without re-running /work gates.
 3. Return the issue-specific plan before editing.
 4. Continue as the same worker after approval.
@@ -64,13 +67,14 @@ Forbidden:
 - routine reread of handed-off evidence
 - edit before issue-specific plan approval
 - invoking /work or duplicating /task
+- filesystem-searching for task.md, coding-*.md, or work-run-events.sh instead of using the payload paths
 - Draft-only delivery, merge, force push, history rewrite, destructive cleanup
 ```
 
-worker は logging が利用可能な場合、編集前に実行 agent 用 installed helper の `attach` を次の literal 値で best-effort 実行する。`worker_registered` の共通 `agent_session_id` が既存 access / approval / token log との join key になる。
+worker は logging が利用可能な場合、編集前に payload の `Work-run events helper` literal パスで `attach` を best-effort 実行する。パスの探索はしない。`Work-run events helper` が `unavailable` の場合は attach を省略する。`worker_registered` の共通 `agent_session_id` が既存 access / approval / token log との join key になる。
 
 ```text
-bash <installed-helper> attach <work_run_id> issue_number=<N> worker_id=<stable-worker-id> branch=<branch> worktree=<absolute-worktree> || true
+bash <Work-run events helper> attach <work_run_id> issue_number=<N> worker_id=<stable-worker-id> branch=<branch> worktree=<absolute-worktree> || true
 ```
 
 親と worker は、各 issue state 遷移時にそれぞれが所有する遷移だけを `emit issue_state_changed issue_number=<N> state=<state> || true` で記録する。重複した telemetry state machine は持たない。
